@@ -97,10 +97,10 @@ Schon seit Version 3:
 | Zehen + Fusskrallen (beide Seiten) | 3 904 |
 | Finger + Daumen + Daumenkrallen (beide Seiten) | 12 232 |
 | 2 Flughäute | 3 990 |
-| Hörner und Stacheln (Kopf, Rücken, Schwanz-Seiten, Schwanzspitze) | 10 436 |
+| Hörner und Stacheln (Kopf, Rücken, Schwanz-Seiten, Schwanzspitze) | 10 772 |
 | Zähne (oben und unten) | 2 244 |
 | Augen (mit Schlitz-Pupille) | 704 |
-| **Summe (Version 5)** | **79 286** |
+| **Summe (Version 5.2)** | **79 622** |
 
 Alles wird im Skript aus Formeln berechnet: Querschnitte entlang einer Mittellinie,
 Röhren für Beine, Finger und Hörner, Ellipsoide für Muskeln, eine gewölbte
@@ -129,21 +129,21 @@ Flughaut mit gewellter Hinterkante.
 | Punkt | Wert |
 |---|---|
 | Datei | `public/models/dragon_scales.glb` |
-| Grösse | 6 308 340 Bytes (ca. 6,3 MB) |
-| SHA256 | `6db1be799de8bcd2a32f3e9b11c1eeace623ddd0c6f3c9c123700d160d7d7e78` |
+| Grösse | 5 662 852 Bytes (ca. 5,7 MB) |
+| SHA256 | `c11859b5b667135c2eea1fdd1713a077cdb43f484e778a585e647dd15a2c54d4` |
 | Meshes | 1 (`Drache`), 7 Materialien → 7 Draw-Calls |
-| Dreiecke / Punkte | 79 286 / 46 754 |
+| Dreiecke / Punkte | 79 622 / 46 208 |
 | Knochen | 50, alle verformend, max. 4 Knochen pro Punkt |
 | Texturen (JPEG in der GLB) | Haut: Farbe + Normal-Map je 2048 × 2048; Flughaut: Farbe + Normal-Map je 2048 × 1024 |
 | Extras | Tangenten (für die Normal-Maps), 3 Ankerpunkte, Erweiterung `KHR_materials_emissive_strength` (leuchtende Augen) |
 | Animationen | keine |
-| Masse | Länge 21,09 m, Spannweite 35,48 m, Höhe 6,87 m (mit Hörnern) |
+| Masse | Länge 21,09 m, Spannweite 35,48 m, Höhe 6,88 m (mit Hörnern) |
 
 ### Prüfungen
 
 - **Khronos glTF-Validator:** **0 Fehler, 0 Warnungen**, 3 Infos.
   Die 3 Infos heissen „leerer Knoten“. Das sind die gewollten Ankerpunkte.
-- **Wieder eingelesen mit Blender (bpy):** 1 Mesh, 79 286 Dreiecke, 50 Knochen,
+- **Wieder eingelesen mit Blender (bpy):** 1 Mesh, 79 622 Dreiecke, 50 Knochen,
   7 Materialien, 4 Bilder, 3 Anker. Das passt zum Export.
 - **Vorschaubilder mit Cycles** (schräg, Seite, oben, vorne, hinten, Kopf, Kopf von der
   Seite, Porträt, Schulter, von unten): Form, Texturen und Farben stimmen, keine Löcher in der Haut.
@@ -190,6 +190,10 @@ Flughaut mit gewellter Hinterkante.
   - Reiter-Sicht beim Schweben: Der aufgerichtete Hals versperrte die Sicht (nachts eine
     schwarze Wand). Jetzt bleibt der Hals in der Reiter-Sicht immer gestreckt, und die
     Kamera sitzt etwas über dem Kopf des Reiters.
+- Version 5.2 („Wieso sieht der Drache so schwer aus?“): Der Körper war seit Version 3
+  absichtlich dick; mit den grossen Flügeln wirkte er wie ein Fass. Jetzt schlanker:
+  Bauch zur Hüfte hochgezogen (Taille), Brust etwas schmaler (bleibt tief für die
+  Flugmuskeln), schlankere Oberschenkel, dünnerer Hals- und Schwanzansatz.
 - Getestet mit Bildschirmfotos im echten Spiel (Chromium ohne Grafikkarte).
   Dafür wurden die Projekt-Pakete mit `npm ci --ignore-scripts` installiert
   (Prüfsummen aus `package-lock.json`, keine Installations-Skripte).
@@ -232,9 +236,9 @@ Flughaut mit gewellter Hinterkante.
   Details (Hautfalten, einzeln geformte Schuppen). Das Maul-Innere ist schlicht,
   die Flughaut ist eine dünne Fläche.
 - Die Bildrate auf einem echten Computer mit Grafikkarte konnte hier nicht
-  gemessen werden (Test lief mit Software-Grafik). Das Modell hat etwa 25 % mehr
-  Dreiecke als Version 2 (79 286 statt 63 374, Ziel war 30 000–80 000), die Datei ist
-  6,3 MB gross (Ziel unter 15 MB). 7 statt 6 Draw-Calls.
+  gemessen werden (Test lief mit Software-Grafik). Das Modell hat etwa 26 % mehr
+  Dreiecke als Version 2 (79 622 statt 63 374, Ziel war 30 000–80 000), die Datei ist
+  5,7 MB gross (Ziel unter 15 MB). 7 statt 6 Draw-Calls.
 - Die grossen Flügel (35,5 m) passen in der normalen Verfolger-Kamera gut ins Bild
   (geprüft beim Geradeausflug); enge Kurven wurden nicht einzeln getestet.
 - In der Reiter-Sicht sieht man jetzt mehr vom Hals und die grossen Hörner vor sich.

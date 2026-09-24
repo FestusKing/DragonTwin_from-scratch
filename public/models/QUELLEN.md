@@ -33,8 +33,8 @@ Blender gebaut: `tools/build_dragon.py`.
 
 ### Kurz-Steckbrief
 
-- Format: glTF 2.0 binär (GLB), ca. 6,3 MB
-- ca. 79 300 Dreiecke, 1 Mesh mit 7 Materialien, 50 Knochen (Skinning)
+- Format: glTF 2.0 binär (GLB), ca. 5,7 MB
+- ca. 79 600 Dreiecke, 1 Mesh mit 7 Materialien, 50 Knochen (Skinning)
 - Stil ähnlich wie die Drachen aus *Game of Thrones* (schwarz-rot, grosse Fledermaus-Flügel),
   aber komplett eigenes Modell: Es wurden keine Bilder, Modelle oder Daten daraus verwendet.
 - Texturen: 2 × 2048 × 2048 (Haut: Farbe + Normal-Map), 2 × 2048 × 1024 (Flughaut)
