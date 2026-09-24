@@ -424,6 +424,20 @@ export class AudioManager {
     this.playThunder(0.05, 0.45);
   }
 
+  /** Armbrust-Schuss: "Tschwäng" (leiser, je weiter weg) */
+  playBallista(vol = 1) {
+    if (!this.ready || vol < 0.03) return;
+    this._tone(this.sfxBus, { freq: 190, freqEnd: 85, type: 'triangle', dur: 0.3, gain: 0.35 * vol, attack: 0.002 });
+    this._noiseBurst(this.sfxBus, { dur: 0.22, type: 'bandpass', freq: 1900, freqEnd: 600, q: 1.1, gain: 0.25 * vol, attack: 0.002 });
+  }
+
+  /** Bolzen trifft den Drachen: dumpfer Schlag */
+  playBoltHit() {
+    if (!this.ready) return;
+    this._noiseBurst(this.sfxBus, { dur: 0.3, freq: 900, freqEnd: 200, gain: 0.5, attack: 0.003 });
+    this._tone(this.sfxBus, { freq: 95, freqEnd: 45, dur: 0.35, gain: 0.45, attack: 0.003 });
+  }
+
   /** Boost: anschwellendes "Wuuusch" */
   playWhoosh() {
     if (!this.ready) return;

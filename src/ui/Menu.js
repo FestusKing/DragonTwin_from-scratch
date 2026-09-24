@@ -365,6 +365,7 @@ export class Menu {
     } else if (this.settingsTab === 'game') {
       row('Flughilfe', 'Richtet den Drachen automatisch gerade aus und hilft bei langsamen Kurven', check('flightAssist'));
       row('Kamera-Wackeln', 'Bei Aufprall, Boost und Donner', check('cameraShake'));
+      row('Armbrust-Türme', 'Die Wachtürme schiessen auf den Drachen (mit Feuer zerstören)', check('enemies'));
       row('Minikarte', '', check('showMinimap', (v) => document.getElementById('hud-map').classList.toggle('hidden', !v)));
       row('Ziegen-Fortschritt', 'Alle gefundenen Ziegen wieder verstecken', button('Zurücksetzen', () => {
         if (confirm('Wirklich alle Ziegen wieder verstecken?')) {

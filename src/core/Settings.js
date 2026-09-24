@@ -25,6 +25,7 @@ export const DEFAULT_SETTINGS = {
   showMinimap: true,
   cameraShake: true,
   ghost: true,
+  enemies: true, // Armbrust-Türme schiessen auf den Drachen
 };
 
 class SettingsStore {

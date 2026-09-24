@@ -16,6 +16,7 @@ import { FireBreath } from '../dragon/FireBreath.js';
 import { Customization } from '../dragon/Customization.js';
 import { RingRace } from '../gameplay/RingRace.js';
 import { Tutorial } from '../gameplay/Tutorial.js';
+import { Ballistae } from '../gameplay/Ballistae.js';
 import { PostProcessing } from '../fx/PostProcessing.js';
 import { SpeedFx } from '../fx/SpeedFx.js';
 import { PARTICLE_SCALE } from '../fx/Particles.js';
@@ -108,6 +109,7 @@ export class Game {
       this.hud.doFlash(0.18);
     };
     this.wasBoosting = false;
+    this.ballistae = new Ballistae(this.scene, this.world);
     this.race = new RingRace(this.scene, this.world, this.audio);
     this.tutorial = new Tutorial(this.input, this.audio, {
       ...this.hud.tutorialUI(),
@@ -225,6 +227,29 @@ export class Game {
     this.fire.onOverheat = () => {
       this.audio.playError();
       this._hintOnce('heat', 'Überhitzt!', 'Warte kurz, bis sich der Drache abgekühlt hat.');
+    };
+
+    // Armbrust-Türme
+    const bl = this.ballistae;
+    bl.onShot = (pos) => {
+      const d = pos.distanceTo(this.camera.position);
+      this.audio.playBallista(clamp(1 - d / 450, 0, 1));
+    };
+    bl.onHit = (dir, point) => {
+      p.velocity.addScaledVector(dir, 7);
+      p.stamina = Math.max(0, p.stamina - 0.12);
+      this.damage = Math.min(1, this.damage + 0.55);
+      this.rig.addShake(0.7);
+      this.audio.playBoltHit();
+      for (let i = 0; i < 25 * w.q.particles; i++) {
+        w.particles.sparks.spawn(point.x, point.y, point.z, (Math.random() - 0.5) * 16, Math.random() * 10, (Math.random() - 0.5) * 16, 0.4 + Math.random() * 0.4, 0.3, 0.1, 1, 0.8, 0.5);
+      }
+      this._hintOnce('bolt', '🏹 Getroffen!', `Zerstöre die Armbrust-Türme mit Feuer (${this._key('fire')}). Enge Kurven helfen beim Ausweichen.`);
+    };
+    bl.onAim = () => this._hintOnce('aim', '⚠ Armbrust-Turm!', 'Ein Wachturm zielt auf dich. Weiche aus oder brenne ihn nieder!');
+    bl.onDestroyed = (n, total) => {
+      this.hud.toast(`🏹 Turm zerstört! ${n}/${total}`, n === total ? 'Alle Armbrust-Türme sind still.' : '', 3.5);
+      this.audio.playSuccess();
     };
 
     // Rennen
@@ -518,6 +543,13 @@ export class Game {
     if (!paused) d.update(dt, a);
     this._nostrilSmoke(dt, fireI, paused);
     if (!paused) this._speedEffects(dt, a, playing);
+    if (!paused) {
+      this.ballistae.update(dt, {
+        dragonPos: this.physics.position,
+        dragonVel: this.physics.velocity,
+        active: this.state === 'play' && settings.get('enemies') && !this.tutorial.active,
+      });
+    }
 
     // Welt
     this.world.update(dt, {

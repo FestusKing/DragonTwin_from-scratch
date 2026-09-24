@@ -78,9 +78,17 @@ Für eine fertige Version zum Hochladen gibt es `npm run build`. Das Ergebnis li
   - A/D stellen die Schräglage ein.
   - Loopings gelingen aus hohem Tempo.
 - **Kameras:** Verfolger-Kamera (weich, mit Schwung) und Reiter-Sicht.
+- **Tempo spüren:**
+  - Kondensstreifen an den Flügelspitzen (hohes Tempo, enge Kurven).
+  - Im langen Sturzflug: Dampfkegel und bei 110 m/s die **„Schallmauer“** mit Knall und Druckwelle.
+  - Boost mit Ruck und „Wusch“, Wind-Streifen, Kamera-Wackeln.
+- **Kraft spüren:** schwere Landung mit Staubring und Beben, Flügelschläge wirbeln Staub oder Gischt auf,
+  Brüllen (Q) mit Druckwelle.
 
 ### Feuer
-- Flammenstrahl aus Partikeln mit **echtem Licht**.
+- Flammenstrahl aus Partikeln mit **echtem Licht**, Glut und Funken.
+- **Flammenwalze:** Wo das Feuer den Boden trifft, spritzen die Flammen zur Seite.
+- Gebäude gehen mit **Stichflamme, Funkenregen und Knall** in Flammen auf.
 - **Überhitzung:** Zu langes Feuer → die Flamme stottert, bis der Drache abkühlt.
 - **Brennbar sind:** Bäume, Hütten, Heuballen, Wachtürme, die Windmühle und Marktstände.
 - Feuer **breitet sich aus**. Regen löscht es.
@@ -99,6 +107,14 @@ Für eine fertige Version zum Hochladen gibt es `npm run build`. Das Ergebnis li
 - **Wetter:** Klar, Bewölkt, Regen, Nebel und Gewitter (mit Blitz und Donner).
 - **Wolken**, durch die man hindurchfliegen kann.
 - Vogelschwärme, die vor dem Drachen fliehen.
+
+### Gegner
+- **Armbrust-Türme:** Auf den Wachtürmen rund ums Dorf stehen grosse Armbrüste.
+  Kommt der Drache näher als ca. 300 m, zielen sie (mit Vorhalt) und schiessen **Brandbolzen**.
+  - Treffer: Rückstoss, rotes Aufblitzen, weniger Ausdauer (man stirbt nicht).
+  - Ausweichen: Die Bolzen streuen etwas – enge Kurven helfen.
+  - Zerstören: Turm mit Feuer anzünden.
+  - Im Ringrennen und im Tutorial schiessen sie nicht. Abschaltbar in *Einstellungen → Spiel*.
 
 ### Spielmodi
 - **Freiflug:** freies Erkunden.
@@ -180,12 +196,14 @@ src/
     Customization.js    Farben und Reiter
   gameplay/
     RingRace.js         Ringrennen
+    Ballistae.js        Armbrust-Türme (Gegner) und Brandbolzen
     Courses.js          Die zwei Strecken
     GhostReplay.js      Geist aufnehmen / abspielen
     Tutorial.js         Tutorial-Schritte
     BurnSystem.js       Was brennt wie lange, Ausbreitung
   fx/
     Particles.js        Partikel (Feuer, Rauch, Funken, Gischt)
+    SpeedFx.js          Kondensstreifen, Dampfkegel, Schallmauer, Druckwellen
     PostProcessing.js   Bloom, Farbkorrektur, Vignette
     Atmosphere.js       Höhen-Dunst und Sonne im Dunst (für alle Materialien)
     Rain.js             Regen + Tempo-Streifen
