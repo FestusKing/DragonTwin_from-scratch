@@ -4,16 +4,23 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { mulberry32, smoothstep, clamp } from '../core/utils.js';
-import { box, gableRoof, gableEnds, tower, cone, battlements } from './BuildingGeo.js';
+import { box, gableRoof, gableEnds, tower, cone, battlements, scaleUV } from './BuildingGeo.js';
 import { PLACES, distToPolyline } from './Terrain.js';
-import {
-  timberWallTexture, thatchTexture, tileRoofTexture, stoneTexture, woodTexture,
-} from '../fx/Textures.js';
+import { surfaceMaterial } from '../fx/Textures.js';
 
 const WHITE = new THREE.Color(1, 1, 1);
 const CHAR = new THREE.Color(0.07, 0.06, 0.055);
 const _c = new THREE.Color();
-const DARKWOOD = new THREE.Color(0x6b5a4a);
+
+// Materialien für die Dächer (Foto-Texturen, falls geladen – sonst gemalt).
+// avgColor färbt das Foto auf diese mittlere Farbe ein.
+const THATCH = ['stroh', { roughness: 0.95, side: THREE.DoubleSide }, { avgColor: 0x8c7856, normalScale: 1.6 }]; // altes, nachgedunkeltes Stroh
+const TILES = ['schiefer', { roughness: 0.95, side: THREE.DoubleSide }, { avgColor: 0x7c5446 }]; // rötliche Ziegel
+
+/** Brennendes Material: von der eigenen Grundfarbe (base) Richtung Holzkohle */
+function charColor(mat, base, t) {
+  mat.color.copy(base).lerp(CHAR, t);
+}
 
 function bannerTexture() {
   const c = document.createElement('canvas');
@@ -64,13 +71,13 @@ export class Settlement {
 
     // gemeinsame Materialien
     this.mats = {
-      stone: new THREE.MeshStandardMaterial({ map: stoneTexture(), roughness: 0.92 }),
-      slate: new THREE.MeshStandardMaterial({ map: tileRoofTexture(), color: 0x8894a8, roughness: 0.8, side: THREE.DoubleSide }),
-      wood: new THREE.MeshStandardMaterial({ map: woodTexture(), roughness: 0.9 }),
-      darkWood: new THREE.MeshStandardMaterial({ map: woodTexture(), color: 0x6b5a4a, roughness: 0.9 }),
+      stone: surfaceMaterial('stein', { roughness: 0.92 }, { roughness: 1 }),
+      slate: surfaceMaterial('schiefer', { color: 0x8894a8, roughness: 0.8, side: THREE.DoubleSide }, { avgColor: 0x5f646b, roughness: 1 }),
+      wood: surfaceMaterial('holz', { roughness: 0.9 }, { roughness: 1 }),
+      darkWood: surfaceMaterial('holz', { color: 0x6b5a4a, roughness: 0.9 }, { avgColor: 0x5a4a3e, roughness: 1 }),
       window: new THREE.MeshStandardMaterial({ color: 0x1c1712, emissive: 0xffa94d, emissiveIntensity: 0, roughness: 0.4 }),
-      plaster: new THREE.MeshStandardMaterial({ color: 0xe8e2d4, roughness: 0.9 }),
-      red: new THREE.MeshStandardMaterial({ color: 0xa8302a, roughness: 0.8 }),
+      plaster: surfaceMaterial('putz', { color: 0xe8e2d4, roughness: 0.9 }, { avgColor: 0xd9d3c4, roughness: 1 }),
+      red: surfaceMaterial('putz', { color: 0xa8302a, roughness: 0.8 }, { avgColor: 0x9a2e26, roughness: 1 }),
     };
     const banner = new THREE.MeshStandardMaterial({ map: bannerTexture(), side: THREE.DoubleSide, roughness: 0.9, alphaTest: 0.5 });
     banner.onBeforeCompile = (shader) => {
@@ -236,7 +243,7 @@ transformed.z += sin(uTime * 5.0 + position.y * 0.9 + position.x) * 0.35 * fl;`
     const stone = new THREE.Mesh(mergeGeometries([nave, ends, tw]), this.mats.stone);
     const roof = gableRoof(12, 26, 6, 0.8);
     roof.translate(0, 11, 3);
-    const spire = new THREE.ConeGeometry(6.2, 14, 4).toNonIndexed();
+    const spire = cone(6.2, 14, 4);
     spire.rotateY(Math.PI / 4);
     spire.translate(0, 37, -14);
     const roofMesh = new THREE.Mesh(mergeGeometries([roof, spire]), this.mats.slate);
@@ -287,6 +294,8 @@ transformed.z += sin(uTime * 5.0 + position.y * 0.9 + position.x) * 0.35 * fl;`
     const sails = new THREE.Group();
     sails.position.set(0, 13.5, 4.4);
     const sailMat = this.mats.darkWood.clone();
+    const capBase = capMat.color.clone();
+    const sailBase = sailMat.color.clone();
     const clothMat = new THREE.MeshStandardMaterial({ color: 0xe6dcc0, roughness: 0.95, side: THREE.DoubleSide });
     for (let i = 0; i < 4; i++) {
       const arm = new THREE.Group();
@@ -324,17 +333,16 @@ transformed.z += sin(uTime * 5.0 + position.y * 0.9 + position.x) * 0.35 * fl;`
       d: 8,
       fuel: 30,
       onProgress: (t) => {
-        _c.copy(WHITE).lerp(CHAR, smoothstep(0, 0.7, t));
-        capMat.color.copy(_c);
-        sailMat.color.copy(_c).multiply(DARKWOOD);
+        charColor(capMat, capBase, smoothstep(0, 0.7, t));
+        charColor(sailMat, sailBase, smoothstep(0, 0.7, t));
         clothMat.color.setHex(0xe6dcc0).lerp(CHAR, smoothstep(0, 0.4, t));
         clothMat.opacity = 1;
         if (t > 0.35) mill.alive = false;
         for (const arm of sails.children) if (arm.children[1]) arm.children[1].visible = t < 0.5;
       },
       onReset: () => {
-        capMat.color.copy(WHITE);
-        sailMat.color.setHex(0x6b5a4a);
+        capMat.color.copy(capBase);
+        sailMat.color.copy(sailBase);
         clothMat.color.setHex(0xe6dcc0);
         mill.alive = true;
         for (const arm of sails.children) if (arm.children[1]) arm.children[1].visible = true;
@@ -364,12 +372,10 @@ transformed.z += sin(uTime * 5.0 + position.y * 0.9 + position.x) * 0.35 * fl;`
     g.position.set(x, 0, z);
     g.rotation.y = rot;
 
-    const wallMat = new THREE.MeshStandardMaterial({ map: timberWallTexture(), roughness: 0.92 });
-    const roofMat = new THREE.MeshStandardMaterial({
-      map: tile ? tileRoofTexture() : thatchTexture(),
-      roughness: 0.95,
-      side: THREE.DoubleSide,
-    });
+    const wallMat = surfaceMaterial('fachwerk', { roughness: 0.92 }, { roughness: 1 });
+    const roofMat = surfaceMaterial(...(tile ? TILES : THATCH));
+    const wallBase = wallMat.color.clone();
+    const roofBase = roofMat.color.clone();
     const wall = box(w, baseH, d, 4);
     wall.translate(0, y0 + baseH / 2, 0);
     const gable = gableEnds(w, d, roofH);
@@ -398,7 +404,7 @@ transformed.z += sin(uTime * 5.0 + position.y * 0.9 + position.x) * 0.35 * fl;`
     g.add(wallMesh, roofMesh, door, winMesh);
     let chimney = null;
     if (rnd() < 0.55) {
-      chimney = new THREE.Mesh(box(1.2, 3.2, 1.2, 2), this.mats.stone);
+      chimney = new THREE.Mesh(box(1.2, 3.2, 1.2, 4), this.mats.stone);
       chimney.position.set(w * 0.22, y1 + wallH + roofH * 0.55, -d * 0.2);
       g.add(chimney);
       const cp = new THREE.Vector3(w * 0.22, y1 + wallH + roofH * 0.55 + 1.7, -d * 0.2).applyAxisAngle(new THREE.Vector3(0, 1, 0), rot);
@@ -425,8 +431,8 @@ transformed.z += sin(uTime * 5.0 + position.y * 0.9 + position.x) * 0.35 * fl;`
       rot,
       fuel: 24 + rnd() * 12,
       onProgress: (t) => {
-        wallMat.color.copy(WHITE).lerp(CHAR, smoothstep(0.05, 0.85, t));
-        roofMat.color.copy(WHITE).lerp(CHAR, smoothstep(0, 0.5, t));
+        charColor(wallMat, wallBase, smoothstep(0.05, 0.85, t));
+        charColor(roofMat, roofBase, smoothstep(0, 0.5, t));
         winMesh.visible = false;
         const col = smoothstep(0.55, 0.9, t);
         roofMesh.scale.set(1, 1 - col * 0.8, 1);
@@ -434,8 +440,8 @@ transformed.z += sin(uTime * 5.0 + position.y * 0.9 + position.x) * 0.35 * fl;`
         if (hasChimney) chimneyRef.alive = false;
       },
       onReset: () => {
-        wallMat.color.copy(WHITE);
-        roofMat.color.copy(WHITE);
+        wallMat.color.copy(wallBase);
+        roofMat.color.copy(roofBase);
         winMesh.visible = true;
         roofMesh.scale.set(1, 1, 1);
         roofMesh.position.y = y1 + wallH;
@@ -474,7 +480,7 @@ transformed.z += sin(uTime * 5.0 + position.y * 0.9 + position.x) * 0.35 * fl;`
     const V = this.center;
     const colors = [0xb03a2e, 0x2e5fa0, 0xd8b04a, 0x3f7a3a];
     // Brunnen
-    const well = mergeGeometries([tower(1.8, 1.9, 1.2, 12, 2).translate(0, 0.6, 0)]);
+    const well = mergeGeometries([tower(1.8, 1.9, 1.2, 12, 4).translate(0, 0.6, 0)]);
     const wm = new THREE.Mesh(well, this.mats.stone);
     wm.position.copy(V);
     wm.castShadow = true;
@@ -534,7 +540,9 @@ transformed.z += sin(uTime * 5.0 + position.y * 0.9 + position.x) * 0.35 * fl;`
     const g = new THREE.Group();
     g.position.set(x, y, z);
     const woodMat = this.mats.wood.clone();
-    const roofMat = new THREE.MeshStandardMaterial({ map: thatchTexture(), roughness: 0.95, side: THREE.DoubleSide });
+    const roofMat = surfaceMaterial(...THATCH);
+    const woodBase = woodMat.color.clone();
+    const roofBase = roofMat.color.clone();
     const parts = [];
     for (const [px, pz] of [[-2.5, -2.5], [2.5, -2.5], [-2.5, 2.5], [2.5, 2.5]]) parts.push(box(0.5, 13, 0.5).translate(px, 6.5, pz));
     parts.push(box(6.4, 0.5, 6.4).translate(0, 10, 0));
@@ -548,7 +556,7 @@ transformed.z += sin(uTime * 5.0 + position.y * 0.9 + position.x) * 0.35 * fl;`
     b2.translate(0, 5, -2.5);
     parts.push(b1, b2);
     const wm = new THREE.Mesh(mergeGeometries(parts), woodMat);
-    const rm = new THREE.Mesh(new THREE.ConeGeometry(4.8, 3.5, 4).rotateY(Math.PI / 4), roofMat);
+    const rm = new THREE.Mesh(cone(4.8, 3.5, 4).rotateY(Math.PI / 4), roofMat);
     rm.position.y = 14.8;
     g.add(wm, rm);
     g.traverse((o) => o.isMesh && (o.castShadow = o.receiveShadow = true));
@@ -566,13 +574,13 @@ transformed.z += sin(uTime * 5.0 + position.y * 0.9 + position.x) * 0.35 * fl;`
       d: 6,
       fuel: 22,
       onProgress: (t) => {
-        woodMat.color.copy(WHITE).lerp(CHAR, smoothstep(0, 0.8, t));
-        roofMat.color.copy(WHITE).lerp(CHAR, smoothstep(0, 0.5, t));
+        charColor(woodMat, woodBase, smoothstep(0, 0.8, t));
+        charColor(roofMat, roofBase, smoothstep(0, 0.5, t));
         rm.visible = t < 0.75;
       },
       onReset: () => {
-        woodMat.color.copy(WHITE);
-        roofMat.color.copy(WHITE);
+        woodMat.color.copy(woodBase);
+        roofMat.color.copy(roofBase);
         rm.visible = true;
       },
     });
@@ -628,9 +636,9 @@ transformed.z += sin(uTime * 5.0 + position.y * 0.9 + position.x) * 0.35 * fl;`
     const pierLen = 34;
     const px = sx - dir.x * (pierLen / 2 - 6);
     const pz = sz - dir.y * (pierLen / 2 - 6);
-    const parts = [box(3, 0.35, pierLen, 2).translate(0, 1.3, 0)];
+    const parts = [box(3, 0.35, pierLen, 4).translate(0, 1.3, 0)];
     for (let i = 0; i <= 5; i++) {
-      for (const s of [-1.3, 1.3]) parts.push(box(0.35, 5, 0.35, 2).translate(s, -1.2, -pierLen / 2 + (i * pierLen) / 5));
+      for (const s of [-1.3, 1.3]) parts.push(box(0.35, 5, 0.35, 4).translate(s, -1.2, -pierLen / 2 + (i * pierLen) / 5));
     }
     const pier = new THREE.Mesh(mergeGeometries(parts), this.mats.wood);
     pier.position.set(px, 0, pz);
@@ -641,9 +649,10 @@ transformed.z += sin(uTime * 5.0 + position.y * 0.9 + position.x) * 0.35 * fl;`
     // Boote
     for (let i = 0; i < 3; i++) {
       const hull = new THREE.CylinderGeometry(1.1, 1.1, 5.5, 10, 1, true, Math.PI / 2, Math.PI);
+      scaleUV(hull, (Math.PI * 1.1) / 4, 5.5 / 4); // UVs in Metern (4 m pro Einheit)
       hull.rotateX(-Math.PI / 2); // Rundung nach unten, Öffnung nach oben
       hull.scale(1, 0.7, 1);
-      const bm = new THREE.MeshStandardMaterial({ map: woodTexture(), side: THREE.DoubleSide, roughness: 0.9 });
+      const bm = surfaceMaterial('holz', { side: THREE.DoubleSide, roughness: 0.9 }, { roughness: 1 });
       const boat = new THREE.Mesh(hull, bm);
       const off = -pierLen + 6 + i * 9;
       boat.position.set(px + dir.x * off + side.x * (i % 2 ? 4.5 : -4.5), 0.35, pz + dir.y * off + side.y * (i % 2 ? 4.5 : -4.5));
@@ -834,8 +843,9 @@ transformed.z += sin(uTime * 5.0 + position.y * 0.9 + position.x) * 0.35 * fl;`
     }
     if (!bales.length) return;
     const geo = new THREE.CylinderGeometry(1.1, 1.1, 1.6, 12);
+    scaleUV(geo, (Math.PI * 2.2) / 4, 1.6 / 4); // UVs in Metern (4 m pro Einheit)
     geo.rotateZ(Math.PI / 2);
-    const mat = new THREE.MeshStandardMaterial({ map: thatchTexture(), roughness: 1 });
+    const mat = surfaceMaterial('stroh', { roughness: 1 }, { avgColor: 0xa08a5e, normalScale: 1.6 });
     const mesh = new THREE.InstancedMesh(geo, mat, bales.length);
     const m = new THREE.Matrix4();
     const q = new THREE.Quaternion();

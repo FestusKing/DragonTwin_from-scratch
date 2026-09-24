@@ -7,6 +7,7 @@ import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometr
 import { Noise2D } from '../core/noise.js';
 import { mulberry32, smoothstep } from '../core/utils.js';
 import { HALF, WORLD_SIZE } from './Terrain.js';
+import { makeTriplanarRock } from '../fx/PhotoTextures.js';
 
 const CHUNKS = 4;
 const CHUNK_SIZE = WORLD_SIZE / CHUNKS;
@@ -130,6 +131,7 @@ export class Vegetation {
     this.types = types;
     this.material = this._material(true);
     this.rockMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.95, color: 0xb0aaa0 });
+    makeTriplanarRock(this.rockMaterial, 'fels', 4); // Foto-Fels, falls geladen
     this.deadGeo = makeDeadTree();
     this.deadMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1 });
 

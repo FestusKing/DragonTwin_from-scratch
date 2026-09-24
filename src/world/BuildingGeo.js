@@ -86,6 +86,17 @@ export function battlements(length, thickness, size = 1.4, gap = 1.4) {
   return parts;
 }
 
+/**
+ * UVs strecken, damit Texturen in echter Grösse erscheinen.
+ * Beispiel: Ein Zylinder hat UVs von 0 bis 1 – ist er 22 m lang, dann
+ * scaleUV(g, …, 22 / 4) → eine UV-Einheit = 4 m (wie bei box()).
+ */
+export function scaleUV(g, su, sv) {
+  const uv = g.getAttribute('uv');
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * su, uv.getY(i) * sv);
+  return g;
+}
+
 /** Geometrie verschieben + drehen (um y) – gibt dieselbe Geometrie zurück */
 export function place(g, x, y, z, rotY = 0) {
   if (rotY) g.rotateY(rotY);

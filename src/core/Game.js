@@ -33,11 +33,12 @@ const TIPS = [
 ];
 
 // Qualitäts-Stufen
+// detail: Boden mit allen Foto-Details (triplanare Felsen, Anti-Wiederholung)
 const QUALITY = {
-  low: { pr: 0.75, shadows: 0, bloom: false, msaa: 0, world: { trees: 0.5, particles: 0.5, clouds: 60, rain: 3000 } },
-  medium: { pr: 1.0, shadows: 1024, bloom: true, msaa: 0, world: { trees: 0.8, particles: 0.8, clouds: 85, rain: 5000 } },
-  high: { pr: 1.5, shadows: 2048, bloom: true, msaa: 4, world: { trees: 1, particles: 1, clouds: 100, rain: 7000 } },
-  auto: { pr: 1.25, shadows: 2048, bloom: true, msaa: 0, world: { trees: 0.9, particles: 0.9, clouds: 95, rain: 6000 } },
+  low: { pr: 0.75, shadows: 0, bloom: false, msaa: 0, detail: false, world: { trees: 0.5, particles: 0.5, clouds: 60, rain: 3000 } },
+  medium: { pr: 1.0, shadows: 1024, bloom: true, msaa: 0, detail: true, world: { trees: 0.8, particles: 0.8, clouds: 85, rain: 5000 } },
+  high: { pr: 1.5, shadows: 2048, bloom: true, msaa: 4, detail: true, world: { trees: 1, particles: 1, clouds: 100, rain: 7000 } },
+  auto: { pr: 1.25, shadows: 2048, bloom: true, msaa: 0, detail: true, world: { trees: 0.9, particles: 0.9, clouds: 95, rain: 6000 } },
 };
 
 const _v = new THREE.Vector3();
@@ -237,6 +238,7 @@ export class Game {
     this.world.sky.setShadowQuality(q.shadows);
     this.renderer.shadowMap.enabled = q.shadows > 0;
     this.post.setQuality({ bloom: q.bloom, msaa: q.msaa });
+    this.world.terrain.setDetail(q.detail);
     this.resize();
   }
 

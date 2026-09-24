@@ -5,7 +5,9 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { mulberry32 } from '../core/utils.js';
 import { Noise2D } from '../core/noise.js';
 import { PLACES } from './Terrain.js';
-import { woodTexture, stoneTexture } from '../fx/Textures.js';
+import { surfaceMaterial, stoneTexture } from '../fx/Textures.js';
+import { makeTriplanarRock } from '../fx/PhotoTextures.js';
+import { scaleUV } from './BuildingGeo.js';
 
 const _n3 = new Noise2D(5);
 /** Verformt eine Geometrie "felsig". Gleiche Position → gleiche Verschiebung (keine Risse). */
@@ -32,6 +34,8 @@ export class Landmarks {
     this.group.name = 'Landmarks';
     scene.add(this.group);
     this.rockMat = new THREE.MeshStandardMaterial({ color: 0x7c756b, roughness: 0.95, flatShading: true });
+    // Foto-Fels (falls geladen): Textur wird von drei Seiten aufprojiziert, 8 m pro Kachel
+    makeTriplanarRock(this.rockMat, 'fels', 8);
   }
 
   /** Küste suchen: von (x, zStart) nach Süden gehen, bis Wasser kommt. */
@@ -123,11 +127,13 @@ export class Landmarks {
   _wreck() {
     const w = this.wreck;
     const y = Math.max(this.terrain.heightAt(w.x, w.z), -1);
-    const mat = new THREE.MeshStandardMaterial({ map: woodTexture(), color: 0x7a6a5a, roughness: 1, side: THREE.DoubleSide });
+    // altes, ausgebleichtes Holz
+    const mat = surfaceMaterial('holz', { color: 0x7a6a5a, roughness: 1, side: THREE.DoubleSide }, { avgColor: 0x5e554c });
     const g = new THREE.Group();
     g.position.set(w.x, y, w.z);
     g.rotation.set(0.12, 0.8, 0.35);
     const hull = new THREE.CylinderGeometry(4, 4, 22, 12, 1, true, Math.PI / 2, Math.PI);
+    scaleUV(hull, (Math.PI * 4) / 4, 22 / 4); // UVs in Metern (4 m pro Einheit)
     hull.rotateX(-Math.PI / 2);
     hull.scale(1, 0.8, 1);
     const hm = new THREE.Mesh(hull, mat);
@@ -135,13 +141,14 @@ export class Landmarks {
     const ribs = [];
     for (let i = 0; i < 7; i++) {
       const r = new THREE.TorusGeometry(4, 0.25, 4, 8, Math.PI);
+      scaleUV(r, (Math.PI * 4) / 4, (Math.PI * 0.5) / 4);
       r.rotateZ(Math.PI);
       r.translate(0, 0, -9 + i * 3);
       ribs.push(r);
     }
     const rm = new THREE.Mesh(mergeGeometries(ribs), mat);
     rm.scale.set(1, 0.8, 1);
-    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.45, 16, 6), mat);
+    const mast = new THREE.Mesh(scaleUV(new THREE.CylinderGeometry(0.35, 0.45, 16, 6), (Math.PI * 0.9) / 4, 16 / 4), mat);
     mast.position.set(0, 5, 2);
     mast.rotation.z = 0.7;
     g.add(hm, rm, mast);
@@ -198,7 +205,12 @@ export class Landmarks {
       }
     }
     if (!best) return;
-    const mat = new THREE.MeshStandardMaterial({ map: stoneTexture(), color: 0x9a968c, roughness: 1 });
+    // Menhire sind Felsblöcke → Foto-Fels (triplanar), sonst gemalte Steinmauer
+    const mat = new THREE.MeshStandardMaterial({ color: 0x8e8a80, roughness: 1 });
+    if (!makeTriplanarRock(mat, 'fels', 4)) {
+      mat.map = stoneTexture();
+      mat.color.set(0x9a968c);
+    }
     const rnd = mulberry32(12);
     const parts = [];
     const R = 14;

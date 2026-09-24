@@ -3,15 +3,17 @@
 Ein Drachen-Flugspiel für den Browser, gebaut mit **Three.js** und **Vite**.
 Inspiriert vom „Test Flight“ aus DragonTwin.
 
-Alles wird **im Code erzeugt**:
+Fast alles wird **im Code erzeugt**:
 
 - Landschaft
 - Drache
 - Dorf
-- Texturen
 - Musik und Geräusche
 
-Es werden keine Bilder oder Sounds heruntergeladen.
+**Ausnahme: Foto-Texturen.** Boden und Gebäude benutzen 10 echte Foto-Texturen
+von [Poly Haven](https://polyhaven.com) (Lizenz CC0, frei nutzbar).
+Sie liegen im Projekt (`public/textures/`), das Spiel lädt nichts aus dem Internet.
+Mehr dazu unten im Abschnitt **Foto-Texturen**.
 
 ![Hauptmenü](docs/menu.jpg)
 
@@ -90,6 +92,7 @@ Für eine fertige Version zum Hochladen gibt es `npm run build`. Das Ergebnis li
   - Felsbogen im Meer
   - Schiffswrack und Steinkreis
 - Dorf mit Burg, Kirche, Windmühle, ca. 28 Fachwerkhütten, Feldern und einem Fischerdorf.
+- **Foto-Texturen** für Gras, Fels, Sand, Schnee, Wege, Holz, Stroh, Stein, Putz und Schiefer.
 - Leuchtturm mit drehendem Lichtstrahl in der Nacht.
 - **Tag/Nacht-Zyklus:** Sonne, Mond, Sterne, Milchstrasse. Nachts leuchten die Fenster.
 - **Wetter:** Klar, Bewölkt, Regen, Nebel und Gewitter (mit Blitz und Donner).
@@ -114,6 +117,8 @@ Für eine fertige Version zum Hochladen gibt es `npm run build`. Das Ergebnis li
 
 ### Technik
 - **Post-Processing:** Bloom, Vignette, ACES-Tonemapping, Tempo-Unschärfe beim Boost.
+- **Boden-Shader:** mischt 5 Foto-Schichten (Gras, Fels, Sand, Schnee, Erde) je nach Höhe und Steilheit.
+  Felswände werden von drei Seiten projiziert („triplanar“), damit nichts verzerrt.
 - **Schatten** folgen dem Drachen.
 - **Performance:**
   - Instancing für Tausende Bäume.
@@ -177,9 +182,13 @@ src/
     PostProcessing.js   Bloom, Farbkorrektur, Vignette
     Rain.js             Regen + Tempo-Streifen
     Lightning.js        Blitze
-    Textures.js         Alle Texturen, im Code gemalt
+    PhotoTextures.js    Foto-Texturen laden (Boden, Gebäude, Felsen)
+    Textures.js         Im Code gemalte Texturen (Ersatz, falls Fotos fehlen)
   ui/
     HUD.js, Menu.js, Minimap.js, styles.css
+public/textures/        Die Foto-Texturen (JPG) + QUELLEN.md mit Autoren
+tools/
+  fetch_textures.py     Lädt die Foto-Texturen von Poly Haven und bereitet sie vor
 ```
 
 ---
@@ -224,6 +233,7 @@ Die Zahlen oben in der Datei (z. B. `K_AIR`, `CL_ALPHA`, `MAX_G`) kannst du änd
 - **Einstellungen → Grafik:**
   - **Automatisch** senkt die Auflösung, wenn die FPS unter ca. 48 fallen.
   - **Niedrig** schaltet Schatten und Bloom aus.
+    Der Boden benutzt dann eine einfachere Version der Foto-Texturen (weniger Textur-Zugriffe).
 - Die **Baumdichte** ändert sich erst nach dem Neuladen der Seite.
 - **FPS anzeigen** gibt es unter *Einstellungen → Grafik*.
 
@@ -254,11 +264,75 @@ Die „Stretch Goals“ aus der Vorgabe gehören **nicht** zum Test Flight. Sie 
 
 ---
 
-## 🖼️ Echte Foto-Texturen (optional, später)
+## 🖼️ Foto-Texturen
 
-Geplant sind kostenlose **CC0-Texturen** von [Poly Haven](https://polyhaven.com) (Fels, Gras, Holz …).
+![Vorher / Nachher](docs/textures.jpg)
+
+### Welche Texturen?
+
+Alle von [Poly Haven](https://polyhaven.com), Lizenz **CC0**.
 CC0 bedeutet: frei nutzbar, auch ohne Namensnennung.
-Dafür muss die Cloud-Umgebung die Domains `polyhaven.com` bzw. `ambientcg.com` erlauben.
+Die genaue Liste mit Autoren steht in [`public/textures/QUELLEN.md`](public/textures/QUELLEN.md).
+
+| Textur | Wo im Spiel? |
+| --- | --- |
+| Gras | Wiesen, Felder (eingefärbt als Weizen / Acker) |
+| Fels | Felshänge, Felsbrocken, Felsbogen, Steinkreis |
+| Sand | Strand und Ufer |
+| Schnee | Gipfel |
+| Erde | Wege im Dorf |
+| Holz | Türen, Marktstände, Wachtürme, Steg, Boote, Wrack |
+| Stroh | Strohdächer, Heuballen |
+| Stein | Burg, Kirche, Kamine, Brunnen |
+| Putz + Holz | Fachwerk (wird beim Start aus beiden Fotos zusammengesetzt) |
+| Schiefer | Dächer von Burg und Kirche; rötlich eingefärbt auch für die Ziegeldächer der Hütten |
+
+### Wie funktioniert das?
+
+Pro Textur gibt es **3 Bilder**:
+
+- `_diff.jpg`: die **Farbe**
+- `_nor.jpg`: die **Normal-Map**. Jedes Pixel speichert, in welche Richtung die Fläche zeigt.
+  So wirkt der Boden rau und uneben, obwohl er flach ist.
+- `_arh.jpg`: drei Graubilder in einem.
+  - Rot = **AO** (Ritzen sind dunkler)
+  - Grün = **Rauheit** (matt oder glänzend)
+  - Blau = **Höhe** (für schöne Übergänge)
+
+**Beim Boden** (`src/world/Terrain.js`) passiert Folgendes:
+
+1. Der Shader entscheidet für jeden Punkt, wie viel Gras, Fels, Sand, Schnee oder Erde dort liegt.
+   - Steil → Fels
+   - Hoch → Schnee
+   - Nah am Wasser → Sand
+2. Das Foto wird **umgefärbt**: `Foto ÷ Durchschnittsfarbe × Wunschfarbe`.
+   So bleiben die Details vom Foto, aber die Farben der Landschaft stimmen.
+3. **Höhen-Überblendung:** Im Übergang setzt sich die „höhere“ Schicht zuerst durch.
+   Beispiel: Steine ragen aus dem Gras. Das sieht natürlicher aus als ein weicher Verlauf.
+4. **Gegen sichtbare Wiederholung:** Gras und Fels werden zusätzlich noch einmal in viel grösserem Massstab darübergelegt.
+
+**Fällt etwas aus?** Fehlen die Bilder, nimmt das Spiel automatisch die alten, im Code gemalten Texturen.
+
+**Vergleichen:** Öffne das Spiel mit `?fotos=0` am Ende der Adresse
+(z. B. `http://localhost:5173/?fotos=0`). Dann siehst du die alte Version.
+
+### Texturen neu herunterladen oder austauschen
+
+Die Bilder liegen schon im Projekt. Nur wenn du sie ändern willst:
+
+```bash
+pip install pillow
+python3 tools/fetch_textures.py
+```
+
+- Welche Poly-Haven-Texturen benutzt werden, steht oben im Skript (`TEXTURES = { ... }`).
+- Das Skript lädt die Bilder, verkleinert sie (Boden 1024 px, Gebäude 512 px) und packt sie neu.
+- Alles zusammen ist ca. **5 MB** gross.
+
+> ⚠️ **Leistung:** Die Foto-Texturen brauchen mehr Grafik-Leistung als die gemalten.
+> Im Test ohne Grafikkarte (Software-Rendering) dauerte ein Bild ca. 50 % länger,
+> mit Grafik **„Niedrig“** noch ca. 25 % länger.
+> Auf einer echten Grafikkarte ist der Unterschied vermutlich kleiner – messen konnte ich das hier aber nicht.
 
 ---
 
@@ -269,6 +343,7 @@ Dafür muss die Cloud-Umgebung die Domains `polyhaven.com` bzw. `ambientcg.com` 
   - Lizenz: SIL Open Font License.
   - Sie werden lokal über npm eingebunden.
 - **Three.js:** MIT-Lizenz.
-- Alle Texturen, Modelle und Geräusche entstehen im Code.
+- **Foto-Texturen:** [Poly Haven](https://polyhaven.com), Lizenz CC0. Autoren siehe [`public/textures/QUELLEN.md`](public/textures/QUELLEN.md).
+- Alle Modelle, Geräusche und die übrigen Texturen entstehen im Code.
 
 Dies ist ein **Fan-Projekt**, inspiriert von *DragonTwin*. Es ist kein offizielles Produkt.

@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { Noise2D } from '../core/noise.js';
 import { clamp, lerp, smoothstep, nextFrame } from '../core/utils.js';
 import { detailNoiseTexture } from '../fx/Textures.js';
+import { terrainTextureArrays } from '../fx/PhotoTextures.js';
 
 export const WORLD_SIZE = 5000; // Meter (5 × 5 km)
 export const HALF = WORLD_SIZE / 2;
@@ -347,17 +348,40 @@ export class Terrain {
 
   // ---------- Boden-Material ----------
 
+  /**
+   * Grafik-Qualität "Niedrig": ohne triplanare Felsen und ohne die zweite,
+   * grosse Gras-Textur (spart Textur-Zugriffe auf schwachen Grafikchips).
+   */
+  setDetail(on) {
+    const m = this.material;
+    if (!m?.defines || !('PHOTO_TEX' in m.defines)) return;
+    if ('TERRAIN_DETAIL' in m.defines === on) return;
+    if (on) m.defines.TERRAIN_DETAIL = '';
+    else delete m.defines.TERRAIN_DETAIL;
+    m.needsUpdate = true;
+    // schräg gesehener Boden: scharf (8) oder schneller (2)
+    for (const t of [this.uniforms.uCol.value, this.uniforms.uNor.value]) {
+      t.anisotropy = on ? 8 : 2;
+      t.needsUpdate = true;
+    }
+  }
+
   _createMaterial() {
     this._createScorch();
     if (!this.splatTexture) this.createSplat();
     const detail = detailNoiseTexture();
+    // Foto-Texturen (falls geladen). Die Reihenfolge ist die Schicht-Nummer im Shader:
+    // 0 Gras, 1 Fels, 2 Sand, 3 Schnee, 4 Erde
+    const photo = terrainTextureArrays(['gras', 'fels', 'sand', 'schnee', 'erde']);
     const mat = new THREE.MeshStandardMaterial({
       color: 0xffffff,
       roughness: 0.93,
       metalness: 0,
-      bumpMap: detail,
+      // ohne Fotos sorgt Rauschen als Bump-Map für etwas Struktur
+      bumpMap: photo ? null : detail,
       bumpScale: 2.6,
     });
+    if (photo) mat.defines = { PHOTO_TEX: '', TERRAIN_DETAIL: '' };
     const col = (hex) => new THREE.Color(hex);
     const uniforms = {
       uSplat: { value: this.splatTexture },
@@ -378,6 +402,11 @@ export class Terrain {
       cWheat: { value: col(0xa39058) },
       cCrop: { value: col(0x535e35) },
     };
+    if (photo) {
+      uniforms.uCol = { value: photo.color };
+      uniforms.uNor = { value: photo.normal };
+      uniforms.uAvg = { value: photo.avg };
+    }
     this.uniforms = uniforms;
     mat.onBeforeCompile = (shader) => {
       Object.assign(shader.uniforms, uniforms);
@@ -388,19 +417,199 @@ export class Terrain {
           '#include <worldpos_vertex>\nvWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvWNrm = normalize(mat3(modelMatrix) * objectNormal);'
         );
       shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', `#include <common>\n${TERRAIN_COMMON}`)
+        .replace('#include <map_fragment>', `#ifdef PHOTO_TEX\n${TERRAIN_PHOTO}\n#else\n${TERRAIN_PAINTED}\n#endif`)
         .replace(
-          '#include <common>',
-          `#include <common>
+          '#include <roughnessmap_fragment>',
+          `#include <roughnessmap_fragment>
+#ifdef PHOTO_TEX
+roughnessFactor = gTerrR;
+#endif
+roughnessFactor = mix(roughnessFactor, 0.55, gSnowT * 0.5);
+roughnessFactor *= 1.0 - uWet * 0.45;`
+        )
+        .replace(
+          '#include <normal_fragment_maps>',
+          `#ifdef PHOTO_TEX
+normal = normalize((viewMatrix * vec4(gTerrN, 0.0)).xyz);
+#else
+#include <normal_fragment_maps>
+#endif`
+        );
+    };
+    return mat;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Terrain-Shader (GLSL). Drei Teile: gemeinsam, mit Fotos, ohne Fotos.
+// ---------------------------------------------------------------------------
+
+const TERRAIN_COMMON = /* glsl */ `
 varying vec3 vWPos;
 varying vec3 vWNrm;
 uniform sampler2D uSplat, uScorch, uDetail;
 uniform float uSize, uSnow, uWet;
 uniform vec3 cGrassA, cGrassB, cForest, cSand, cRock, cRock2, cSnow, cDirt, cWheat, cCrop;
-float gSnowT;`
-        )
-        .replace(
-          '#include <map_fragment>',
-          `
+float gSnowT;
+#ifdef PHOTO_TEX
+uniform sampler2DArray uCol, uNor; // Foto-Schichten: Farbe+Höhe, Normale+Rauheit
+uniform vec3 uAvg[5];              // mittlere Farbe jeder Schicht
+vec3 gTerrN;                       // fertige Normale (Welt)
+float gTerrR;                      // fertige Rauheit
+
+// Eine Schicht an einer Stelle: Farbe, Normale (Welt), Rauheit, Höhe
+struct Layer { vec3 col; vec3 n; float r; float h; };
+
+// Die Ableitungen (dx, dy) werden ausserhalb der if-Blöcke berechnet
+// → saubere Mipmaps auch dort, wo nur ein Teil der Pixel eine Schicht braucht.
+void readLayer(float i, vec2 uv, vec2 dx, vec2 dy, out vec4 c, out vec3 t, out float r) {
+  c = textureGrad(uCol, vec3(uv, i), dx, dy);
+  vec4 n = textureGrad(uNor, vec3(uv, i), dx, dy);
+  t = n.xyz * 2.0 - 1.0;
+  r = n.a;
+}
+
+// Projektion von oben (für flache Böden)
+Layer layerTop(float i, vec2 uv, vec2 dx, vec2 dy, vec3 wn) {
+  vec4 c; vec3 t; Layer L;
+  readLayer(i, uv, dx, dy, c, t, L.r);
+  L.col = c.rgb;
+  L.h = c.a;
+  // "Whiteout": Foto-Normale auf die Hang-Richtung setzen (x → Welt-x, y → Welt-z)
+  L.n = vec3(t.x + wn.x, abs(t.z) * wn.y, t.y + wn.z);
+  return L;
+}
+
+// Fels: von drei Seiten projiziert (triplanar) → keine Streifen an steilen Wänden
+Layer layerRock(vec3 p, vec3 dpx, vec3 dpy, vec3 wn) {
+#ifdef TERRAIN_DETAIL
+  vec3 w = pow(abs(wn), vec3(4.0));
+  w /= w.x + w.y + w.z;
+  w *= step(0.05, w); // winzige Anteile weglassen
+  w /= w.x + w.y + w.z;
+  Layer L = Layer(vec3(0.0), vec3(0.0), 0.0, 0.0);
+  vec4 c; vec3 t; float r;
+  if (w.x > 0.0) {
+    readLayer(1.0, p.zy, dpx.zy, dpy.zy, c, t, r);
+    L.col += c.rgb * w.x; L.h += c.a * w.x; L.r += r * w.x;
+    L.n += vec3(abs(t.z) * wn.x, t.y + wn.y, t.x + wn.z) * w.x;
+  }
+  if (w.y > 0.0) {
+    readLayer(1.0, p.xz, dpx.xz, dpy.xz, c, t, r);
+    L.col += c.rgb * w.y; L.h += c.a * w.y; L.r += r * w.y;
+    L.n += vec3(t.x + wn.x, abs(t.z) * wn.y, t.y + wn.z) * w.y;
+  }
+  if (w.z > 0.0) {
+    readLayer(1.0, p.xy, dpx.xy, dpy.xy, c, t, r);
+    L.col += c.rgb * w.z; L.h += c.a * w.z; L.r += r * w.z;
+    L.n += vec3(t.x + wn.x, t.y + wn.y, abs(t.z) * wn.z) * w.z;
+  }
+  return L;
+#else
+  return layerTop(1.0, p.xz, dpx.xz, dpy.xz, wn);
+#endif
+}
+
+// Höhen-Überblendung: Im Übergang setzt sich die "höhere" Schicht zuerst durch
+// (z. B. Steine ragen aus dem Gras) → natürliche, unregelmässige Kanten.
+// Bei t = 0 und t = 1 ändert sich nichts.
+float hmix(float t, float hA, float hB) {
+  float x = t + (hB - hA) * 4.0 * t * (1.0 - t);
+  return smoothstep(0.15, 0.85, x);
+}
+
+void addLayer(inout vec3 col, inout vec3 nrm, inout float rough, inout float hgt, Layer B, vec3 tint, float t) {
+  float k = hmix(t, hgt, B.h);
+  col = mix(col, B.col * tint, k);
+  nrm = mix(nrm, B.n, k);
+  rough = mix(rough, B.r, k);
+  hgt = mix(hgt, B.h, k);
+}
+#endif
+`;
+
+// Mit Fotos: Jede Schicht ist ein Foto. Es wird in die Farbe der Landschaft
+// umgefärbt (Foto / Durchschnittsfarbe × Wunschfarbe) → Details vom Foto,
+// Farbstimmung wie vorher.
+const TERRAIN_PHOTO = /* glsl */ `
+vec3 wp = vWPos;
+vec3 wn = normalize(vWNrm);
+float slope = 1.0 - wn.y;
+vec2 suv = vec2(wp.x / uSize + 0.5, 0.5 - wp.z / uSize);
+vec4 splat = texture2D(uSplat, suv);
+float det2 = texture2D(uDetail, wp.xz * 0.0045).r;
+float det3 = texture2D(uDetail, wp.xz * 0.0009).r;
+float n1 = det2 * 2.0 - 1.0;
+float n2 = det3 * 2.0 - 1.0;
+vec3 dpx = dFdx(wp);
+vec3 dpy = dFdy(wp);
+
+// 1) Anteile der Schichten (gleiche Regeln wie ohne Fotos)
+float tSand = 1.0 - smoothstep(1.5, 4.5 + n1 * 2.0, wp.y);
+float tRock = smoothstep(0.17, 0.33, slope + n1 * 0.06);
+tRock = max(tRock, smoothstep(200.0, 380.0, wp.y + n1 * 70.0) * 0.75);
+gSnowT = smoothstep(uSnow - 40.0, uSnow + 30.0, wp.y + n1 * 60.0) * (1.0 - smoothstep(0.38, 0.6, slope));
+
+// 2) Grundschicht Gras (Kachel 4 m), auf Feldern umgefärbt
+vec3 grassTint = mix(cGrassA, cGrassB, smoothstep(-0.25, 0.55, n1 + n2 * 0.6));
+grassTint = mix(grassTint, cForest, smoothstep(0.1, 0.6, -n2) * 0.7);
+grassTint = mix(grassTint, cWheat, splat.g);
+grassTint = mix(grassTint, cCrop, splat.b);
+Layer grassL = Layer(vec3(0.0), wn, 1.0, 0.0);
+if (max(tRock, gSnowT) < 0.995) {
+  grassL = layerTop(0.0, wp.xz / 4.0, dpx.xz / 4.0, dpy.xz / 4.0, wn);
+#ifdef TERRAIN_DETAIL
+  // gegen sichtbare Wiederholung: dasselbe Foto gross und gedreht darüberlegen
+  mat2 rot = mat2(0.8, 0.6, -0.6, 0.8);
+  vec3 big = textureGrad(uCol, vec3(rot * wp.xz / 23.0, 0.0), rot * dpx.xz / 23.0, rot * dpy.xz / 23.0).rgb;
+  grassL.col *= mix(vec3(1.0), big / uAvg[0], 0.6);
+#endif
+}
+vec3 col = grassL.col / uAvg[0] * grassTint;
+vec3 nrm = grassL.n;
+float rough = grassL.r;
+float hgt = grassL.h;
+
+// 3) Weitere Schichten nur rechnen, wo sie vorkommen (spart Zeit)
+if (splat.r > 0.004) {
+  Layer dirtL = layerTop(4.0, wp.xz / 4.0, dpx.xz / 4.0, dpy.xz / 4.0, wn);
+  addLayer(col, nrm, rough, hgt, dirtL, cDirt / uAvg[4], splat.r);
+}
+if (tSand > 0.004) {
+  Layer sandL = layerTop(2.0, wp.xz / 15.0, dpx.xz / 15.0, dpy.xz / 15.0, wn);
+  addLayer(col, nrm, rough, hgt, sandL, cSand / uAvg[2], tSand);
+}
+if (tRock > 0.004) {
+  Layer rockL = layerRock(wp / 9.0, dpx / 9.0, dpy / 9.0, wn);
+#ifdef TERRAIN_DETAIL
+  // Dasselbe Foto noch einmal 4× grösser darüberlegen: grosse Risse und Flecken
+  // → das 9-m-Muster wiederholt sich nicht mehr sichtbar.
+  Layer bigL = layerRock(wp / 37.0 + 0.37, dpx / 37.0, dpy / 37.0, wn);
+  rockL.col *= bigL.col / uAvg[1];
+  rockL.n += bigL.n - wn; // beide Normal-Details addieren
+  rockL.h = (rockL.h + bigL.h) * 0.5;
+#endif
+  vec3 rockTint = mix(cRock2, cRock, clamp(0.6 + n1 * 0.8, 0.0, 1.0));
+  addLayer(col, nrm, rough, hgt, rockL, rockTint / uAvg[1], tRock);
+}
+if (gSnowT > 0.004) {
+  Layer snowL = layerTop(3.0, wp.xz / 6.0, dpx.xz / 6.0, dpy.xz / 6.0, wn);
+  addLayer(col, nrm, rough, hgt, snowL, cSnow / uAvg[3], gSnowT);
+}
+
+// 4) Unter Wasser dunkler, Brandflecken, Nässe
+col *= mix(1.0, 0.45, smoothstep(0.0, -8.0, wp.y));
+float sc = texture2D(uScorch, vec2(wp.x / uSize + 0.5, wp.z / uSize + 0.5)).r;
+col = mix(col, vec3(0.025, 0.02, 0.018), sc);
+col *= 1.0 - uWet * 0.3 * (1.0 - gSnowT);
+diffuseColor.rgb = col * (0.9 + det2 * 0.2);
+gTerrN = normalize(nrm);
+gTerrR = rough;
+`;
+
+// Ohne Fotos: alles aus Farben und Rauschen (wie früher)
+const TERRAIN_PAINTED = /* glsl */ `
 vec3 wp = vWPos;
 vec3 wn = normalize(vWNrm);
 float slope = 1.0 - wn.y;
@@ -432,15 +641,4 @@ float sc = texture2D(uScorch, vec2(wp.x / uSize + 0.5, wp.z / uSize + 0.5)).r;
 col = mix(col, vec3(0.025, 0.02, 0.018), sc);
 col *= 1.0 - uWet * 0.3 * (1.0 - gSnowT);
 diffuseColor.rgb = col * (0.82 + det * 0.36);
-`
-        )
-        .replace(
-          '#include <roughnessmap_fragment>',
-          `#include <roughnessmap_fragment>
-roughnessFactor = mix(roughnessFactor, 0.55, gSnowT * 0.5);
-roughnessFactor *= 1.0 - uWet * 0.45;`
-        );
-    };
-    return mat;
-  }
-}
+`;

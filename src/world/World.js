@@ -18,6 +18,7 @@ import { Particles } from '../fx/Particles.js';
 import { Rain, SpeedLines } from '../fx/Rain.js';
 import { Lightning } from '../fx/Lightning.js';
 import { BurnSystem } from '../gameplay/BurnSystem.js';
+import { loadPhotoTextures } from '../fx/PhotoTextures.js';
 
 const _white = new THREE.Color(0.85, 0.87, 0.9);
 const _v = new THREE.Vector3();
@@ -34,11 +35,15 @@ export class World {
   async build(progress) {
     const scene = this.scene;
     const q = this.q;
+    // Foto-Texturen laden, während die Landschaft berechnet wird (läuft parallel)
+    const photos = loadPhotoTextures();
     progress(0.02, 'Landschaft formen …');
     this.terrain = new Terrain(1337);
     await this.terrain.generate((p) => progress(0.03 + p * 0.37, 'Landschaft formen …'));
     this.terrain.createSplat();
     this.colliders = new Colliders();
+    progress(0.4, 'Texturen laden …');
+    this.photoTextures = await photos; // false → gemalte Texturen als Ersatz
 
     progress(0.42, 'Dorf und Burg bauen …');
     await tick();

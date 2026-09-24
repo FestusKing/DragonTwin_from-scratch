@@ -1,8 +1,10 @@
 // Prozedurale Texturen: Alle Bilder werden mit Code auf ein <canvas>
-// gezeichnet. So braucht das Spiel keine Bilddateien.
+// gezeichnet. Sie dienen als Ersatz, falls die Foto-Texturen
+// (siehe PhotoTextures.js) fehlen, und für alles, wofür es kein Foto gibt.
 import * as THREE from 'three';
 import { Noise2D } from '../core/noise.js';
 import { mulberry32 } from '../core/utils.js';
+import { hasPhoto, applyPhoto } from './PhotoTextures.js';
 
 const cache = new Map();
 function cached(key, fn) {
@@ -188,6 +190,38 @@ export function scaleBumpTexture() {
 }
 
 // ---------- Gebäude-Texturen ----------
+
+/** Gemalter Ersatz, falls das Foto fehlt (putz: nur Farbe) */
+const PAINTED = {
+  stein: () => stoneTexture(),
+  holz: () => woodTexture(),
+  stroh: () => thatchTexture(),
+  schiefer: () => tileRoofTexture(),
+  fachwerk: () => timberWallTexture(),
+  putz: () => null,
+};
+
+/**
+ * Material für Gebäude: mit Foto-Textur, falls geladen – sonst mit der
+ * im Code gemalten Textur.
+ *   kind:   'stein' | 'holz' | 'stroh' | 'schiefer' | 'fachwerk' | 'putz'
+ *   params: normale Material-Einstellungen (color, roughness, side …)
+ *   photo:  Einstellungen nur für die Foto-Variante, z. B.
+ *           { avgColor: 0xe0dccf } → Foto auf diese mittlere Farbe einfärben
+ *           { tile: 2 }           → eine UV-Einheit der Geometrie = 2 m
+ *           { normalScale: 1.5 }  → Relief der Normal-Map verstärken
+ */
+export function surfaceMaterial(kind, params = {}, photo = {}) {
+  const mat = new THREE.MeshStandardMaterial(params);
+  if (hasPhoto(kind)) {
+    const { tile, avgColor, normalScale, ...rest } = photo;
+    mat.setValues(rest);
+    applyPhoto(mat, kind, { tile, avgColor, normalScale });
+  } else {
+    mat.map = PAINTED[kind]();
+  }
+  return mat;
+}
 
 function noiseFill(g, S, base, amount, seed, scale = 0.05) {
   const img = g.getImageData(0, 0, S, S);

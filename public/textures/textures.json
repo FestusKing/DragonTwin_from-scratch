@@ -1,0 +1,150 @@
+{
+  "source": "Poly Haven – https://polyhaven.com",
+  "license": "CC0 1.0 (Public Domain)",
+  "files": "<name>_diff.jpg = Farbe, <name>_nor.jpg = Normal-Map (OpenGL), <name>_arh.jpg = R: AO, G: Rauheit, B: Höhe",
+  "textures": {
+    "gras": {
+      "asset": "grass_ground",
+      "title": "Grass Ground",
+      "authors": [
+        "Charlotte Baglioni"
+      ],
+      "url": "https://polyhaven.com/a/grass_ground",
+      "size_m": [
+        2.51,
+        2.51
+      ],
+      "px": 1024,
+      "use": "Wiesen und Felder (Terrain)"
+    },
+    "fels": {
+      "asset": "rock_face_03",
+      "title": "Rock Face 03",
+      "authors": [
+        "Dario Barresi",
+        "Rico Cilliers"
+      ],
+      "url": "https://polyhaven.com/a/rock_face_03",
+      "size_m": [
+        2.7,
+        2.7
+      ],
+      "px": 1024,
+      "use": "Felshänge, Felsbrocken, Felsbogen, Steinkreis"
+    },
+    "sand": {
+      "asset": "coast_sand_01",
+      "title": "Coast Sand 01",
+      "authors": [
+        "Rob Tuytel"
+      ],
+      "url": "https://polyhaven.com/a/coast_sand_01",
+      "size_m": [
+        15.0,
+        15.0
+      ],
+      "px": 1024,
+      "use": "Strand und Ufer (Terrain)"
+    },
+    "schnee": {
+      "asset": "snow_02",
+      "title": "Snow 02",
+      "authors": [
+        "Rob Tuytel"
+      ],
+      "url": "https://polyhaven.com/a/snow_02",
+      "size_m": [
+        2.0,
+        2.0
+      ],
+      "px": 1024,
+      "use": "Schnee auf den Gipfeln (Terrain)"
+    },
+    "erde": {
+      "asset": "forest_ground_04",
+      "title": "Forest Ground 04",
+      "authors": [
+        "Rob Tuytel",
+        "Rico Cilliers"
+      ],
+      "url": "https://polyhaven.com/a/forest_ground_04",
+      "size_m": [
+        3.15,
+        3.15
+      ],
+      "px": 1024,
+      "use": "Wege im Dorf (Terrain)"
+    },
+    "holz": {
+      "asset": "weathered_planks",
+      "title": "Weathered Planks",
+      "authors": [
+        "Dario Barresi",
+        "Dimitrios Savva"
+      ],
+      "url": "https://polyhaven.com/a/weathered_planks",
+      "size_m": [
+        2.0,
+        2.0
+      ],
+      "px": 512,
+      "use": "Türen, Stände, Türme, Steg, Wrack, Fachwerk-Balken"
+    },
+    "stroh": {
+      "asset": "reed_roof_04",
+      "title": "Reed Roof 04",
+      "authors": [
+        "Rob Tuytel"
+      ],
+      "url": "https://polyhaven.com/a/reed_roof_04",
+      "size_m": [
+        2.5,
+        1.914
+      ],
+      "px": 512,
+      "use": "Strohdächer und Heuballen"
+    },
+    "stein": {
+      "asset": "castle_wall_slates",
+      "title": "Castle Wall Slates",
+      "authors": [
+        "Rob Tuytel"
+      ],
+      "url": "https://polyhaven.com/a/castle_wall_slates",
+      "size_m": [
+        2.5,
+        2.5
+      ],
+      "px": 512,
+      "use": "Burg, Kirche, Kamine"
+    },
+    "putz": {
+      "asset": "white_plaster_02",
+      "title": "White Plaster 02",
+      "authors": [
+        "Rob Tuytel"
+      ],
+      "url": "https://polyhaven.com/a/white_plaster_02",
+      "size_m": [
+        1.0,
+        1.0
+      ],
+      "px": 512,
+      "use": "Fachwerk-Füllung (Lehmputz)"
+    },
+    "schiefer": {
+      "asset": "roof_slates_02",
+      "title": "Roof Slates 02",
+      "authors": [
+        "Rob Tuytel"
+      ],
+      "url": "https://polyhaven.com/a/roof_slates_02",
+      "size_m": [
+        3.0,
+        3.0
+      ],
+      "px": 512,
+      "use": "Schiefer- und Ziegeldächer"
+    }
+  }
+}
