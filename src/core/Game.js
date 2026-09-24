@@ -49,6 +49,8 @@ const _e = new THREE.Euler();
 const _prev = new THREE.Vector3();
 const _mouth = new THREE.Vector3();
 const _tipR = new THREE.Vector3();
+const _dir = new THREE.Vector3();
+const _up = new THREE.Vector3(0, 1, 0);
 const _tipL = new THREE.Vector3();
 
 export class Game {
@@ -170,7 +172,10 @@ export class Game {
   _wireEvents() {
     const p = this.physics;
     const w = this.world;
-    p.events.flap = (s) => this.audio.playFlap(s * (this.rig.mode === 'first' ? 1.2 : 0.8));
+    p.events.flap = (s) => {
+      this.audio.playFlap(s * (this.rig.mode === 'first' ? 1.2 : 0.8));
+      this._wingGust(s);
+    };
     p.events.impact = (s, water) => {
       if (water) this._splash(s);
       else {
@@ -181,11 +186,26 @@ export class Game {
       this.damage = Math.min(1, this.damage + s * 0.6);
     };
     p.events.splash = (s) => this._splash(s);
-    p.events.land = (water) => {
-      if (!water) w.particles.dust(_v.copy(p.position).setY(p.position.y - 2), 0.6);
+    p.events.land = (water, into = 3) => {
+      // Schwere Landung: je schneller nach unten, desto mehr Staub, Beben und Wumms
+      const s = clamp(into / 12, 0.35, 1.3);
+      _v.copy(p.position).setY(p.position.y - 2.4);
+      if (!water) {
+        w.particles.dust(_v, 0.6 + s);
+        this.speedFx.shock(_v, _up, { r0: 2, r1: 12 + 14 * s, dur: 0.7, opacity: 0.3, color: 0x8a7a62 });
+        this.audio.playImpact(0.25 + s * 0.5);
+      }
+      this.rig.addShake(0.25 + s * 0.6);
       this._hintOnce('land', 'Gelandet', `Mit ${this._key('flap')} hebst du wieder ab, mit ${this._key('pitchDown')} läufst du.`);
     };
-    p.events.takeoff = () => w.particles.dust(_v.copy(p.position).setY(p.position.y - 2), 0.5);
+    p.events.takeoff = () => {
+      _v.copy(p.position).setY(p.position.y - 2.4);
+      if (!p.onWater) {
+        w.particles.dust(_v, 1.0);
+        this.speedFx.shock(_v, _up, { r0: 2, r1: 18, dur: 0.6, opacity: 0.22, color: 0x8a7a62 });
+      }
+      this.rig.addShake(0.3);
+    };
 
     w.goats.onFound = (goat, found, total) => {
       w.particles.confetti(goat.pos);
@@ -616,7 +636,16 @@ export class Game {
       this.roarTimer = 2.5;
       this.roarAnim = 1.6;
       this.audio.playRoar();
-      this.rig.addShake(0.35);
+      this.rig.addShake(0.7);
+      this.rig.kick(4);
+      // Druckwelle vor dem Maul, nahe am Boden auch eine Staubwelle
+      this.dragon.getMouth(_mouth, _dir);
+      this.speedFx.shock(_mouth.addScaledVector(_dir, 4), _dir, { r0: 1, r1: 38, dur: 0.9, opacity: 0.3 });
+      if ((p.agl ?? 99) < 25) {
+        _v.set(p.position.x, p.position.y - (p.agl ?? 2.4), p.position.z);
+        this.world.particles.dust(_v, 1.2);
+        this.speedFx.shock(_v.setY(_v.y + 0.3), _up, { r0: 4, r1: 40, dur: 1.1, opacity: 0.25, color: 0x8a7a62 });
+      }
       this.world.goats.respondToRoar(p.position);
     }
     if (this.state === 'race' && input.pressed('restart')) {
@@ -661,6 +690,23 @@ export class Game {
     }
     if (p.boosting) this.rig.addShake(dt * 0.25);
     if (sp > 110) this.rig.addShake(dt * 0.3 * (sp - 110) / 40);
+  }
+
+  /** Flügelschlag nahe am Boden wirbelt Staub auf (über Wasser: Gischt) */
+  _wingGust(strength) {
+    const p = this.physics;
+    const agl = p.agl ?? 99;
+    if (p.grounded || agl > 16 || !this.speedFx) return;
+    const k = (1 - agl / 16) * clamp(strength, 0.3, 1.2);
+    _v.set(p.position.x, p.position.y - agl, p.position.z);
+    if (p.overWater) {
+      this.world.particles.splash(_v, k * 0.7);
+      this.speedFx.shock(_v.setY(_v.y + 0.3), _up, { r0: 3, r1: 16 + 10 * k, dur: 0.6, opacity: 0.35 * k });
+    } else {
+      this.world.particles.dust(_v, 0.3 + k * 0.9);
+      this.speedFx.shock(_v.setY(_v.y + 0.3), _up, { r0: 3, r1: 14 + 10 * k, dur: 0.6, opacity: 0.25 * k, color: 0x8a7a62 });
+    }
+    this.rig.addShake(k * 0.12);
   }
 
   /** Kondensstreifen, Dampfkegel, Schallmauer, Boost-Stoss */

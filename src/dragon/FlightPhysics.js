@@ -119,7 +119,7 @@ export class FlightPhysics {
     this.frozen = false;
     this._heading = 0;
     this._acc = 0;
-    this.events = {}; // flap, impact, land, takeoff, splash
+    this.events = {}; // flap, impact, land(water, Aufprall-Tempo), takeoff, splash
     this.lastInput = { pitch: 0, roll: 0 };
   }
 
@@ -517,13 +517,13 @@ export class FlightPhysics {
           this.grounded = true;
           this.walkSpeed = 0;
           vel.set(0, 0, 0);
-          this.events.land?.(water);
+          this.events.land?.(water, into);
         }
       }
       if (this.hovering && pos.y <= minY + 0.01 && vel.y <= 0.1) {
         this.hovering = false;
         this.grounded = true;
-        this.events.land?.(water);
+        this.events.land?.(water, 2);
       }
     }
 

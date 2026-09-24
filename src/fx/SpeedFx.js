@@ -2,6 +2,7 @@
 //  1) Kondensstreifen an den Flügelspitzen – bei hohem Tempo und in engen Kurven (wie bei Kampfjets)
 //  2) Dampfkegel um den Drachen, wenn er extrem schnell ist (Sturzflug)
 //  3) "Schallmauer": beim ersten Mal über SONIC m/s eine Druckwelle + Knall (Ton macht Game.js)
+//  4) Druckwellen-Ringe für andere Ereignisse (Landung, Brüllen, Flügelschlag am Boden): shock()
 import * as THREE from 'three';
 import { clamp, smoothstep } from '../core/utils.js';
 
@@ -14,6 +15,7 @@ const _d = new THREE.Vector3();
 const _side = new THREE.Vector3();
 const _toCam = new THREE.Vector3();
 const _up = new THREE.Vector3(0, 1, 0);
+const _z = new THREE.Vector3(0, 0, 1);
 
 function vaporMaterial() {
   return new THREE.MeshBasicMaterial({
@@ -125,17 +127,35 @@ export class SpeedFx {
     this.cone.renderOrder = 6;
     scene.add(this.cone);
 
-    // Druckwelle (Ring) beim Knall
-    this.ringMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide });
-    this.ring = new THREE.Mesh(new THREE.RingGeometry(0.82, 1, 64), this.ringMat);
-    this.ring.visible = false;
-    this.ring.renderOrder = 6;
-    scene.add(this.ring);
-    this.ringAge = 99;
+    // Druckwellen (Ringe): Knall, Landung, Brüllen, Flügelschlag am Boden
+    const ringGeo = new THREE.RingGeometry(0.82, 1, 64);
+    this.rings = [];
+    for (let i = 0; i < 8; i++) {
+      const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide });
+      const mesh = new THREE.Mesh(ringGeo, mat);
+      mesh.visible = false;
+      mesh.renderOrder = 6;
+      scene.add(mesh);
+      this.rings.push({ mesh, mat, age: 99, dur: 1, r0: 1, r1: 10, op: 0.5 });
+    }
+    this.nextRing = 0;
 
     this.supersonic = false;
     this.time = 0;
     this.onBoom = null; // (Position) → Ton, Kamera usw.
+  }
+
+  /**
+   * Druckwelle: Ring bei pos, senkrecht zu normal, wächst von r0 auf r1 Meter in dur Sekunden.
+   * color: Hex-Farbe (Staub braun, Luft weiss)
+   */
+  shock(pos, normal, { r0 = 2, r1 = 30, dur = 0.7, opacity = 0.45, color = 0xffffff } = {}) {
+    const r = this.rings[this.nextRing];
+    this.nextRing = (this.nextRing + 1) % this.rings.length;
+    r.mesh.position.copy(pos);
+    r.mesh.quaternion.setFromUnitVectors(_z, _d.copy(normal).normalize());
+    r.mat.color.set(color);
+    Object.assign(r, { age: 0, dur, r0, r1, op: opacity });
   }
 
   /**
@@ -164,28 +184,28 @@ export class SpeedFx {
     // Schallmauer
     if (s.active && !this.supersonic && s.speed > SONIC) {
       this.supersonic = true;
-      this.ringAge = 0;
-      this.ring.position.copy(s.pos);
-      _d.copy(s.vel).normalize();
-      this.ring.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), _d);
+      this.shock(s.pos, s.vel, { r0: 3, r1: 73, dur: 0.8, opacity: 0.55 });
       this.onBoom?.(s.pos);
     } else if (this.supersonic && (s.speed < SONIC_RESET || !s.active)) {
       this.supersonic = false;
     }
-    this.ringAge += dt;
-    const rt = this.ringAge / 0.8;
-    this.ring.visible = rt < 1;
-    if (this.ring.visible) {
-      const r = 3 + 70 * (1 - Math.pow(1 - rt, 3));
-      this.ring.scale.setScalar(r);
-      this.ringMat.opacity = 0.55 * (1 - rt);
+    for (const r of this.rings) {
+      r.age += dt;
+      const t = r.age / r.dur;
+      r.mesh.visible = t < 1;
+      if (!r.mesh.visible) continue;
+      r.mesh.scale.setScalar(r.r0 + (r.r1 - r.r0) * (1 - Math.pow(1 - t, 3)));
+      r.mat.opacity = r.op * (1 - t) * (1 - t);
     }
   }
 
   clear() {
     for (const t of this.trails) t.clear();
     this.cone.visible = false;
-    this.ring.visible = false;
+    for (const r of this.rings) {
+      r.age = 99;
+      r.mesh.visible = false;
+    }
     this.supersonic = false;
   }
 }
