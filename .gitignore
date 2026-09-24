@@ -2,3 +2,8 @@ node_modules
 dist
 .DS_Store
 *.log
+
+# Arbeitsdateien aus Blender (nicht ins Repo)
+tools/arbeit/
+*.blend
+*.blend1
