@@ -219,6 +219,7 @@ export class Game {
     w.burn.onIgnite = (e) => {
       const d = e ? Math.hypot(e.x - this.physics.position.x, e.z - this.physics.position.z) : 50;
       if (d < 400) this.audio.playIgnite(clamp(1 - d / 400, 0.2, 1) * (e.kind === 'tree' ? 0.5 : 1));
+      if (e) this._ignitionBurst(e, d);
       if (e.kind === 'hut') this._hintOnce('hut', '🔥 Das Dach brennt!', 'Regen löscht Feuer. Neustart (Pause-Menü) baut alles wieder auf.');
     };
     this.fire.onOverheat = () => {
@@ -689,7 +690,40 @@ export class Game {
       }
     }
     if (p.boosting) this.rig.addShake(dt * 0.25);
+    if (this.fire.intensity > 0.1) this.rig.addShake(dt * 0.3 * this.fire.intensity); // Feuer speien bebt
     if (sp > 110) this.rig.addShake(dt * 0.3 * (sp - 110) / 40);
+  }
+
+  /** Etwas fängt Feuer: Stichflamme und Funken; Gebäude gehen mit Knall und Druckwelle in Flammen auf */
+  _ignitionBurst(e, dist) {
+    const w = this.world;
+    const big = e.kind !== 'tree';
+    const q = w.q.particles;
+    const n = Math.floor((big ? 70 : 22) * q);
+    const r = e.r || 3;
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = (big ? 6 : 3) + Math.random() * (big ? 14 : 6);
+      w.particles.fire.spawn(
+        e.x + Math.cos(a) * r * 0.5, e.y, e.z + Math.sin(a) * r * 0.5,
+        Math.cos(a) * sp, 8 + Math.random() * (big ? 22 : 10), Math.sin(a) * sp,
+        0.6 + Math.random() * 0.6, 1.5, big ? 6 + Math.random() * 5 : 3 + Math.random() * 3
+      );
+      if (i % 2 === 0) {
+        w.particles.sparks.spawn(e.x, e.y + 1, e.z, Math.cos(a) * sp * 1.4, 10 + Math.random() * 20, Math.sin(a) * sp * 1.4, 1 + Math.random(), 0.4, 0.1, 1, 0.6, 0.2);
+      }
+    }
+    if (!big) return;
+    // dunkle Rauchwolke dazu, damit es nach einer Explosion aussieht
+    for (let i = 0; i < 18 * q; i++) {
+      const a = Math.random() * Math.PI * 2;
+      w.particles.smoke.spawn(e.x, e.y + 2, e.z, Math.cos(a) * 5, 6 + Math.random() * 8, Math.sin(a) * 5, 2.5 + Math.random() * 2, 4, 14);
+    }
+    if (dist < 300) {
+      const k = 1 - dist / 300;
+      this.audio.playImpact(0.3 + k * 0.6);
+      this.rig.addShake(k * 0.5);
+    }
   }
 
   /** Flügelschlag nahe am Boden wirbelt Staub auf (über Wasser: Gischt) */

@@ -168,14 +168,14 @@ export class BurnSystem {
       const lod = d < 700 ? 1 : d < 1500 ? 0.35 : 0.1;
       const size = e.kind === 'hut' || e.kind === 'windmill' ? 1.6 : e.kind === 'tower' ? 1.3 : e.kind === 'tree' ? 1 : 0.8;
       // Flammen
-      e.acc += 42 * size * I * lod * this.q * dt;
+      e.acc += 58 * size * I * lod * this.q * dt;
       while (e.acc >= 1) {
         e.acc -= 1;
         this._randomPoint(e, _p);
         fire.spawn(
           _p.x, _p.y, _p.z,
-          (Math.random() - 0.5) * 2, 3 + Math.random() * 6, (Math.random() - 0.5) * 2,
-          0.7 + Math.random() * 0.7, 1.2 * size, (2.5 + Math.random() * 3.5) * size
+          (Math.random() - 0.5) * 2.5, 4 + Math.random() * 8, (Math.random() - 0.5) * 2.5,
+          0.7 + Math.random() * 0.8, 1.3 * size, (3 + Math.random() * 4) * size
         );
       }
       // Rauch
@@ -186,7 +186,7 @@ export class BurnSystem {
         smoke.spawn(_p.x, _p.y + e.h * 0.4, _p.z, 0, 4 + Math.random() * 3, 0, 4.5 + Math.random() * 3, 3 * size, (12 + Math.random() * 10) * size);
       }
       // Funken
-      if (Math.random() < 3 * dt * I * lod) {
+      if (Math.random() < 6 * dt * I * lod) {
         this._randomPoint(e, _p);
         for (let k = 0; k < 4; k++) sparks.spawn(_p.x, _p.y, _p.z, (Math.random() - 0.5) * 6, 6 + Math.random() * 8, (Math.random() - 0.5) * 6, 1 + Math.random(), 0.35, 0.1);
       }
