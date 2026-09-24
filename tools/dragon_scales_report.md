@@ -41,23 +41,41 @@ Datum: 24.09.2026
 ### Was gebaut wurde
 
 Ein **Wyvern** wie Scales: Die Flügel sind die Arme, dazu zwei Hinterbeine.
-Die Masse stammen vom bisherigen Drachen im Spiel-Code (22–23 m lang, 25 m Spannweite).
+Die Masse stammen vom bisherigen Drachen im Spiel-Code (ca. 23 m lang, 25 m Spannweite).
+
+**Version 3** (aktuell) – weil der Drache „noch nicht so gut aussah“:
+
+- **Eine Haut statt einzelner Röhren:** Rumpf, Kopf, Beine, Arme und Muskeln
+  (Brust, Schultern, Schulterblätter, Oberschenkel, Brauen, Wangen, Kaumuskeln,
+  Nüstern) werden in Blender mit *Voxel-Remesh* zu einer geschlossenen Haut
+  verschmolzen und geglättet. Keine Nähte mehr zwischen Körper und Beinen/Armen.
+- **Kräftiger:** dickerer Rumpf mit tiefer Brust, dickerer Hals und Schwanzansatz,
+  stärkere Arme und Beine.
+- **Kopf:** kürzer und höher (weniger „Krokodil“), tieferer Unterkiefer,
+  sichtbare Brauenwülste, mandelförmige Augen unter den Brauen.
+- **Schuppen in Reihen:** Am Rumpf, Hals, Kopf und Schwanz liegen die Schuppen in
+  versetzten Reihen, wie bei echten Reptilien. Ihre Grösse passt sich dem Umfang an
+  (Kopf fein, Brust grob). Weniger Farb-Kontrast, die Form kommt aus der Normal-Map.
+- **Flughaut:** Die Adern laufen fächerförmig vom Handgelenk weg, dazu ein feines
+  Adernetz und Falten. Vorher sah das Muster wie trockene, rissige Erde aus.
+- **Gewichte automatisch:** Blender rechnet selbst aus, welcher Hautpunkt an
+  welchem Knochen hängt („Bone Heat“). Der Unterkiefer bleibt ein eigenes Teil.
 
 | Teil | Dreiecke |
 |---|---|
-| Körper mit Oberkopf (Hals, Rumpf, Schwanz) | 19 392 |
+| Haut: Rumpf, Hals, Oberkopf, Schwanz, Beine, Arme, Muskeln (verschmolzen) | 42 000 |
 | Unterkiefer (klappbar) | 3 776 |
-| 2 Beine + Zehen + Fusskrallen | 8 704 |
-| 2 Arme + je 4 Finger + Daumen + Daumenkralle | 16 344 |
-| 2 Flughäute | 3 474 |
-| Hörner, Kiefer-, Rücken- und Schwanzstacheln | 8 496 |
+| Zehen + Fusskrallen (beide Seiten) | 3 328 |
+| Finger + Daumen + Daumenkrallen (beide Seiten) | 8 104 |
+| 2 Flughäute | 3 990 |
+| Hörner, Kiefer-, Rücken- und Schwanzstacheln | 6 464 |
 | Zähne (oben und unten) | 2 484 |
 | Augen (mit Schlitz-Pupille) | 704 |
-| **Summe** | **63 374** |
+| **Summe** | **70 850** |
 
 Alles wird im Skript aus Formeln berechnet: Querschnitte entlang einer Mittellinie,
-Röhren für Beine, Finger und Hörner, eine gewölbte Flughaut mit gewellter
-Hinterkante.
+Röhren für Beine, Finger und Hörner, Ellipsoide für Muskeln, eine gewölbte
+Flughaut mit gewellter Hinterkante.
 
 ### Sicherheit
 
@@ -82,24 +100,24 @@ Hinterkante.
 | Punkt | Wert |
 |---|---|
 | Datei | `public/models/dragon_scales.glb` |
-| Grösse | 5 564 624 Bytes (ca. 5,6 MB) |
-| SHA256 | `788d95af3e4106bb8c5efd3c78d34bcbc0b418f9404711dd7db7c8b7cb607ab7` |
+| Grösse | 4 996 192 Bytes (ca. 5,0 MB) |
+| SHA256 | `aaa5e1e41d13c933207e9bedbac1acb1fba4307f76791223d74410b7a3f02e33` |
 | Meshes | 1 (`Drache`), 6 Materialien → 6 Draw-Calls |
-| Dreiecke / Punkte | 63 374 / 35 004 |
+| Dreiecke / Punkte | 70 850 / 40 779 |
 | Knochen | 50, alle verformend, max. 4 Knochen pro Punkt |
 | Texturen (JPEG in der GLB) | Haut: Farbe + Normal-Map je 2048 × 2048; Flughaut: Farbe + Normal-Map je 2048 × 1024 |
 | Extras | Tangenten (für die Normal-Maps), 3 Ankerpunkte, Erweiterung `KHR_materials_emissive_strength` (leuchtende Augen) |
 | Animationen | keine |
-| Masse | Länge 23,15 m, Spannweite 25,19 m, Höhe 5,01 m |
+| Masse | Länge 22,66 m, Spannweite 25,53 m, Höhe 5,30 m |
 
 ### Prüfungen
 
 - **Khronos glTF-Validator:** **0 Fehler, 0 Warnungen**, 3 Infos.
   Die 3 Infos heissen „leerer Knoten“. Das sind die gewollten Ankerpunkte.
-- **Wieder eingelesen mit Blender (bpy):** 1 Mesh, 63 374 Dreiecke, 50 Knochen,
+- **Wieder eingelesen mit Blender (bpy):** 1 Mesh, 70 850 Dreiecke, 50 Knochen,
   6 Materialien, 4 Bilder, 3 Anker. Das passt zum Export.
-- **Vorschaubilder mit Cycles** (von schräg, Seite, oben, vorne, Kopf):
-  Form, Texturen und Farben stimmen.
+- **Vorschaubilder mit Cycles** (schräg, Seite, oben, vorne, hinten, Kopf, Schulter,
+  von unten): Form, Texturen und Farben stimmen, keine Löcher in der Haut.
 - **Test-Pose:** Flügel hoch, Maul auf, Hals und Schwanz zur Seite, Beine angezogen.
   Die Haut verformt sich sauber, und die Flughaut bleibt am Körper.
 - Die Vorschaubilder sind **nicht** im Repo (sie gehören nicht zur Liste der Dateien).
@@ -114,6 +132,9 @@ Hinterkante.
 - Die Flughaut scheint im Gegenlicht rötlich durch (eigener Shader-Zusatz).
 - Version 2 des Modells: kräftigere Adern, dickere (dunklere) Haut an den Knochen,
   dunkle Flecken auf dem Rücken.
+- Version 3 des Modells (siehe Teil B): Am Spiel-Code musste nichts geändert werden.
+  Knochen-Namen, Anker und die Füsse (y = −2,66) sind gleich geblieben.
+  Geprüft mit Bildschirmfotos: Fliegen, Gegenlicht, Reiter-Sicht, Feuer, Stehen und Laufen.
 - Getestet mit Bildschirmfotos im echten Spiel (Chromium ohne Grafikkarte).
   Dafür wurden die Projekt-Pakete mit `npm ci --ignore-scripts` installiert
   (Prüfsummen aus `package-lock.json`, keine Installations-Skripte).
@@ -122,6 +143,7 @@ Hinterkante.
 
 - **Richtung und Grösse:** Meter, +Y oben, der Kopf zeigt nach **−Z**, rechts ist +X.
   Das Modell ist schon so gross wie der bisherige Drache im Spiel (Skalierung 1).
+  Die Schnauzenspitze liegt bei z = −9,41.
 - **Ursprung:** Körpermitte (Knochen `root`), wie bisher im Spiel-Code.
   Die Füsse stehen bei y = −2,66.
 - **Knochen:** Namen, Eltern, Positionen und Ruhe-Drehungen stehen in
@@ -150,14 +172,24 @@ Hinterkante.
 
 ## Probleme und offene Punkte
 
-- Das ist **nicht** der Sintel-Drache. Er ist einfacher: keine modellierten Muskeln,
-  das Maul-Innere ist schlicht, die Flughaut ist eine dünne Fläche.
+- Das ist **nicht** der Sintel-Drache. Ein von Hand modellierter Drache hat mehr
+  Details (Hautfalten, einzeln geformte Schuppen). Das Maul-Innere ist schlicht,
+  die Flughaut ist eine dünne Fläche.
 - Die Bildrate auf einem echten Computer mit Grafikkarte konnte hier nicht
-  gemessen werden (Test lief mit Software-Grafik).
-- Ganz nah sieht man an wenigen Textur-Nähten (Bauchnaht, zwei Schnitte am Schwanz)
-  eine feine Linie.
+  gemessen werden (Test lief mit Software-Grafik). Das Modell hat etwa 12 % mehr
+  Dreiecke als Version 2, die Datei ist aber kleiner (5,0 statt 5,6 MB).
+- An Armen und Beinen sind die Schuppen ein 3D-Muster ohne Reihen (dort gibt es keine
+  saubere Längsrichtung). Am Übergang zum Rumpf gehen die zwei Muster weich ineinander über.
+- An einer kleinen Stelle der Flughaut am Ellbogen ist die Normal-Map fehlerhaft. Sie
+  liegt im Arm und ist nicht zu sehen.
 - Normal-Maps als JPEG haben leichte Kompressions-Spuren. Aus der Spiel-Entfernung
   sieht man das nicht.
+- Beim Bauen gab es einen Absturz von Blender (Speicherfehler), etwa bei jedem zweiten Bau.
+  Ursache war ein Fehler im Skript: Nach dem Anlegen neuer UV-Ebenen wurde ein alter
+  Verweis auf eine UV-Ebene weiterbenutzt. Behoben (Ebenen werden jetzt immer frisch über
+  den Namen geholt), danach 12 von 12 Testläufen und 2 ganze Bauten ohne Absturz.
+- Zwei Bauten ergeben das gleiche Modell, aber nicht Byte für Byte die gleiche Datei
+  (Cycles rechnet beim Backen mit mehreren Threads). Darum ändert sich die SHA256.
 - Das Skript heisst `tools/build_dragon.py` statt `convert_dragon.py`,
   weil es nichts umwandelt, sondern baut.
-- Neu bauen dauert ca. 2 Minuten (4 CPU-Kerne), Anleitung im Kopf des Skripts.
+- Neu bauen dauert ca. 3 Minuten (4 CPU-Kerne), Anleitung im Kopf des Skripts.

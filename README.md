@@ -268,7 +268,7 @@ Die „Stretch Goals“ aus der Vorgabe gehören **nicht** zum Test Flight. Sie 
 **Vereinfacht wurde:**
 
 - **Wasser-Spiegelung:** Das Wasser spiegelt den Himmel, aber nicht die Berge. Das ist viel schneller.
-- **Drachen-Modell:** Der Drache ist ein **Wyvern** wie in DragonTwin: Die Flügel sind die Arme, es gibt nur zwei Hinterbeine. Ein Skript baut ihn in Blender aus Formeln (ca. 63 000 Dreiecke, gebackene Schuppen-Texturen). Ein von Hand modellierter Drache (z. B. „Scales“ aus dem Film *Sintel*) wäre noch detailreicher – der ist aber nur mit Abo herunterladbar.
+- **Drachen-Modell:** Der Drache ist ein **Wyvern** wie in DragonTwin: Die Flügel sind die Arme, es gibt nur zwei Hinterbeine. Ein Skript baut ihn in Blender aus Formeln (ca. 71 000 Dreiecke, gebackene Schuppen-Texturen). Rumpf, Kopf, Beine, Arme und Muskeln sind zu einer einzigen Haut verschmolzen. Ein von Hand modellierter Drache (z. B. „Scales“ aus dem Film *Sintel*) wäre noch detailreicher – der ist aber nur mit Abo herunterladbar.
 - **Keine Umgebungsverdeckung am Bildschirm (SSAO):** Dafür müsste die ganze Szene mit allen Bäumen ein zweites Mal gezeichnet werden. Stattdessen: dunklerer Waldboden (Wald-Karte) und dunklere Innenseiten der Baumkronen.
 - **Der Test lief ohne Grafikkarte:**
   - Getestet wurde automatisch in einem Browser ohne GPU.
@@ -283,7 +283,7 @@ Die „Stretch Goals“ aus der Vorgabe gehören **nicht** zum Test Flight. Sie 
 
 | Was | Vorher | Nachher | Datei |
 | --- | --- | --- | --- |
-| Drache | aus Röhren und Kugeln im Code | 3D-Modell mit Skelett, Schuppen, durchscheinender Flughaut | `src/dragon/Dragon.js`, `tools/build_dragon.py` |
+| Drache | aus Röhren und Kugeln im Code | 3D-Modell mit Skelett, Muskeln, Schuppen in Reihen, durchscheinender Flughaut mit Adern | `src/dragon/Dragon.js`, `tools/build_dragon.py` |
 | Bäume | Kugeln und Kegel | Kern + viele Blätter-/Nadel-Karten, zittern im Wind, Schatten mit Blatt-Umriss | `src/world/TreeModels.js` |
 | Berge | viele gleich hohe Spitzen | erodierte Grate, glatte Flanken, grosse Massive | `src/core/noise.js`, `src/world/Terrain.js` |
 | Luft | gleichmässiger Nebel | Dunst unten dichter, Sonne leuchtet im Dunst, Bodennebel | `src/fx/Atmosphere.js` |

@@ -6,10 +6,14 @@ Was das Skript macht:
   1. Es baut einen Wyvern (Flügel = Arme, zwei Hinterbeine) nur aus Formeln:
      Körper mit Kopf, Unterkiefer, Beine, Flügel mit Flughaut, Hörner,
      Rückenstacheln, Krallen, Zähne und Augen.
-  2. Es baut ein Skelett (nur verformende Knochen) und rechnet aus,
-     welcher Punkt der Haut an welchem Knochen hängt ("Gewichte").
-  3. Es malt die Texturen (Schuppen, Bauchplatten, Adern) mit Cycles ("Bake").
-  4. Es exportiert alles als GLB (glTF 2.0) für Three.js.
+  2. Rumpf, Kopf, Beine, Arme und einige Muskeln (Ellipsoide) werden mit
+     Voxel-Remesh zu EINER geschlossenen Haut verschmolzen und geglättet.
+  3. Es baut ein Skelett (nur verformende Knochen). Blender rechnet für die Haut
+     selbst aus, welcher Punkt an welchem Knochen hängt ("Bone Heat").
+     Hörner, Zähne, Augen und Flughaut werden genau auf die neue Haut gesetzt.
+  4. Der Kopf wird zum Schluss etwas gekürzt (siehe HEAD_SQUASH).
+  5. Es malt die Texturen (Schuppen, Bauchplatten, Adern) mit Cycles ("Bake").
+  6. Es exportiert alles als GLB (glTF 2.0) für Three.js.
 
 Sicherheit: Das Skript lädt NICHTS aus dem Internet und öffnet keine fremden
 Dateien. Blender-Skripte in Dateien werden sowieso nicht automatisch ausgeführt.
@@ -37,7 +41,9 @@ import numpy as np
 
 try:
     import bpy
+    import bmesh
     from mathutils import Matrix, Vector
+    from mathutils.bvhtree import BVHTree
 except ImportError:
     sys.exit("Fehler: Das Modul 'bpy' fehlt. Installieren mit: pip install bpy==5.0.1")
 
@@ -380,17 +386,20 @@ BODY_CTRL = [(-13.0, -0.12), (-10.0, -0.22), (-7.0, -0.16), (-4.6, -0.04), (-2.1
              (8.4, 1.36), (9.9, 1.08)]
 # Querschnitte: y, Breite (rx), Höhe oben (rt), Höhe unten (rb), Kantigkeit n
 BODY_ST = [
-    (-13.0, .012, .012, .012, 2.0), (-12.8, .045, .05, .045, 2.0), (-12.0, .085, .095, .085, 2.0),
-    (-10.5, .14, .155, .14, 2.0), (-8.5, .22, .235, .21, 2.0), (-6.5, .32, .335, .30, 2.0),
-    (-4.8, .46, .47, .43, 2.05), (-3.5, .63, .64, .58, 2.1), (-2.3, .84, .82, .78, 2.2),
-    (-1.2, .93, .91, .90, 2.2), (0.0, 1.02, .97, 1.04, 2.2), (1.2, 1.12, 1.0, 1.22, 2.2),     # Brust (Kiel)
-    (2.2, 1.02, .93, 1.12, 2.2), (2.9, .78, .73, .86, 2.1), (3.5, .53, .52, .60, 2.0),        # Halsansatz
-    (4.3, .40, .41, .44, 2.0), (5.2, .32, .33, .35, 2.0), (6.0, .29, .30, .31, 2.0),
-    (6.6, .32, .32, .29, 2.2), (7.0, .41, .37, .24, 2.5), (7.5, .47, .41, .20, 2.6),          # Hinterkopf
-    (8.0, .42, .37, .16, 2.6), (8.5, .33, .29, .13, 2.6), (9.1, .27, .24, .11, 2.6),          # Augen, Schnauze
-    (9.55, .24, .21, .10, 2.5), (9.8, .17, .15, .08, 2.3), (9.86, .12, .105, .06, 2.2), (9.9, .04, .035, .03, 2.0),
+    (-13.0, .05, .055, .05, 2.0), (-12.0, .17, .18, .16, 2.0), (-10.5, .32, .33, .30, 2.0),
+    (-8.5, .48, .49, .45, 2.0), (-6.5, .65, .65, .60, 2.0), (-4.8, .84, .83, .78, 2.05),
+    (-3.5, 1.0, .98, .94, 2.1), (-2.3, 1.12, 1.08, 1.08, 2.2), (-1.2, 1.2, 1.14, 1.18, 2.2),   # Hüfte
+    (0.0, 1.28, 1.2, 1.36, 2.2), (1.2, 1.38, 1.28, 1.62, 2.2), (2.2, 1.3, 1.24, 1.48, 2.2),    # Brust (Kiel)
+    (2.9, 1.1, 1.08, 1.2, 2.1), (3.5, .94, .92, .98, 2.0), (4.3, .80, .80, .80, 2.0),          # Halsansatz
+    (5.2, .68, .69, .66, 2.0), (6.0, .60, .62, .56, 2.0), (6.6, .59, .59, .49, 2.2),
+    (7.0, .61, .57, .37, 2.4), (7.5, .63, .58, .31, 2.5), (8.0, .56, .52, .26, 2.6),          # Schädel, Augen
+    (8.5, .46, .44, .22, 2.6), (9.1, .38, .38, .18, 2.6), (9.55, .33, .33, .16, 2.5),         # Schnauze
+    (9.8, .26, .25, .13, 2.3), (9.9, .13, .12, .08, 2.0),
 ]
 R_BODY = 48
+# Kopf kürzen: Alles ab y = 6.8 (Richtung Schnauze) wird in Längsrichtung zusammengeschoben
+# (weich übergehend, ab y = 7.6 auf 82 %). So wirkt der Kopf kräftiger, weniger wie ein Krokodil.
+HEAD_SQUASH = (6.8, 7.6, 0.82)
 BELLY_COLS = 6            # Spalten links und rechts der Bauchnaht = Bauch (bzw. Gaumen am Kopf)
 HEAD_Y = 6.95             # ab hier ist der Körper-Schlauch der Oberkopf
 EYE_Y, EYE_PHI = 7.95, math.pi / 2 + 0.55
@@ -407,9 +416,9 @@ SPINE = [
 ]
 
 # Unterkiefer: y, Höhe oben, Höhe unten, Breite (Anteil der Kopfbreite)
-JAW_ST = [(6.95, .02, .03, .30), (7.08, .035, .12, .72), (7.3, .045, .19, .86), (7.8, .05, .19, .90),
-          (8.4, .05, .155, .90), (9.0, .045, .115, .90), (9.5, .04, .085, .88), (9.72, .035, .065, .80),
-          (9.82, .02, .03, .40)]
+JAW_ST = [(6.95, .02, .03, .30), (7.08, .035, .15, .74), (7.3, .045, .24, .88), (7.8, .05, .24, .92),
+          (8.4, .05, .20, .92), (9.0, .045, .15, .90), (9.5, .04, .11, .88), (9.72, .035, .08, .80),
+          (9.82, .02, .035, .40)]
 R_JAW = 32
 JAW_BELLY_COLS = 5        # Kehle (unten)
 JAW_MOUTH_COL = 11        # ab hier (bis zur Mitte oben) ist Maul-Innenseite
@@ -421,7 +430,7 @@ LEG_A, LEG_B = vec3(0.86, -2.15, -1.95), vec3(0.86, -1.80, -2.50)
 GROUND_Z = -2.66          # Boden unter den Füssen (Stand)
 
 # Flügel (rechte Seite), wie im Spiel: Oberarm 2.94 m, Unterarm 3.64 m, 4 lange Finger
-WING_S = vec3(0.78, 2.05, 0.62)
+WING_S = vec3(0.95, 2.05, 0.66)
 DIHEDRAL = 0.07           # Flügel leicht nach oben (V-Form)
 FINGER_ANG = (-0.22, 0.38, 0.98, 1.58)
 FINGER_LEN = (5.32, 4.9, 4.13, 3.22)
@@ -597,7 +606,7 @@ def build_leg_R():
                    ("toes_R", sj[3], cv.length + 1.0)], blend=0.18)
     xs = [0.0, sj[0] + 0.1, sj[0] + 0.45 * (sj[1] - sj[0]), sj[1] - 0.12, sj[1], sj[1] + 0.3 * (sj[2] - sj[1]),
           sj[2] - 0.12, sj[2], 0.5 * (sj[2] + sj[3]), sj[3], cv.length]
-    rs = [0.40, 0.47, 0.40, 0.27, 0.25, 0.235, 0.165, 0.15, 0.12, 0.13, 0.10]
+    rs = [0.62, 0.74, 0.62, 0.40, 0.34, 0.35, 0.23, 0.20, 0.17, 0.19, 0.14]
     prof = Pchip(xs, rs)
 
     def weights(s, t):
@@ -675,10 +684,11 @@ def finger_weights(k, t):
 def build_arm_R(wp):
     arm, fingers, claws = Part("Arm_R", "limb"), Part("Finger_R", "limb"), Part("Krallen_Hand_R", "claw")
     S, E, W = wp["S"], wp["E"], wp["W"]
-    cv = Curve([S + vec3(-0.35, 0.0, -0.08), S, E, W, W + nrm(W - E) * 0.12])
+    cv = Curve([S + vec3(-0.35, 0.0, -0.08), S, E, W, W + nrm(W - E) * 0.14])
     sS, sE, sW = cv.s_near(S), cv.s_near(E), cv.s_near(W)
-    prof = Pchip([0, sS, sS + 0.35 * (sE - sS), sE - 0.2, sE, sE + 0.3, sW - 0.25, sW, cv.length],
-                 [0.30, 0.29, 0.20, 0.17, 0.20, 0.16, 0.12, 0.135, 0.09])
+    # kräftiger Oberarm, Ellbogen-Knubbel, schlanker werdender Unterarm, Handgelenk
+    prof = Pchip([0, sS, sS + 0.35 * (sE - sS), sE - 0.25, sE, sE + 0.35, sW - 0.3, sW, cv.length],
+                 [0.48, 0.48, 0.38, 0.29, 0.32, 0.26, 0.18, 0.20, 0.14])
     chain = Chain([("upperarm_R", 0.0, sE), ("forearm_R", sE, sW), ("hand_R", sW, cv.length + 1)], blend=0.2)
 
     def weights(s, t):
@@ -690,7 +700,8 @@ def build_arm_R(wp):
         d = nrm(F - W)
         fc = Curve([W - d * 0.08, F + d * 0.06], smooth=False, n=40)
         L = fc.length
-        prof_f = Pchip([0, 0.15 * L, 0.6 * L, 0.95 * L, L], [0.095, 0.075, 0.045, 0.022, 0.012])
+        # dick am Ansatz, Knöchel in der Mitte, dünne Spitze
+        prof_f = Pchip([0, 0.12 * L, 0.44 * L, 0.5 * L, 0.56 * L, 0.95 * L, L], [0.12, 0.09, 0.058, 0.072, 0.052, 0.024, 0.014])
         tube(fingers, fc, prof_f, 12, vec3(0, 0, 1),
              lambda s, t, k=k, L=L: finger_weights(k, (s - 0.08) / (L - 0.14)), "Haut", step=0.12, cap1=True)
     # Daumen mit Kralle (zeigt nach vorne)
@@ -698,7 +709,7 @@ def build_arm_R(wp):
     tc = Curve([W, W + td * 0.18, W + td * 0.34])
     tube(fingers, tc, Pchip([0, tc.length], [0.085, 0.055]), 12, vec3(0, 0, 1), lambda s, t: {"thumb_R": 1.0},
          "Haut", step=0.05, cap1=True)
-    claw(claws, W + td * 0.34, nrm(td + vec3(0, 0.3, 0)), 0.42, 0.055, {"thumb_R": 1.0})
+    claw(claws, W + td * 0.34, nrm(td + vec3(0, 0.3, 0)), 0.55, 0.07, {"thumb_R": 1.0})
     return arm, fingers, claws
 
 
@@ -765,6 +776,13 @@ def build_membrane_R(B, chain, wp):
         return keys[key]
 
     def add_face(vs):
+        uniq = []
+        for x in vs:  # doppelte Punkte (Spitze eines Fächers) weglassen
+            if all(x[0] != y[0] for y in uniq):
+                uniq.append(x)
+        if len(uniq) < 3:
+            return
+        vs = uniq
         pts = [part.v[x[0]] for x in vs]
         n = np.cross(pts[1] - pts[0], pts[-1] - pts[0])
         if n[2] < 0:
@@ -798,6 +816,38 @@ def build_membrane_R(B, chain, wp):
     for i in range(NT):
         for j in range(NU):
             add_face([grid[i, j], grid[i, j + 1], grid[i + 1, j + 1], grid[i + 1, j]])
+    # --- Haut vor dem Arm: vom Halsansatz bis zum Handgelenk (wie bei Fledermäusen) ---
+    NF = 6
+    A0 = attach(0.0)
+    P0 = B.point(B.s_of_y(3.15), math.pi / 2 + 0.35)
+    chest_w = {"chest": 1.0}
+
+    def lead(u):  # Vorderkante, leicht zum Arm hin gebogen
+        p = P0 + (W - P0) * u
+        return p + nrm(c0(u) - p) * 0.12 * np.linalg.norm(W - P0) * math.sin(math.pi * u)
+
+    front = {}
+    for i in range(NF + 1):
+        v = i / NF
+        for j in range(NU + 1):
+            u = j / NU
+            if i == 0:
+                p = c0(u)
+            elif j == NU:
+                p = W.copy()
+            elif j == 0:
+                p = A0 + (P0 - A0) * v
+            elif i == NF:
+                p = lead(u)
+            else:
+                p = ((1 - v) * c0(u) + v * lead(u) + (1 - u) * (A0 + (P0 - A0) * v) + u * W
+                     - ((1 - u) * (1 - v) * A0 + u * (1 - v) * W + (1 - u) * v * P0 + u * v * W))
+                p = p + vec3(0, 0, 0.06 * math.sin(math.pi * u) * math.sin(math.pi * v))
+            w = wmix((1 - v, wa(u)), (v, wmix((1 - u, chest_w), (u, {"hand_R": 1.0}))))
+            front[i, j] = V(p, w if i else wa(u), (p[0], p[1]), (0.0, v))
+    for i in range(NF):
+        for j in range(NU):
+            add_face([front[i, j], front[i, j + 1], front[i + 1, j + 1], front[i + 1, j]])
     # --- Felder zwischen den Fingern (Fächer vom Handgelenk aus) ---
     for k in range(3):
         Fa, Fb = F[k], F[k + 1]
@@ -848,12 +898,12 @@ def build_horns(B, J, chain):
             return B.point(s, ph(p)), T, U
         # grosse Hörner am Hinterkopf, weit nach hinten geschwungen
         base, T, U = at(7.15, math.pi - 0.42)
-        horn(base - U * 0.16 + T * 0.06, base - T * 0.75 + U * 0.45 + out * 0.2, base - T * 2.0 + U * 0.35 + out * 0.42,
-             0.14, {"head": 1.0}, R=12, n=14)
+        horn(base - U * 0.2 + T * 0.08, base - T * 0.9 + U * 0.55 + out * 0.22, base - T * 2.4 + U * 0.42 + out * 0.5,
+             0.18, {"head": 1.0}, R=12, n=16)
         # zweites Paar, seitlich nach hinten
         base, T, U = at(7.3, math.pi / 2 + 0.75)
-        horn(base - out * 0.1 + T * 0.04, base - T * 0.5 + out * 0.3 + U * 0.1, base - T * 1.25 + out * 0.55 - U * 0.05,
-             0.09, {"head": 1.0})
+        horn(base - out * 0.12 + T * 0.05, base - T * 0.6 + out * 0.34 + U * 0.12, base - T * 1.5 + out * 0.62 - U * 0.05,
+             0.12, {"head": 1.0})
         # Wangenstacheln
         base, T, U = at(7.35, math.pi / 2 + 0.05)
         horn(base - out * 0.04, base - T * 0.3 + out * 0.15, base - T * 0.6 + out * 0.25 - U * 0.12,
@@ -874,14 +924,14 @@ def build_horns(B, J, chain):
     while y > -12.55:
         s = B.s_of_y(y)
         rx, rt, rb, _ = B.params(y)
-        h = 0.06 + 0.38 * rt
+        h = 0.08 + 0.5 * rt
         if not (SADDLE[0] < y < SADDLE[1]):
             T, Sd, U = B.frame(s)
             top = B.point(s, math.pi)
             d = nrm(U * math.cos(0.85) - T * math.sin(0.85))
             horn(top - U * 0.3 * h, top + d * h * 0.5, top + d * h - T * 0.12 * h, 0.34 * h,
-                 chain.weights(s), R=8, n=6, flat=(1.0, 0.33), uref=X)
-        y -= max(0.24, 0.9 * h + 0.1)
+                 chain.weights(s), R=8, n=6, flat=(1.0, 0.28), uref=X)
+        y -= max(0.3, 0.85 * h + 0.12)
     # Büschel an der Schwanzspitze
     for (ax, az, L) in ((0.0, 0.5, 0.5), (0.55, 0.15, 0.45), (-0.55, 0.15, 0.45), (0.3, -0.35, 0.38), (-0.3, -0.35, 0.38)):
         s = B.s_of_y(-12.7)
@@ -928,8 +978,9 @@ def build_eyes(B):
         phi = EYE_PHI if side > 0 else TAU - EYE_PHI
         surf = B.point(s, phi)
         look = nrm(vec3(side, 0, 0) * 0.85 + T * 0.45 + U * 0.15)
-        center = surf - nrm(surf - C) * 0.03
-        r = 0.085
+        center = surf - nrm(surf - C) * 0.05
+        # mandelförmig: länger als hoch, die Haut schneidet den Rand ab (wie Lider)
+        r, r2, r3 = 0.1, 0.13, 0.075
         e2 = nrm(np.cross(look, vec3(0, 0, 1)))
         e3 = np.cross(e2, look)
         nlat, nlon = 12, 16
@@ -938,8 +989,8 @@ def build_eyes(B):
             th = math.pi * i / nlat
             for j in range(nlon):
                 ps = TAU * j / nlon
-                ids[i, j] = part.vert(center + r * (math.cos(th) * look + math.sin(th) * (math.cos(ps) * e2 + math.sin(ps) * e3)),
-                                      {"head": 1.0})
+                ids[i, j] = part.vert(center + r * math.cos(th) * look
+                                      + math.sin(th) * (r2 * math.cos(ps) * e2 + r3 * math.sin(ps) * e3), {"head": 1.0})
         front, back = part.vert(center + r * look, {"head": 1.0}), part.vert(center - r * look, {"head": 1.0})
 
         def pat(i, j):
@@ -1001,6 +1052,264 @@ def bone_list(B, J, wp):
     return out
 
 
+def squash_y(y):
+    """Neue y-Lage nach dem Kürzen des Kopfes (Integral des weichen Massstabs)."""
+    y0, y1, k = HEAD_SQUASH
+    if y <= y0:
+        return y
+    d = y1 - y0
+    u = min((y - y0) / d, 1.0)
+    shrink = d * (u ** 3 - 0.5 * u ** 4) + max(y - y1, 0.0)
+    return y - (1.0 - k) * shrink
+
+
+def squash(p):
+    p = np.array(p, dtype=float)
+    p[1] = squash_y(p[1])
+    return p
+
+
+def squash_objects(objs, arm_obj, bones):
+    """Kopf kürzen: alle Punkte der Meshes und alle Knochen gleich verschieben."""
+    ups = {b[0]: b[4] for b in bones}
+    for o in objs:
+        co = np.zeros(len(o.data.vertices) * 3)
+        o.data.vertices.foreach_get("co", co)
+        co = co.reshape(-1, 3)
+        co[:, 1] = [squash_y(y) for y in co[:, 1]]
+        o.data.vertices.foreach_set("co", co.ravel())
+        o.data.update()
+    select_only([arm_obj])
+    bpy.ops.object.mode_set(mode="EDIT")
+    for eb in arm_obj.data.edit_bones:
+        eb.head, eb.tail = Vector(squash(eb.head)), Vector(squash(eb.tail))
+        eb.align_roll(Vector(ups[eb.name]))
+    bpy.ops.object.mode_set(mode="OBJECT")
+
+
+# =====================================================================
+# 6b. Körper verschmelzen: Rumpf, Kopf, Beine, Arme und Muskeln → EINE Haut
+# =====================================================================
+def muscle_list(B, wp):
+    """Muskeln als Ellipsoide (rechte Seite): Mitte, Achsen, Halbmesser. Sie sitzen tief im
+    Körper, damit nach dem Verschmelzen nur eine weiche Wölbung übrig bleibt."""
+    M = []
+
+    def on_body(y, phi, depth):
+        s = B.s_of_y(y)
+        T, Sd, U = B.frame(s)
+        p = B.point(s, phi)
+        return p - nrm(p - B.curve.at(s)) * depth, (Sd, T, U)
+
+    c, ax = on_body(2.1, math.pi / 2 - 0.62, 0.45)
+    M.append(("Brust", c, ax, (0.55, 0.9, 0.55)))                   # Flugmuskeln
+    S, E = wp["S"], wp["E"]
+    ad = nrm(E - S)
+    up = nrm(np.cross(np.cross(ad, vec3(0, 0, 1)), ad))
+    M.append(("Schulter", S + ad * 0.3, (ad, nrm(np.cross(up, ad)), up), (0.9, 0.48, 0.45)))
+    c, ax = on_body(1.6, math.pi - 0.5, 0.22)
+    M.append(("Schulterblatt", c, ax, (0.3, 0.75, 0.14)))
+    td = nrm(LEG_K - LEG_H)
+    lat = vec3(1, 0, 0)
+    M.append(("Keule", LEG_H + (LEG_K - LEG_H) * 0.3 + vec3(-0.02, 0.05, 0.05), (td, lat, nrm(np.cross(td, lat))),
+              (1.0, 0.55, 0.7)))                                   # Oberschenkel geht in die Flanke über
+    c, ax = on_body(8.0, math.pi - 0.85, 0.05)
+    M.append(("Braue", c, ax, (0.13, 0.45, 0.1)))
+    c, ax = on_body(7.55, math.pi / 2 - 0.05, 0.1)
+    M.append(("Wange", c, ax, (0.14, 0.5, 0.14)))
+    c, ax = on_body(7.2, math.pi / 2 - 0.35, 0.14)
+    M.append(("Kaumuskel", c, ax, (0.2, 0.4, 0.22)))
+    c, ax = on_body(9.62, math.pi - 0.5, 0.04)
+    M.append(("Nuester", c, ax, (0.06, 0.14, 0.05)))
+    return M
+
+
+def mesh_object(name, verts, faces):
+    me = bpy.data.meshes.new(name)
+    me.from_pydata([tuple(v) for v in verts], [], [list(f) for f in faces])
+    me.update()
+    o = bpy.data.objects.new(name, me)
+    bpy.context.scene.collection.objects.link(o)
+    return o
+
+
+def ellipsoid_object(name, c, axes, radii):
+    me = bpy.data.meshes.new(name)
+    bm = bmesh.new()
+    bmesh.ops.create_uvsphere(bm, u_segments=24, v_segments=16, radius=1.0)
+    bm.to_mesh(me)
+    bm.free()
+    o = bpy.data.objects.new(name, me)
+    bpy.context.scene.collection.objects.link(o)
+    M = Matrix.Identity(4)
+    for i in range(3):
+        for j in range(3):
+            M[j][i] = axes[i][j] * radii[i]
+        M[i][3] = c[i]
+    o.matrix_world = M
+    return o
+
+
+def union_body(parts, muscles, voxel=0.03, target_tris=42000):
+    """Alle Teile verbinden, mit Voxel-Remesh zu einer geschlossenen Haut verschmelzen,
+    glätten (am Kopf weniger, damit Details bleiben) und auf eine vernünftige Anzahl
+    Dreiecke reduzieren."""
+    objs = [mesh_object(p.name, p.v, p.f) for p in parts]
+    m = np.array([-1.0, 1.0, 1.0])
+    for name, c, axes, radii in muscles:
+        objs.append(ellipsoid_object(name + "_R", c, axes, radii))
+        objs.append(ellipsoid_object(name + "_L", np.asarray(c) * m, [np.asarray(a) * m for a in axes], radii))
+    select_only(objs, objs[0])
+    bpy.ops.object.join()
+    U = objs[0]
+    U.name = U.data.name = "Koerper"
+    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+    mod = U.modifiers.new("Remesh", "REMESH")
+    mod.mode, mod.voxel_size, mod.adaptivity = "VOXEL", voxel, 0.0
+    bpy.ops.object.modifier_apply(modifier=mod.name)
+    log(f"  verschmolzen: {len(U.data.polygons)} Flächen")
+    # Glätt-Stärke je Punkt: Körper 1, Kopf nur 0.3
+    co = np.zeros(len(U.data.vertices) * 3)
+    U.data.vertices.foreach_get("co", co)
+    ys = co.reshape(-1, 3)[:, 1]
+    vg = U.vertex_groups.new(name="glatt")
+    k = 1.0 - 0.7 * np.clip((ys - 6.6) / 0.6, 0.0, 1.0)
+    for level in np.unique(np.round(k, 2)):
+        vg.add([int(i) for i in np.nonzero(np.round(k, 2) == level)[0]], float(level), "REPLACE")
+    mod = U.modifiers.new("Glatt", "LAPLACIANSMOOTH")
+    mod.iterations, mod.lambda_factor, mod.use_volume_preserve, mod.vertex_group = 8, 0.7, True, "glatt"
+    bpy.ops.object.modifier_apply(modifier=mod.name)
+    for g in list(U.vertex_groups):
+        U.vertex_groups.remove(g)
+    tris = sum(len(p.vertices) - 2 for p in U.data.polygons)
+    mod = U.modifiers.new("Weniger", "DECIMATE")
+    mod.decimate_type, mod.ratio = "COLLAPSE", min(1.0, target_tris / tris)
+    bpy.ops.object.modifier_apply(modifier=mod.name)
+    U.data.polygons.foreach_set("use_smooth", [True] * len(U.data.polygons))
+    U.data.update()
+    log(f"  geglättet und reduziert: {sum(len(p.vertices) - 2 for p in U.data.polygons)} Dreiecke")
+    return U
+
+
+def heat_weights(U, arm_obj, bones, exclude=("jaw",)):
+    """Blender berechnet die Gewichte selbst ("Bone Heat"): Jeder Hautpunkt hängt an den
+    Knochen, die ihm am nächsten sind. Der Unterkiefer wird ausgelassen (sonst zieht er
+    beim Öffnen die Schnauze mit)."""
+    for n in exclude:
+        arm_obj.data.bones[n].use_deform = False
+    select_only([U, arm_obj], arm_obj)
+    bpy.ops.object.parent_set(type="ARMATURE_AUTO")
+    for n in exclude:
+        arm_obj.data.bones[n].use_deform = True
+    for mod in list(U.modifiers):
+        U.modifiers.remove(mod)
+    mw = U.matrix_world.copy()
+    U.parent = None
+    U.matrix_world = mw
+    select_only([U])
+    bpy.ops.object.vertex_group_limit_total(group_select_mode="ALL", limit=4)
+    bpy.ops.object.vertex_group_normalize_all(group_select_mode="ALL", lock_active=False)
+    # Sicherheit: Punkte ohne Gewicht hängen an den zwei nächsten Knochen
+    missing = [v.index for v in U.data.vertices if sum(g.weight for g in v.groups) < 1e-4]
+    if missing:
+        segs = [(n, np.asarray(h), np.asarray(t)) for n, h, t, _, _ in bones if n not in exclude]
+        for i in missing:
+            p = np.array(U.data.vertices[i].co)
+            ds = []
+            for n, h, t in segs:
+                dv = t - h
+                k = min(max(float((p - h) @ dv) / max(float(dv @ dv), 1e-9), 0.0), 1.0)
+                ds.append((float(np.linalg.norm(p - (h + dv * k))), n))
+            ds.sort()
+            (d0, n0), (d1, n1) = ds[0], ds[1]
+            w0 = d1 / max(d0 + d1, 1e-9)
+            for bn, w in ((n0, w0), (n1, 1.0 - w0)):
+                (U.vertex_groups.get(bn) or U.vertex_groups.new(name=bn)).add([i], w, "REPLACE")
+    log(f"  Gewichte berechnet ({len(U.vertex_groups)} Knochen, {len(missing)} Punkte nachgebessert)")
+
+
+class SurfaceProbe:
+    """Punkte auf der echten (verschmolzenen) Haut: Strahl von der Mittellinie nach aussen.
+    Verhält sich sonst wie BodyShape (Kurve, Querschnitte …)."""
+
+    def __init__(self, B, obj):
+        self.B = B
+        self.tree = BVHTree.FromObject(obj, bpy.context.evaluated_depsgraph_get())
+
+    def point(self, s, phi, detail=True):
+        C = self.B.curve.at(s)
+        T, Sd, U = self.B.frame(s)
+        d = nrm(Sd * math.sin(phi) - U * math.cos(phi))
+        hit = self.tree.ray_cast(Vector(C), Vector(d), 20.0)
+        return np.array(hit[0]) if hit[0] is not None else self.B.point(s, phi)
+
+    def __getattr__(self, k):
+        return getattr(self.B, k)
+
+
+def body_attributes(U, B, bones, mats):
+    """Muster-Werte je Punkt der verschmolzenen Haut (für das Backen der Textur):
+    Pattern = (Lage entlang des Körpers in Umfängen, Bauch 0..1),
+    Info = (y, Rücken 0..1), Extra = (Abstand zum Knochen, nahe am Rumpf 0..1),
+    Around = (Winkel um die Körperachse 0..1, 0 = Bauchmitte)."""
+    me = U.data
+    n = len(me.vertices)
+    co = np.zeros(n * 3)
+    me.vertices.foreach_get("co", co)
+    co = co.reshape(-1, 3)
+    L = B.curve.length
+    ss = np.linspace(0.0, L, 900)
+    C = np.array([B.curve.at(s) for s in ss])
+    frames = [B.frame(s) for s in ss]
+    Sd = np.array([f[1] for f in frames])
+    Uu = np.array([f[2] for f in frames])
+    prm = np.array([B.params(c[1]) for c in C])
+    rmean = 0.5 * (prm[:, 0] + 0.5 * (prm[:, 1] + prm[:, 2]))
+    circ = np.maximum(math.pi * (prm[:, 0] + 0.5 * (prm[:, 1] + prm[:, 2])), 0.12)
+    btab = np.concatenate([[0.0], np.cumsum(np.diff(ss) / circ[1:])])
+    idx = np.zeros(n, dtype=int)
+    for a in range(0, n, 3000):
+        d2 = ((co[a:a + 3000, None, :] - C[None, :, :]) ** 2).sum(-1)
+        idx[a:a + 3000] = np.argmin(d2, axis=1)
+    v = co - C[idx]
+    x = (v * Sd[idx]).sum(1)
+    z = (v * Uu[idx]).sum(1)
+    a = (np.arctan2(x, -z) / TAU) % 1.0
+    dist = np.linalg.norm(v, axis=1)
+    r = rmean[idx]
+    sm = lambda e0, e1, t: np.clip((t - e0) / (e1 - e0), 0, 1) ** 2 * (3 - 2 * np.clip((t - e0) / (e1 - e0), 0, 1))
+    spine = 1.0 - sm(1.2 * r, 1.7 * r, dist)
+    dd = 0.5 - np.abs(a - 0.5)
+    belly = spine * (1.0 - sm(0.105, 0.125, dd))
+    dorsal = spine * sm(0.28, 0.5, dd)
+    # Abstand zum nächsten Knochen (für die Schuppengrösse)
+    hs = np.array([b[1] for b in bones])
+    te = np.array([b[2] for b in bones])
+    thick = np.full(n, 9.0)
+    for h0, t0 in zip(hs, te):
+        dv = t0 - h0
+        t = np.clip(((co - h0) @ dv) / max(dv @ dv, 1e-9), 0, 1)
+        thick = np.minimum(thick, np.linalg.norm(co - (h0 + t[:, None] * dv), axis=1))
+    vals = {"Pattern": (btab[idx], belly), "Info": (C[idx][:, 1], dorsal), "Extra": (thick, spine),
+            "Around": (a, np.zeros(n))}
+    li = np.zeros(len(me.loops), dtype=np.int32)
+    me.loops.foreach_get("vertex_index", li)
+    # Wichtig: Erst alle UV-Ebenen anlegen, dann jede frisch über den Namen holen.
+    # Eine neue Ebene kann Blenders Speicher umräumen; alte Verweise zeigen dann ins Leere.
+    for name in ["UVMap"] + list(vals):
+        me.uv_layers.new(name=name)
+    for name, (u, w) in vals.items():
+        me.uv_layers[name].data.foreach_set("uv", np.stack([u[li], w[li]], axis=1).astype(np.float32).ravel())
+    me.uv_layers.active = me.uv_layers["UVMap"]
+    me.uv_layers["UVMap"].active_render = True
+    # Materialien: Bauch (auch Gaumen) oder Haut
+    for m_name in ("Haut", "Bauch"):
+        me.materials.append(mats[m_name])
+    fb = np.array([belly[list(p.vertices)].mean() for p in me.polygons])
+    me.polygons.foreach_set("material_index", (fb > 0.5).astype(np.int32))
+    U["kind"], U["atlas"], U["final_mats"], U["smart"] = "body3d", "A", ["Haut", "Bauch"], 1
+
+
 # =====================================================================
 # 7. Blender: Objekte, Skelett, UVs, Texturen backen, Export
 # =====================================================================
@@ -1049,13 +1358,17 @@ def to_object(part, mats):
         me.materials.append(mats[n])
     me.polygons.foreach_set("material_index", [names.index(m) for m in part.fm])
     me.polygons.foreach_set("use_smooth", [True] * len(part.f))
-    uva, uvp, uvi = (me.uv_layers.new(name=n) for n in ("UVMap", "Pattern", "Info"))
-    uvp.data.foreach_set("uv", np.array([c for fp in part.fpat for uv in fp for c in uv], dtype=np.float32))
-    uvi.data.foreach_set("uv", np.array([c for fi in part.finf for uv in fi for c in uv], dtype=np.float32))
+    for n in ("UVMap", "Pattern", "Info"):   # erst anlegen, dann frisch holen (siehe body_attributes)
+        me.uv_layers.new(name=n)
+    me.uv_layers["Pattern"].data.foreach_set(
+        "uv", np.array([c for fp in part.fpat for uv in fp for c in uv], dtype=np.float32))
+    me.uv_layers["Info"].data.foreach_set(
+        "uv", np.array([c for fi in part.finf for uv in fi for c in uv], dtype=np.float32))
     if part.fuv[0] is not None:
-        uva.data.foreach_set("uv", np.array([c for fu in part.fuv for uv in fu for c in uv], dtype=np.float32))
-    me.uv_layers.active = uva
-    uva.active_render = True
+        me.uv_layers["UVMap"].data.foreach_set(
+            "uv", np.array([c for fu in part.fuv for uv in fu for c in uv], dtype=np.float32))
+    me.uv_layers.active = me.uv_layers["UVMap"]
+    me.uv_layers["UVMap"].active_render = True
     ev = np.zeros(len(me.edges) * 2, dtype=np.int32)
     me.edges.foreach_get("vertices", ev)
     ev = ev.reshape(-1, 2)
@@ -1081,11 +1394,23 @@ def select_only(objs, active=None):
 
 
 def unwrap_atlas(objs):
-    select_only(objs)
     bpy.context.scene.tool_settings.use_uv_select_sync = True
+    smart = [o for o in objs if o.get("smart")]
+    seams = [o for o in objs if not o.get("smart")]
+    for group, how in ((seams, "seams"), (smart, "smart")):
+        if not group:
+            continue
+        select_only(group)
+        bpy.ops.object.mode_set(mode="EDIT")
+        bpy.ops.mesh.select_all(action="SELECT")
+        if how == "seams":
+            bpy.ops.uv.unwrap(method="ANGLE_BASED", margin=0.001)
+        else:  # verschmolzene Haut hat keine Nähte → automatisch in Inseln zerlegen
+            bpy.ops.uv.smart_project(angle_limit=math.radians(62), island_margin=0.001)
+        bpy.ops.object.mode_set(mode="OBJECT")
+    select_only(objs)
     bpy.ops.object.mode_set(mode="EDIT")
     bpy.ops.mesh.select_all(action="SELECT")
-    bpy.ops.uv.unwrap(method="ANGLE_BASED", margin=0.001)
     bpy.ops.uv.average_islands_scale()
     kw = dict(rotate=True, margin=0.004)
     props = {p.identifier for p in bpy.ops.uv.pack_islands.get_rna_type().properties}
@@ -1190,7 +1515,7 @@ def pat_skin(nb, na, belly_edge, mouth="none", plate_k=0.55):
     ly = nb.sub(Y, py)
     dome = nb.ss(0.0, 0.2, edge)
     hs = nb.mul(dome, nb.add(0.75, nb.mul(ly, -0.35)))       # Schuppe hebt sich nach hinten an
-    sval = nb.add(0.84, nb.add(nb.mul(dome, 0.12), nb.mul(nb.sub(rnd, 0.5), 0.16)))
+    sval = nb.add(0.86, nb.add(nb.mul(dome, 0.07), nb.mul(nb.sub(rnd, 0.5), 0.1)))
     pf = nb.m("FRACT", nb.mul(b, na * plate_k))
     pdome = nb.ss(0.0, 0.07, pf)
     hp = nb.mul(pdome, nb.add(0.6, nb.mul(pf, 0.4)))
@@ -1255,26 +1580,103 @@ def pat_eye(nb):
 
 
 def pat_membrane(nb):
-    """Flughaut: Adern grob in Flugrichtung, an den Knochen dicker (dunkler), dazwischen dünn."""
+    """Flughaut: Haupt-Adern laufen fächerförmig vom Handgelenk weg (wie die Finger), dazu ein
+    feines, schwaches Adernetz und Falten. An den Knochen ist die Haut dicker (dunkler)."""
     x, y, _ = nb.sep(nb.uv("Pattern"))
     bd, _, _ = nb.sep(nb.uv("Info"))                  # Abstand zum nächsten Knochen (Meter)
-    wob = nb.noise(nb.comb(nb.mul(x, 0.8), nb.mul(y, 0.8)), 1.0, 2.0)
-    xb, yb = nb.add(x, nb.mul(wob, 0.5)), nb.add(y, nb.mul(wob, 0.5))
-    big = nb.voronoi(nb.comb(nb.mul(xb, 1.1), nb.mul(yb, 0.33)), "DISTANCE_TO_EDGE", 1.0).outputs["Distance"]
-    small = nb.voronoi(nb.comb(nb.mul(xb, 3.0), nb.mul(yb, 1.2)), "DISTANCE_TO_EDGE", 1.0).outputs["Distance"]
-    vb, vs = nb.ss(0.026, 0.0, big), nb.ss(0.018, 0.0, small)
+    W = wing_points()["W"]
+    dx, dy = nb.sub(x, float(W[0])), nb.sub(y, float(W[1]))
+    wob = nb.noise(nb.comb(nb.mul(x, 0.9), nb.mul(y, 0.9)), 1.0, 3.0)
+    rho = nb.m("MAXIMUM", nb.m("SQRT", nb.add(nb.mul(dx, dx), nb.mul(dy, dy))), 0.6)
+    th = nb.m("ARCTAN2", dx, nb.mul(dy, -1.0))        # Winkel; die Sprungstelle liegt vor dem Arm (keine Haut)
+    thw = nb.add(th, nb.mul(nb.sub(wob, 0.5), 0.1))
+    rw = nb.add(rho, nb.mul(wob, 0.9))
+
+    def veins(k_th, k_r, width):
+        e = nb.voronoi(nb.comb(nb.mul(thw, k_th), nb.mul(rw, k_r)), "DISTANCE_TO_EDGE", 1.0).outputs["Distance"]
+        q = nb.m("DIVIDE", nb.mul(e, rho), width * k_th)  # Breite in Metern, egal wie weit vom Handgelenk
+        return nb.ss(1.2, 0.0, q)
+
+    near = nb.ss(0.6, 2.2, rho)                       # am Handgelenk laufen die Adern nicht zusammen
+    vb = nb.mul(veins(10.0, 0.35, 0.035), near)        # Haupt-Adern
+    # feines Netz kleiner Adern (ohne Richtung), schwach
+    xs, ys = nb.add(x, nb.mul(wob, 0.35)), nb.add(y, nb.mul(wob, 0.35))
+    es = nb.voronoi(nb.comb(nb.mul(xs, 2.4), nb.mul(ys, 2.4)), "DISTANCE_TO_EDGE", 1.0).outputs["Distance"]
+    vs = nb.ss(0.022, 0.0, es)
+    fib = nb.ss(0.55, 0.8, nb.noise(nb.comb(nb.mul(x, 14.0), nb.mul(y, 2.0)), 1.0, 3.0))   # feine Falten
     n2 = nb.noise(nb.comb(nb.mul(x, 3.0), nb.mul(y, 3.0)), 1.0, 3.0)
     thick = nb.ss(0.45, 0.0, bd)                       # 1 direkt am Knochen
-    val = nb.sub(nb.sub(0.95, nb.mul(vb, 0.3)), nb.mul(vs, 0.12))
-    val = nb.add(val, nb.mul(nb.sub(n2, 0.5), 0.1))
+    val = nb.sub(nb.sub(0.93, nb.mul(vb, 0.15)), nb.mul(vs, 0.06))
+    val = nb.sub(nb.add(val, nb.mul(nb.sub(n2, 0.5), 0.08)), nb.mul(fib, 0.035))
     val = nb.mul(val, nb.sub(1.0, nb.mul(thick, 0.3)))
     v = nb.add(vb, nb.mul(vs, 0.5))
-    return (nb.add(val, nb.mul(v, 0.06)), nb.sub(val, nb.mul(v, 0.06)), nb.sub(val, nb.mul(v, 0.08)),
-            nb.add(nb.add(nb.mul(vb, 1.0), nb.mul(vs, 0.5)), nb.mul(thick, 0.6)))
+    h = nb.add(nb.add(vb, nb.mul(vs, 0.45)), nb.add(nb.mul(fib, 0.12), nb.mul(thick, 0.6)))
+    return nb.add(val, nb.mul(v, 0.04)), nb.sub(val, nb.mul(v, 0.1)), nb.sub(val, nb.mul(v, 0.1)), h
+
+
+def pat_body3d(nb, na=40.0):
+    """Schuppen der verschmolzenen Haut. Rumpf, Hals, Kopf, Schwanz: Schuppen in versetzten Reihen
+    (Grösse passt sich dem Umfang an, jede Schuppe hebt sich zum Schwanz hin an). Beine und Arme:
+    3D-Muster ohne Nähte. Am Bauch quer liegende Platten, im Maul rot. Farbe nur leicht
+    verändert, die Form der Schuppen kommt vor allem aus der Normal-Map."""
+    b, belly, _ = nb.sep(nb.uv("Pattern"))
+    iy, dorsal, _ = nb.sep(nb.uv("Info"))
+    thick, spine, _ = nb.sep(nb.uv("Extra"))
+    around, _, _ = nb.sep(nb.uv("Around"))
+    P = nb.new("ShaderNodeTexCoord").outputs["Object"]
+    # a) Reihen-Schuppen am Rumpf
+    X, Y = nb.mul(around, na), nb.mul(b, na * 1.15)
+    vec = nb.comb(nb.add(X, nb.mul(Y, 0.5)), Y)          # jede Reihe um eine halbe Schuppe versetzt
+    vf, ve = nb.voronoi(vec, "F1", 0.45), nb.voronoi(vec, "DISTANCE_TO_EDGE", 0.45)
+    _, py, _ = nb.sep(vf.outputs["Position"])
+    ly = nb.sub(py, Y)                                    # > 0: hinterer Rand der Schuppe (zum Schwanz)
+    e_row, r_row = ve.outputs["Distance"], nb.sepc(vf.outputs["Color"])[0]
+    h_row = nb.mul(nb.ss(0.0, 0.3, e_row), nb.add(0.7, nb.mul(ly, 0.6)))
+
+    # b) 3D-Schuppen an Armen und Beinen
+    def cells(size):
+        v3 = nb.new("ShaderNodeVectorMath", operation="SCALE")
+        nb.nt.links.new(P, v3.inputs[0])
+        v3.inputs["Scale"].default_value = 1.0 / size
+        f = nb.new("ShaderNodeTexVoronoi", voronoi_dimensions="3D", feature="F1")
+        e = nb.new("ShaderNodeTexVoronoi", voronoi_dimensions="3D", feature="DISTANCE_TO_EDGE")
+        for n in (f, e):
+            nb.nt.links.new(v3.outputs[0], n.inputs["Vector"])
+            n.inputs["Randomness"].default_value = 0.85
+        return e.outputs["Distance"], nb.sepc(f.outputs["Color"])[0]
+
+    e3, r3 = cells(0.13)
+    h_3d = nb.ss(0.0, 0.3, e3)
+    k = nb.ss(0.35, 0.8, spine)
+    edge, rnd, hs = nb.mix(e3, e_row, k), nb.mix(r3, r_row, k), nb.mix(h_3d, h_row, k)
+    crev = nb.ss(0.07, 0.0, edge)                         # schmale Fugen zwischen den Schuppen
+    sval = nb.add(0.9, nb.add(nb.mul(crev, -0.16), nb.mul(nb.sub(rnd, 0.5), 0.1)))
+    # Bauchplatten
+    pf = nb.m("FRACT", nb.mul(b, na * 0.55))
+    pdome = nb.ss(0.0, 0.07, pf)
+    hp = nb.mul(pdome, nb.add(0.6, nb.mul(pf, 0.4)))
+    pval = nb.add(0.84, nb.mul(pdome, 0.1))
+    val, h = nb.mix(sval, pval, belly), nb.mix(hs, hp, belly)
+    groove = nb.ss(0.2, 0.0, nb.m("ABSOLUTE", nb.sub(belly, 0.5)))       # Rille an der Bauchkante
+    val = nb.mul(val, nb.sub(1.0, nb.mul(groove, 0.25)))
+    val = nb.mul(val, nb.sub(1.0, nb.mul(dorsal, 0.22)))                  # Rücken dunkler
+    blot = nb.ss(0.55, 0.72, nb.noise(P, 0.55, 2.0, "3D"))
+    val = nb.mul(val, nb.sub(1.0, nb.mul(nb.mul(blot, dorsal), 0.3)))     # Flecken auf dem Rücken
+    mott = nb.noise(P, 0.25, 3.0, "3D")
+    val = nb.mul(val, nb.add(0.86, nb.mul(mott, 0.28)))
+    r, g, bl = val, nb.mul(val, 0.985), nb.mul(val, 0.955)
+    mm = nb.mul(nb.ss(HEAD_Y - 0.02, HEAD_Y + 0.02, iy), belly)           # Gaumen = Maul innen
+    mn = nb.noise(P, 6.0, 2.0, "3D")
+    r = nb.mix(r, nb.add(0.5, nb.mul(mn, 0.1)), mm)
+    g = nb.mix(g, 0.14, mm)
+    bl = nb.mix(bl, 0.15, mm)
+    h = nb.mix(h, nb.mul(mn, 0.3), mm)
+    return r, g, bl, h
 
 
 PATTERNS = {
     "body": (lambda nb: pat_skin(nb, 40.0, BELLY_COLS / R_BODY, "head"), 0.02),
+    "body3d": (lambda nb: pat_body3d(nb), 0.02),
     "jaw": (lambda nb: pat_skin(nb, 30.0, JAW_BELLY_COLS / R_JAW, "jaw"), 0.015),
     "limb": (lambda nb: pat_skin(nb, 26.0, 0.09), 0.015),
     "horn": (lambda nb: pat_horn(nb), 0.008),
@@ -1444,18 +1846,8 @@ def build(args):
     J = JawShape(B)
     wp = wing_points()
     chain = body_chain(B)
-    log("Form berechnen …")
-    parts = [build_body(B, chain), build_jaw(B, J)]
-    leg = build_leg_R()
-    toes, claws_f = build_toes_R()
-    arm, fingers, claws_h = build_arm_R(wp)
-    mem = build_membrane_R(B, chain, wp)
-    for p in (leg, toes, claws_f, arm, fingers, claws_h, mem):
-        parts += [p, mirror_part(p, p.name[:-2] + "_L")]
-    parts += [build_horns(B, J, chain), build_teeth(B, J), build_eyes(B)]
-    for p in parts:
-        log(f"  {p.name:18s} {len(p.v):6d} Punkte {p.ntris():6d} Dreiecke")
-    log("Summe Dreiecke:", sum(p.ntris() for p in parts))
+    bones = bone_list(B, J, wp)
+    arm_obj = build_armature(bones)
 
     # --- Bilder und Materialien ---
     res = args.tex
@@ -1464,10 +1856,42 @@ def build(args):
             "B_nrm": new_image("flughaut_normal", res, res // 2, True)}
     final = {n: gltf_material(n, imgs["B_col" if n == "Flughaut" else "A_col"],
                               imgs["B_nrm" if n == "Flughaut" else "A_nrm"]) for n in MAT_ORDER}
-    objs = [to_object(p, final) for p in parts]
+
+    # --- Haut: Rumpf, Kopf, Beine, Arme und Muskeln verschmelzen ---
+    log("Form berechnen …")
+    leg = build_leg_R()
+    toes, claws_f = build_toes_R()
+    arm, fingers, claws_h = build_arm_R(wp)
+    log("Haut verschmelzen …")
+    union = union_body([build_body(B, chain), leg, mirror_part(leg, "Bein_L"), arm, mirror_part(arm, "Arm_L")],
+                       muscle_list(B, wp), voxel=args.voxel, target_tris=args.body_tris)
+    log("Knochen-Gewichte berechnen …")
+    heat_weights(union, arm_obj, bones)
+    probe = SurfaceProbe(B, union)
+    body_attributes(union, B, bones, final)
+
+    # --- Anbauteile: sitzen genau auf der neuen Haut ---
+    parts = [build_jaw(B, J)]
+    for p in (toes, claws_f, fingers, claws_h, build_membrane_R(probe, chain, wp)):
+        parts += [p, mirror_part(p, p.name[:-2] + "_L")]
+    parts += [build_horns(probe, J, chain), build_teeth(probe, J), build_eyes(probe)]
+    union_tris = sum(len(p.vertices) - 2 for p in union.data.polygons)
+    log(f"  {'Koerper':18s} {len(union.data.vertices):6d} Punkte {union_tris:6d} Dreiecke")
+    for p in parts:
+        log(f"  {p.name:18s} {len(p.v):6d} Punkte {p.ntris():6d} Dreiecke")
+    log("Summe Dreiecke:", union_tris + sum(p.ntris() for p in parts))
+    objs = [union] + [to_object(p, final) for p in parts]
+    squash_objects(objs, arm_obj, bones)
+    bones = [(n, squash(h), squash(t), par, up) for n, h, t, par, up in bones]
     atlas_a = [o for o in objs if o["atlas"] == "A"]
     log("UVs auffalten und packen …")
     unwrap_atlas(atlas_a)
+    # Ankerpunkte: Maul, Nüstern (Kopf, gekürzt wie der Kopf) und Sattel (auf der Haut)
+    s = B.s_of_y(9.6)
+    T, Sd, U = B.frame(s)
+    mouth = squash(B.curve.at(B.s_of_y(9.85)) - U * 0.12 + T * 0.1)
+    nostril = squash(probe.point(B.s_of_y(9.55), math.pi) + U * 0.02)
+    saddle = probe.point(B.s_of_y(2.7), math.pi) + vec3(0, 0, 0.05)
 
     # --- Texturen backen ---
     if not args.no_bake:
@@ -1500,28 +1924,22 @@ def build(args):
 
     # --- alles zu EINEM Objekt verbinden, Hilfs-UVs entfernen ---
     for o in objs:
-        for n in ("Pattern", "Info"):
-            o.data.uv_layers.remove(o.data.uv_layers[n])
+        for n in ("Pattern", "Info", "Extra", "Around"):
+            if n in o.data.uv_layers:
+                o.data.uv_layers.remove(o.data.uv_layers[n])
     body = objs[0]
     select_only(objs, body)
     bpy.ops.object.join()
     body.name = body.data.name = "Drache"
-    for k in ("kind", "atlas", "final_mats"):
+    for k in ("kind", "atlas", "final_mats", "smart"):
         if k in body:
             del body[k]
 
     # --- Skelett und Anker ---
-    bones = bone_list(B, J, wp)
-    arm_obj = build_armature(bones)
     # Das Mesh bleibt ohne Eltern-Objekt (glTF: gehäutetes Mesh soll an oberster Stelle stehen);
     # die Verbindung zum Skelett macht der Armature-Modifier.
     mod = body.modifiers.new("Armature", "ARMATURE")
     mod.object = arm_obj
-    s = B.s_of_y(9.6)
-    T, Sd, U = B.frame(s)
-    mouth = B.curve.at(B.s_of_y(9.85)) - U * 0.12 + T * 0.1
-    nostril = B.point(B.s_of_y(9.55), math.pi) + U * 0.02
-    saddle = B.point(B.s_of_y(2.7), math.pi) + vec3(0, 0, 0.05)
     anchors = [add_anchor("Anker_Maul", mouth, arm_obj, "head"),
                add_anchor("Anker_Nuestern", nostril, arm_obj, "head"),
                add_anchor("Anker_Sattel", saddle, arm_obj, "chest")]
@@ -1565,7 +1983,7 @@ def write_bones_json(path, glb, bones, body, anchors, anchor_pos):
                   "spannweite_m": round(float(g[:, 0].max() - g[:, 0].min()), 2),
                   "hoehe_m": round(float(g[:, 1].max() - g[:, 1].min()), 2),
                   "boden_y_im_stand": round(GROUND_Z, 3)},
-        "kopf": {"schnauzenspitze": to_gltf(BodyShape().curve.at(BodyShape().curve.length)),
+        "kopf": {"schnauzenspitze": to_gltf(squash(BodyShape().curve.at(BodyShape().curve.length))),
                  "knochen": "head", "unterkiefer": "jaw"},
         "anker": {a.name: {"knochen": a.parent_bone, "position": to_gltf(anchor_pos[k])}
                   for a, k in zip(anchors, ("mouth", "nostril", "saddle"))},
@@ -1681,6 +2099,9 @@ def check(args):
         "vorschau_oben": ((0, -0.5, 42), (0, -0.5, 0), 30),
         "vorschau_vorne": ((0, 32, 4), (0, 0, 0.5), 32),
         "vorschau_kopf": ((3.8, 12.5, 2.6), (0, 8.4, 1.2), 45),
+        "vorschau_hinten": ((-5, -17, 7.5), (0, 0.5, 0.3), 30),
+        "vorschau_schulter": ((6.5, 6.5, 4.0), (1.3, 1.2, 0.2), 32),
+        "vorschau_unten": ((9, 3, -2.2), (0, -0.8, -0.9), 28),
     }
     only = set(args.views.split(",")) if args.views else None
     for name, (loc, tgt, lens) in views.items():
@@ -1713,6 +2134,8 @@ def main():
     ap.add_argument("--bones", help="Ziel-Datei für die Knochen-JSON")
     ap.add_argument("--tex", type=int, default=2048, help="Texturgrösse (Standard 2048)")
     ap.add_argument("--no-bake", action="store_true", help="ohne Texturen (schneller Test)")
+    ap.add_argument("--voxel", type=float, default=0.03, help="Voxel-Grösse beim Verschmelzen (Meter)")
+    ap.add_argument("--body-tris", type=int, default=42000, help="Dreiecke der verschmolzenen Haut")
     ap.add_argument("--save-blend", action="store_true", help="Zwischenstand als .blend im Arbeitsordner speichern")
     ap.add_argument("--check", help="GLB einlesen und prüfen (statt bauen)")
     ap.add_argument("--no-render", action="store_true")
@@ -1721,10 +2144,10 @@ def main():
     args = ap.parse_args(argv)
     if args.check:
         check(args)
-    else:
-        if not args.glb:
-            ap.error("--glb fehlt")
-        build(args)
+        return
+    if not args.glb:
+        ap.error("--glb fehlt")
+    build(args)
 
 
 if __name__ == "__main__":

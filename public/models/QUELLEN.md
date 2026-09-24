@@ -6,8 +6,8 @@
 Blender gebaut: `tools/build_dragon.py`.
 
 - Es wurden **keine fremden Modelle, Texturen oder Bilder** verwendet.
-- Form, Skelett und Texturen (Schuppen, Bauchplatten, Adern) entstehen nur aus
-  Formeln im Skript.
+- Form, Muskeln, Skelett und Texturen (Schuppen, Bauchplatten, Adern) entstehen
+  nur aus Formeln im Skript.
 - **Keine Namensnennung nötig.** Das Modell darf im Projekt frei benutzt und
   verändert werden. Wenn das Projekt eine eigene Lizenz bekommt, gilt diese
   auch für das Modell.
@@ -33,8 +33,8 @@ Blender gebaut: `tools/build_dragon.py`.
 
 ### Kurz-Steckbrief
 
-- Format: glTF 2.0 binär (GLB), ca. 5,6 MB
-- ca. 63 400 Dreiecke, 1 Mesh mit 6 Materialien, 50 Knochen (Skinning)
+- Format: glTF 2.0 binär (GLB), ca. 5,0 MB
+- ca. 70 900 Dreiecke, 1 Mesh mit 6 Materialien, 50 Knochen (Skinning)
 - Texturen: 2 × 2048 × 2048 (Haut: Farbe + Normal-Map), 2 × 2048 × 1024 (Flughaut)
 - Meter, +Y oben, Kopf zeigt nach −Z (wie im Spiel)
 - Neu bauen: siehe Kopf von `tools/build_dragon.py`
