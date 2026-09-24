@@ -1,123 +1,153 @@
-# Bericht: Drachen-Modell „Scales“ (Sintel) – Download
+# Bericht: Drache „Scales“ für DragonTwin
 
-**Ergebnis: ABGEBROCHEN – der Download geht nur mit Anmeldung (Login).**
-Laut Sicherheitsregel 1 wurde das **nicht umgangen**.
-Es wurde **kein Modell** heruntergeladen, **nichts installiert** und **nichts umgewandelt**.
+**Ergebnis: ERLEDIGT – mit einem selbst gebauten Drachen.**
 
-Datum der Prüfung: 24.09.2026, ca. 12:51–12:53 UTC (2. Versuch)
-Nochmals geprüft: 24.09.2026, 13:09 UTC (3. Versuch) – **gleiches Ergebnis**, siehe Abschnitt 6.
+- Das Sintel-Modell „Scales (adult dragon)“ gibt es nur **mit Anmeldung / Abo**.
+  Darum wurde es nicht heruntergeladen (Teil A).
+- Stattdessen wurde ein **eigener Wyvern komplett per Skript in Blender gebaut**
+  und als GLB exportiert (Teil B).
+- Neue Dateien: `public/models/dragon_scales.glb`, `public/models/QUELLEN.md`,
+  `tools/build_dragon.py`, `tools/dragon_scales_bones.json`, dieser Bericht.
+
+Datum: 24.09.2026
 
 ---
 
-## 1. Kurz erklärt
-
-- Beim 1. Versuch war die Blender-Seite durch den Netzwerk-Filter gesperrt.
-  **Das ist jetzt gelöst:** `studio.blender.org` antwortet normal (HTTP 200).
-- **Neues Problem:** Auf der Modell-Seite ist der Download-Knopf gesperrt.
-  Dort steht: **„Login to Download“** (mit Schloss-Symbol).
-- Das gilt für **beide** Versionen (v2 und v1).
-- Regel 1 sagt: Anmeldung oder Abo nötig → **nicht umgehen, abbrechen**.
-  Genau das wurde gemacht.
-
-## 2. Geprüfte Adressen
-
-Nur HTTPS, nur offizielle Blender-Domains. Es wurden nur Web-Seiten (HTML) gelesen.
-Sie lagen nur im Arbeitsordner **ausserhalb** des Repos und wurden danach gelöscht.
-
-| Adresse | Antwort | Was steht dort? |
-|---|---|---|
-| https://studio.blender.org/characters/5d403c21ee3219164b952e20/v2/ | 200 (56 KB) | Modell-Seite v2. Knopf „Login to Download“ (gesperrt) |
-| https://studio.blender.org/characters/5d403c21ee3219164b952e20/v1/ | 200 (58 KB) | Modell-Seite v1. Knopf „Login to Download“ (gesperrt) |
-| https://studio.blender.org/projects/sintel/ | 200 (54 KB) | Projekt-Seite Sintel. Kein freier Download des Modells |
-| https://studio.blender.org/join/ | 200 (52 KB) | Abo-Seite. Zugang zu „production assets“ mit Abo |
-| https://durian.blender.org/download/ | 200 (27 KB) | Offizielle Sintel-Download-Seite: nur Film, Trailer, Musik, Untertitel – **keine Modelle** |
-| https://download.blender.org/durian/ | 200 (70 Bytes) | Keine Datei-Liste, nur „Please visit www.blender.org …“ |
-
-## 3. Warum der Download nicht möglich ist (genau)
-
-- Auf beiden Modell-Seiten ist der Knopf **deaktiviert** (`disabled`) und zeigt ein Schloss.
-- Im HTML-Code gibt es für nicht angemeldete Besucher **keinen Download-Link**.
-- Die Seite meldet selbst: Besucher ist **nicht angemeldet** (`"is_authenticated": false`).
-- Die Abo-Seite (`/join/`) nennt bei den bezahlten Abos:
-  „Full access to production assets“. Charaktere gehören zu diesen Assets.
-  - monatlich: 17 $ pro Monat
-  - alle drei Monate: 11.50 $ pro Monat
-- **Vermutung:** Man braucht ein **Blender-ID-Konto mit bezahltem Abo**.
-  Ob ein kostenloses Konto reicht, kann man ohne Konto nicht prüfen.
-
-**Was bewusst NICHT gemacht wurde** (Regel 1):
-
-- kein Konto angelegt, kein Login
-- keine versteckten Download-Adressen erraten oder ausprobiert
-- keine anderen Webseiten, keine Mirrors
-- keine Tricks am Netzwerk-Filter
-
-## 4. Infos zum Modell (von den Seiten abgelesen)
-
-| Version | Für Blender | Veröffentlicht | Veröffentlicht von | Lizenz |
-|---|---|---|---|---|
-| v2 | 3.4 | 16.11.2022 | Beau Gerbrands | CC-BY 4.0 |
-| v1 | 2.80 | 30.07.2019 | Andy Goralczyk | CC-BY 4.0 |
-
-Nützlich für später (aus der Beschreibung von v2):
-
-- Die Collection heisst **`CH-Dragon.Adult`**.
-- Die Materialien sind schon **Principled BSDF** → passt gut zu glTF.
-- Am Knochen **„Root“** gibt es einen Regler für die Detail-Stufe (max. 5)
-  und einen Schalter **„dragon_low“** (auf 1 = einfaches Modell für Animation).
-- Lizenz [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/):
-  Teilen und Verändern ist erlaubt, aber man muss **Blender Studio / Blender Foundation nennen**.
-
-## 5. Pflicht-Angaben aus dem Auftrag
-
-| Punkt | Ergebnis |
-|---|---|
-| Heruntergeladene Modell-Datei | **keine** |
-| Dateigrösse / SHA256 | – (keine Datei) |
-| Dateityp-Prüfung (`file`, „BLENDER“ / ZIP) | – (nichts zu prüfen) |
-| Text-Blöcke / Skripte in der .blend | – (keine Datei geöffnet) |
-| Installationen | **keine** (`bpy` nicht installiert, `gltf-validator` nicht gestartet) |
-| Exportiert (Meshes, Dreiecke, Knochen, Texturen, GLB) | **nichts** |
-| Validator-Ergebnis | – (nichts zu prüfen) |
-
-Geänderte Datei im Repo: **nur dieser Bericht**.
-Es gibt also noch **keine** `public/models/dragon_scales.glb`, keine `QUELLEN.md`,
-keine Knochen-JSON und kein Umwandlungs-Skript.
-
-## 6. Alle Versuche
+## Teil A – Download des Sintel-Modells (abgebrochen)
 
 | Versuch | Zeit (UTC) | Ergebnis |
 |---|---|---|
-| 1 | ca. 12:48 | Netzwerk-Filter sperrte alle `*.blender.org`-Adressen (Proxy-Antwort 403). Inzwischen behoben. |
-| 2 | ca. 12:51–12:53 | Seite erreichbar, aber „Login to Download“ bei v1 und v2 (siehe oben). |
-| 3 | 13:09 | Gleich wie Versuch 2: v1 und v2 zeigen „Login to Download“, Besucher nicht angemeldet. Keine Anmelde-Daten in der Umgebung, nichts Neues im Repo. |
+| 1 | ca. 12:48 | Netzwerk-Filter sperrte alle `*.blender.org`-Adressen (Proxy-Antwort 403). |
+| 2 | 12:51–12:53 | Seite erreichbar (HTTP 200), aber Knopf **„Login to Download“** bei v1 und v2 (gesperrt). |
+| 3 | 13:09 | Gleich wie Versuch 2. |
 
-**Wichtig:** Nochmals versuchen hilft nicht. Das Problem ist kein Netzwerk-Fehler,
-sondern eine **Anmelde-Pflicht**. Die Cloud-Sitzung hat kein Blender-Konto.
-Erst wenn sich etwas ändert (siehe Abschnitt 7), kann es klappen.
+- Geprüfte Seiten: `studio.blender.org/characters/5d403c21ee3219164b952e20/v2/` und `/v1/`,
+  `studio.blender.org/projects/sintel/`, `studio.blender.org/join/`,
+  `durian.blender.org/download/`, `download.blender.org/durian/`.
+- Die Abo-Seite nennt „Full access to production assets“ nur bei bezahlten Abos
+  (ab 11.50 $ pro Monat).
+- Die offizielle Sintel-Download-Seite bietet nur Film, Trailer, Musik und
+  Untertitel an, **keine Modelle**.
+- Laut Regel 1 **nicht umgangen**: kein Konto, keine erratenen Download-Adressen,
+  keine anderen Webseiten.
+- Heruntergeladene Modell-Datei: **keine**. Darum gibt es keine SHA256, keine
+  Dateityp-Prüfung und keine Liste von Text-Blöcken. Es wurde nie eine
+  fremde `.blend`-Datei geöffnet.
 
-## 7. Offene Punkte – Entscheidung nötig
+---
 
-**Möglichkeit A – Modell selbst mit eigenem Konto holen**
+## Teil B – eigener Drache per Skript
 
-1. Auf https://studio.blender.org mit der eigenen Blender ID anmelden
-   (vermutlich mit bezahltem Abo).
-2. „Scales (adult dragon)“ **v2** herunterladen.
-3. Die .blend-Datei **nicht** ins Repo legen (Regel 2).
-4. Umwandeln auf dem eigenen Computer. Eine neue Sitzung kann dafür
-   `tools/convert_dragon.py` schreiben und an einem Test-Modell prüfen.
-5. Sicherheit beim Öffnen in Blender:
-   - „Auto Run Python Scripts“ ist in Blender von Anfang an **aus**. So lassen.
-   - Kommt eine Warnung zu Python-Skripten: **„Ignore“** wählen.
-6. Die fertige GLB-Datei darf ins Repo (CC-BY 4.0), mit Namensnennung in
-   `public/models/QUELLEN.md`.
+### Was gebaut wurde
 
-**Möglichkeit B – anderes Drachen-Modell**
+Ein **Wyvern** wie Scales: Die Flügel sind die Arme, dazu zwei Hinterbeine.
+Die Masse stammen vom bisherigen Drachen im Spiel-Code (22–23 m lang, 25 m Spannweite).
 
-- Ein Modell wählen, das **ohne Anmeldung** frei verfügbar ist (Lizenz CC0 oder CC-BY).
-- Dafür muss Regel 1 angepasst werden (sie erlaubt nur `*.blender.org`).
+| Teil | Dreiecke |
+|---|---|
+| Körper mit Oberkopf (Hals, Rumpf, Schwanz) | 19 392 |
+| Unterkiefer (klappbar) | 3 776 |
+| 2 Beine + Zehen + Fusskrallen | 8 704 |
+| 2 Arme + je 4 Finger + Daumen + Daumenkralle | 16 344 |
+| 2 Flughäute | 3 474 |
+| Hörner, Kiefer-, Rücken- und Schwanzstacheln | 8 496 |
+| Zähne (oben und unten) | 2 484 |
+| Augen (mit Schlitz-Pupille) | 704 |
+| **Summe** | **63 374** |
 
-**Möglichkeit C – beim Drachen aus Code bleiben**
+Alles wird im Skript aus Formeln berechnet: Querschnitte entlang einer Mittellinie,
+Röhren für Beine, Finger und Hörner, eine gewölbte Flughaut mit gewellter
+Hinterkante.
 
-- Der bisherige Drache (Teil A, alles im Code) funktioniert weiter.
-- Das Spiel braucht das Modell nicht, um zu laufen.
+### Sicherheit
+
+- **Keine** fremden Modelle, Texturen oder Bilder. Nichts aus dem Internet
+  ausser den zwei Werkzeugen unten.
+- Installiert wurde nur im Arbeitsordner **ausserhalb des Repos**:
+  1. `bpy==5.0.1` (Blender als Python-Paket, Blender Foundation) von PyPI in einem venv.
+     Datei `bpy-5.0.1-cp311-cp311-manylinux_2_28_x86_64.whl`, 374 257 847 Bytes,
+     SHA256 laut PyPI `79c6e421f53ea24a5961d86eefb8141798eee708682415eb4f5a952c2abdeb8b`.
+     pip prüft diese Prüfsumme automatisch. Mit installiert (Abhängigkeiten von bpy):
+     numpy, requests, cython, zstandard, urllib3, idna, certifi, charset_normalizer.
+  2. `gltf-validator@2.0.0-dev.3.10` (Khronos Group, Apache-2.0) von npm.
+     Das Paket ist nur eine Bibliothek ohne Befehl, darum geht `npx gltf-validator`
+     nicht direkt. Es wurde mit `npm install --ignore-scripts` geladen
+     (keine Installations-Skripte, keine weiteren Pakete).
+     npm prüft die Prüfsumme `sha512-odJ4k0tR…ascH2LAEQ==`.
+- Im Skript: `use_scripts_auto_execute = False`. Es wird keine fremde Datei geöffnet.
+- Die GLB enthält nur Daten (Geometrie, Skelett, Bilder), keinen Code.
+
+### Ergebnis
+
+| Punkt | Wert |
+|---|---|
+| Datei | `public/models/dragon_scales.glb` |
+| Grösse | 5 539 272 Bytes (ca. 5,5 MB) |
+| SHA256 | `a92b153e065a0a66805711c104f0ba332f7e1b552dd5f7353f443de4ee924416` |
+| Meshes | 1 (`Drache`), 6 Materialien → 6 Draw-Calls |
+| Dreiecke / Punkte | 63 374 / 35 004 |
+| Knochen | 50, alle verformend, max. 4 Knochen pro Punkt |
+| Texturen (JPEG in der GLB) | Haut: Farbe + Normal-Map je 2048 × 2048; Flughaut: Farbe + Normal-Map je 2048 × 1024 |
+| Extras | Tangenten (für die Normal-Maps), 3 Ankerpunkte, Erweiterung `KHR_materials_emissive_strength` (leuchtende Augen) |
+| Animationen | keine |
+| Masse | Länge 23,15 m, Spannweite 25,19 m, Höhe 5,01 m |
+
+### Prüfungen
+
+- **Khronos glTF-Validator:** **0 Fehler, 0 Warnungen**, 3 Infos.
+  Die 3 Infos heissen „leerer Knoten“. Das sind die gewollten Ankerpunkte.
+- **Wieder eingelesen mit Blender (bpy):** 1 Mesh, 63 374 Dreiecke, 50 Knochen,
+  6 Materialien, 4 Bilder, 3 Anker. Das passt zum Export.
+- **Vorschaubilder mit Cycles** (von schräg, Seite, oben, vorne, Kopf):
+  Form, Texturen und Farben stimmen.
+- **Test-Pose:** Flügel hoch, Maul auf, Hals und Schwanz zur Seite, Beine angezogen.
+  Die Haut verformt sich sauber, und die Flughaut bleibt am Körper.
+- Die Vorschaubilder sind **nicht** im Repo (sie gehören nicht zur Liste der Dateien).
+
+---
+
+## Hinweise für den Einbau ins Spiel (Teil C)
+
+- **Richtung und Grösse:** Meter, +Y oben, der Kopf zeigt nach **−Z**, rechts ist +X.
+  Das Modell ist schon so gross wie der bisherige Drache im Spiel (Skalierung 1).
+- **Ursprung:** Körpermitte (Knochen `root`), wie bisher im Spiel-Code.
+  Die Füsse stehen bei y = −2,66.
+- **Knochen:** Namen, Eltern, Positionen und Ruhe-Drehungen stehen in
+  `tools/dragon_scales_bones.json`. Wichtig: Die Knochen haben eine eigene
+  Ruhe-Drehung, darum immer **relativ dazu** drehen.
+  - Wirbelsäule: `root`, `chest`, `neck_01`–`neck_05`, `head`, `jaw`, `hips`, `tail_01`–`tail_08`
+  - Beine: `thigh_`, `shin_`, `foot_`, `toes_` + `L`/`R`
+  - Flügel: `upperarm_`, `forearm_`, `hand_`, `thumb_`, `finger1_1_` … `finger4_2_` + `L`/`R`
+- **Ruhepose:** Flügel gespreizt, Beine stehend, Maul zu.
+  Flügel anlegen = Finger- und Armknochen drehen.
+- **Anker (leere Knoten im GLB):** `Anker_Maul` (Feuer, am Kopf), `Anker_Nuestern`
+  (Rauch, am Kopf), `Anker_Sattel` (Reiter, an der Brust).
+  Rund um den Sattel gibt es keine Rückenstacheln.
+- **Farben ändern (Customization.js):** Die Texturen sind fast farblos. Die Farbe
+  kommt aus der Materialfarbe. Also einfach `material.color` setzen:
+  - `Haut` ← `skin.body`, `Bauch` ← `skin.belly` (auch Gaumen und Kehle),
+    `Flughaut` ← `skin.membrane`, `Horn` ← `skin.horn` (auch Zähne),
+    `Kralle` bleibt dunkel, `Auge` → `emissive` ← `skin.eye`.
+  - Standard ist der Skin „Grau“.
+- **Flughaut** ist eine einzelne, beidseitige Fläche (`doubleSided`). Das Durchscheinen
+  wie im alten Code (etwas `emissive`) kann man im Spiel dazugeben.
+- Der **Reiter** und das **Leuchten im Maul** sind nicht im Modell.
+  Beides macht der Spiel-Code wie bisher.
+
+---
+
+## Probleme und offene Punkte
+
+- Das ist **nicht** der Sintel-Drache. Er ist einfacher: keine modellierten Muskeln,
+  das Maul-Innere ist schlicht, die Flughaut ist eine dünne Fläche.
+- Im Spiel selbst wurde das Modell **nicht** getestet. Dafür hätte man die
+  Projekt-Pakete (npm) installieren müssen, und das war nicht erlaubt.
+  Geprüft wurde mit Blender und dem Khronos-Validator.
+  **Bitte beim Einbau im Browser kontrollieren.**
+- Ganz nah sieht man an wenigen Textur-Nähten (Bauchnaht, zwei Schnitte am Schwanz)
+  eine feine Linie.
+- Normal-Maps als JPEG haben leichte Kompressions-Spuren. Aus der Spiel-Entfernung
+  sieht man das nicht.
+- Das Skript heisst `tools/build_dragon.py` statt `convert_dragon.py`,
+  weil es nichts umwandelt, sondern baut.
+- Neu bauen dauert ca. 2 Minuten (4 CPU-Kerne), Anleitung im Kopf des Skripts.
