@@ -41,9 +41,28 @@ Datum: 24.09.2026
 ### Was gebaut wurde
 
 Ein **Wyvern** wie Scales: Die Flügel sind die Arme, dazu zwei Hinterbeine.
-Grösse etwa wie der bisherige Drache im Spiel-Code: ca. 21 m lang, 29 m Spannweite.
+Grösse: ca. 21 m lang, 35,5 m Spannweite.
 
-**Version 4** (aktuell) – „ein wilder Wyvern“, weil Version 3 noch nicht wie ein Drache aussah.
+**Version 5** (aktuell) – im Stil der Drachen aus *Game of Thrones* (nach Bildern von
+Sammelfiguren, die der Benutzer geschickt hat). Es ist ein eigenes Modell, nichts wurde
+kopiert; nur der Stil (schwarz-rot, riesige Fledermaus-Flügel) ist ähnlich.
+
+- **Riesige, breite Flügel:** langer Unterarm (5,6 m), 4 lange Finger (5,6–8 m), weit
+  gefächert. Spannweite 35,5 m statt 29 m, die Flügel sind viel breiter (tiefer).
+- **Tiefe Bögen** in der Flughaut zwischen den Fingerspitzen (`SCALLOP = 0.38`),
+  dunkler Saum am Rand der Flughaut.
+- **Stacheln an den Seiten des Schwanzes** (wie ein gezackter Saum).
+- **Neues Material `Stachel`** für Rücken- und Schwanzstacheln: Sie können eine eigene
+  Farbe haben (z. B. rot), während Hörner und Zähne hell bleiben.
+- **Farben:** neue Standardfarbe **Schwarz-Rot** (schwarzer Körper, dunkelrote Flughaut,
+  rote Stacheln) und neu **Smaragdgrün** (grün mit Bronze-Flughaut und leichtem Glanz).
+- Hinweis: Der Benutzer hatte auch einen Text für ein eigenes Blender-Skript mit
+  *Subdivision Level 2*, SSS und Musgrave-Textur geschickt. Umgesetzt wurde auf Wunsch nur
+  der Umbau des Spiel-Drachen. Subdivision Level 2 hätte das Modell etwa 16-mal schwerer
+  gemacht (über 1 Million Dreiecke), SSS und prozedurale Shader gibt es im Spiel (Three.js)
+  nicht direkt, und den Musgrave-Knoten gibt es seit Blender 4.1 nicht mehr.
+
+**Version 4** – „ein wilder Wyvern“, weil Version 3 noch nicht wie ein Drache aussah.
 Gewünscht war: 2 Beine, Flügel = Arme (wie in Game of Thrones oder Skyrim), aber wilder.
 
 - **Hals in S-Form:** steigt von den Schultern steil an, der Kopf schaut nach vorne-unten.
@@ -60,7 +79,7 @@ Gewünscht war: 2 Beine, Flügel = Arme (wie in Game of Thrones oder Skyrim), ab
   die Flughaut reicht hinten bis zur Hüfte.
 - **Rückenstacheln:** grösser, am Hals und an den Schultern am grössten.
 - **Füsse:** längere Zehen, grosse Krallen wie bei Greifvögeln.
-- **Farbe im Spiel:** Standard ist jetzt **Schwarz** statt Grau (siehe Teil C).
+- **Farbe im Spiel:** Standard war in Version 4 **Schwarz** statt Grau (siehe Teil C).
 
 Schon seit Version 3:
 
@@ -76,12 +95,12 @@ Schon seit Version 3:
 | Haut: Rumpf, Hals, Oberkopf, Schwanz, Beine, Arme, Muskeln (verschmolzen) | 42 000 |
 | Unterkiefer (klappbar) | 3 776 |
 | Zehen + Fusskrallen (beide Seiten) | 3 904 |
-| Finger + Daumen + Daumenkrallen (beide Seiten) | 9 400 |
+| Finger + Daumen + Daumenkrallen (beide Seiten) | 12 232 |
 | 2 Flughäute | 3 990 |
-| Hörner, Stacheln an Kopf, Rücken und Schwanzspitze | 8 132 |
+| Hörner und Stacheln (Kopf, Rücken, Schwanz-Seiten, Schwanzspitze) | 10 436 |
 | Zähne (oben und unten) | 2 244 |
 | Augen (mit Schlitz-Pupille) | 704 |
-| **Summe** | **74 150** |
+| **Summe (Version 5)** | **79 286** |
 
 Alles wird im Skript aus Formeln berechnet: Querschnitte entlang einer Mittellinie,
 Röhren für Beine, Finger und Hörner, Ellipsoide für Muskeln, eine gewölbte
@@ -110,22 +129,22 @@ Flughaut mit gewellter Hinterkante.
 | Punkt | Wert |
 |---|---|
 | Datei | `public/models/dragon_scales.glb` |
-| Grösse | 5 623 000 Bytes (ca. 5,6 MB) |
-| SHA256 | `a18d2f46742cc11a6a96a96aa5279a1a557c79fe5c256e00191330c32fc250b7` |
-| Meshes | 1 (`Drache`), 6 Materialien → 6 Draw-Calls |
-| Dreiecke / Punkte | 74 150 / 42 969 |
+| Grösse | 6 308 332 Bytes (ca. 6,3 MB) |
+| SHA256 | `26dc331405faf09b01e3342820c4ae1b4f384cd544e39a063193ac22945a1524` |
+| Meshes | 1 (`Drache`), 7 Materialien → 7 Draw-Calls |
+| Dreiecke / Punkte | 79 286 / 46 754 |
 | Knochen | 50, alle verformend, max. 4 Knochen pro Punkt |
 | Texturen (JPEG in der GLB) | Haut: Farbe + Normal-Map je 2048 × 2048; Flughaut: Farbe + Normal-Map je 2048 × 1024 |
 | Extras | Tangenten (für die Normal-Maps), 3 Ankerpunkte, Erweiterung `KHR_materials_emissive_strength` (leuchtende Augen) |
 | Animationen | keine |
-| Masse | Länge 21,09 m, Spannweite 29,29 m, Höhe 6,87 m (mit Hörnern) |
+| Masse | Länge 21,09 m, Spannweite 35,48 m, Höhe 6,87 m (mit Hörnern) |
 
 ### Prüfungen
 
 - **Khronos glTF-Validator:** **0 Fehler, 0 Warnungen**, 3 Infos.
   Die 3 Infos heissen „leerer Knoten“. Das sind die gewollten Ankerpunkte.
-- **Wieder eingelesen mit Blender (bpy):** 1 Mesh, 74 150 Dreiecke, 50 Knochen,
-  6 Materialien, 4 Bilder, 3 Anker. Das passt zum Export.
+- **Wieder eingelesen mit Blender (bpy):** 1 Mesh, 79 286 Dreiecke, 50 Knochen,
+  7 Materialien, 4 Bilder, 3 Anker. Das passt zum Export.
 - **Vorschaubilder mit Cycles** (schräg, Seite, oben, vorne, hinten, Kopf, Kopf von der
   Seite, Porträt, Schulter, von unten): Form, Texturen und Farben stimmen, keine Löcher in der Haut.
 - **Test-Pose:** Flügel hoch, Maul auf, Hals und Schwanz zur Seite, Beine angezogen.
@@ -152,6 +171,15 @@ Flughaut mit gewellter Hinterkante.
     Reiter-Einstellung einmal zurückgesetzt. Grau gibt es weiterhin im Menü.
   - Knochen-Namen, Anker und die Füsse (y = −2,66) sind gleich geblieben.
   - Geprüft mit Bildschirmfotos: Fliegen, Gegenlicht, Reiter-Sicht, Feuer, Dorf, Stehen und Laufen.
+- Version 5 des Modells (siehe Teil B), Änderungen im Spiel:
+  - `src/dragon/Dragon.js`: neue Winkel zum Anlegen der Flügel (`FOLD_UPPER`, `FOLD_FORE`,
+    `FOLD_FINGERS`), weil Arm und Finger im Modell anders stehen. Das Material `Stachel`
+    bekommt die Farbe `skin.spike` (fehlt sie, die Hornfarbe).
+  - `src/dragon/Customization.js`: neue Farben **Schwarz-Rot** (Standard) und **Smaragdgrün**.
+    Speicher-Schlüssel jetzt `dragontwin.custom.v4` (gespeicherte Auswahl einmal zurückgesetzt).
+  - `src/ui/Menu.js`: Die Farbpunkte im Menü zeigen jetzt auch die Flughaut-Farbe am Rand.
+  - Geprüft mit Bildschirmfotos (Schwarz-Rot und Smaragdgrün): Fliegen, Gegenlicht,
+    Reiter-Sicht, Feuer, Dorf, Stehen und Laufen (Flügel liegen angelegt am Körper).
 - Getestet mit Bildschirmfotos im echten Spiel (Chromium ohne Grafikkarte).
   Dafür wurden die Projekt-Pakete mit `npm ci --ignore-scripts` installiert
   (Prüfsummen aus `package-lock.json`, keine Installations-Skripte).
@@ -178,8 +206,9 @@ Flughaut mit gewellter Hinterkante.
   kommt aus der Materialfarbe. Also einfach `material.color` setzen:
   - `Haut` ← `skin.body`, `Bauch` ← `skin.belly` (auch Gaumen und Kehle),
     `Flughaut` ← `skin.membrane`, `Horn` ← `skin.horn` (auch Zähne),
+    `Stachel` ← `skin.spike` (Rücken- und Schwanzstacheln),
     `Kralle` bleibt dunkel, `Auge` → `emissive` ← `skin.eye`.
-  - Die Farben in der GLB sind die vom Skin „Grau“. Im Spiel ist jetzt „Schwarz“ Standard.
+  - Die Farben in der GLB sind die vom Skin „Schwarz-Rot“ (Standard im Spiel).
 - **Flughaut** ist eine einzelne, beidseitige Fläche (`doubleSided`). Das Durchscheinen
   wie im alten Code (etwas `emissive`) kann man im Spiel dazugeben.
 - Der **Reiter** und das **Leuchten im Maul** sind nicht im Modell.
@@ -193,8 +222,11 @@ Flughaut mit gewellter Hinterkante.
   Details (Hautfalten, einzeln geformte Schuppen). Das Maul-Innere ist schlicht,
   die Flughaut ist eine dünne Fläche.
 - Die Bildrate auf einem echten Computer mit Grafikkarte konnte hier nicht
-  gemessen werden (Test lief mit Software-Grafik). Das Modell hat etwa 17 % mehr
-  Dreiecke als Version 2 (74 150 statt 63 374), die Datei ist gleich gross (5,6 MB).
+  gemessen werden (Test lief mit Software-Grafik). Das Modell hat etwa 25 % mehr
+  Dreiecke als Version 2 (79 286 statt 63 374, Ziel war 30 000–80 000), die Datei ist
+  6,3 MB gross (Ziel unter 15 MB). 7 statt 6 Draw-Calls.
+- Die grossen Flügel (35,5 m) passen in der normalen Verfolger-Kamera gut ins Bild
+  (geprüft beim Geradeausflug); enge Kurven wurden nicht einzeln getestet.
 - In der Reiter-Sicht sieht man jetzt mehr vom Hals und die grossen Hörner vor sich.
   Am Boden (S-Hals hoch) verdeckt der Kopf einen Teil der Sicht nach vorne.
 - An Armen und Beinen sind die Schuppen ein 3D-Muster ohne Reihen (dort gibt es keine

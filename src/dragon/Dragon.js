@@ -32,9 +32,10 @@ const TAIL = ['tail_01', 'tail_02', 'tail_03', 'tail_04', 'tail_05', 'tail_06', 
 // Flügel anlegen: Drehung in der Draufsicht (Radiant) für Oberarm, Unterarm, Finger 1–4.
 // Im Modell sind die Flügel gespreizt; angelegt zeigt der Oberarm nach hinten,
 // der Unterarm klappt nach vorne (wie ein Scharnier), die Finger liegen hinten am Körper.
-const FOLD_UPPER = 1.42;
-const FOLD_FORE = -3.18;
-const FOLD_FINGERS = [3.27, 2.72, 2.17, 1.62];
+// Passend zu den Winkeln im Modell (tools/build_dragon.py: ARM_ANG, FINGER_ANG).
+const FOLD_UPPER = 1.55;
+const FOLD_FORE = -3.0;
+const FOLD_FINGERS = [2.7, 2.15, 1.65, 1.15];
 
 const _e = new THREE.Euler();
 const _q = new THREE.Quaternion();
@@ -220,6 +221,7 @@ export class Dragon {
       m.roughness = (skin.rough ?? 0.62) + (m === M.Bauch ? 0.15 : 0);
     }
     M.Horn?.color.set(skin.horn ?? 0xb8ab92);
+    M.Stachel?.color.set(skin.spike ?? skin.horn ?? 0xb8ab92);
     M.Auge?.emissive.set(skin.eye ?? 0xffaa22);
   }
 

@@ -432,12 +432,16 @@ LEG_H, LEG_K = vec3(0.70, -2.0, -0.2), vec3(0.84, -1.35, -1.25)
 LEG_A, LEG_B = vec3(0.86, -2.15, -1.95), vec3(0.86, -1.80, -2.50)
 GROUND_Z = -2.66          # Boden unter den Füssen (Stand)
 
-# Flügel (rechte Seite): Oberarm 3.3 m, Unterarm 4.2 m, 4 lange Finger (Spannweite ca. 29 m)
+# Flügel (rechte Seite), grosse breite Fledermaus-Flügel: Oberarm 3.6 m, langer Unterarm 5.6 m,
+# 4 lange Finger weit gefächert (Spannweite ca. 35 m). Winkel in der Draufsicht (Radiant):
+# 0 = gerade zur Seite, negativ = nach vorne, positiv = nach hinten.
 WING_S = vec3(0.95, 2.05, 0.66)
-ARM_LEN = (3.3, 4.2)
+ARM_LEN = (3.6, 5.6)
+ARM_ANG = (-0.35, 0.2)    # Oberarm etwas nach vorne; Unterarm 0.2 weiter nach hinten gedreht
 DIHEDRAL = 0.07           # Flügel leicht nach oben (V-Form)
-FINGER_ANG = (-0.22, 0.38, 0.98, 1.58)
-FINGER_LEN = (6.3, 5.8, 4.9, 3.8)
+FINGER_ANG = (0.35, 0.95, 1.5, 2.05)   # relativ zum Unterarm: vom äussersten bis zum hintersten Finger
+FINGER_LEN = (8.0, 7.6, 6.8, 5.6)
+SCALLOP = 0.38            # Tiefe der Bögen zwischen den Fingerspitzen (Anteil des Abstands)
 MEMBRANE_Y_BODY = -2.7    # hier endet die Flughaut hinten am Körper (bei der Hüfte)
 
 
@@ -655,8 +659,8 @@ def build_toes_R():
 def wing_points():
     """Gelenke des rechten Flügels (gespreizt, leicht V-förmig nach oben)."""
     S = WING_S
-    a1 = -0.22
-    a2 = a1 + 0.38
+    a1 = ARM_ANG[0]
+    a2 = a1 + ARM_ANG[1]
     E2 = S[:2] + ARM_LEN[0] * np.array([math.cos(a1), -math.sin(a1)])
     W2 = E2 + ARM_LEN[1] * np.array([math.cos(a2), -math.sin(a2)])
     F2 = [W2 + L * np.array([math.cos(a2 + da), -math.sin(a2 + da)]) for da, L in zip(FINGER_ANG, FINGER_LEN)]
@@ -691,7 +695,7 @@ def build_arm_R(wp):
     sS, sE, sW = cv.s_near(S), cv.s_near(E), cv.s_near(W)
     # kräftiger Oberarm, Ellbogen-Knubbel, schlanker werdender Unterarm, Handgelenk
     prof = Pchip([0, sS, sS + 0.35 * (sE - sS), sE - 0.25, sE, sE + 0.35, sW - 0.3, sW, cv.length],
-                 [0.48, 0.48, 0.38, 0.29, 0.32, 0.26, 0.18, 0.20, 0.14])
+                 [0.5, 0.5, 0.4, 0.3, 0.34, 0.27, 0.19, 0.23, 0.15])
     chain = Chain([("upperarm_R", 0.0, sE), ("forearm_R", sE, sW), ("hand_R", sW, cv.length + 1)], blend=0.2)
 
     def weights(s, t):
@@ -704,7 +708,7 @@ def build_arm_R(wp):
         fc = Curve([W - d * 0.08, F + d * 0.06], smooth=False, n=40)
         L = fc.length
         # dick am Ansatz, Knöchel in der Mitte, dünne Spitze
-        prof_f = Pchip([0, 0.12 * L, 0.44 * L, 0.5 * L, 0.56 * L, 0.95 * L, L], [0.12, 0.09, 0.058, 0.072, 0.052, 0.024, 0.014])
+        prof_f = Pchip([0, 0.12 * L, 0.44 * L, 0.5 * L, 0.56 * L, 0.95 * L, L], [0.15, 0.11, 0.07, 0.085, 0.062, 0.028, 0.014])
         tube(fingers, fc, prof_f, 12, vec3(0, 0, 1),
              lambda s, t, k=k, L=L: finger_weights(k, (s - 0.08) / (L - 0.14)), "Haut", step=0.12, cap1=True)
     # Daumen mit Kralle (zeigt nach vorne)
@@ -738,9 +742,9 @@ def build_membrane_R(B, chain, wp):
     def c0(u):
         return arm.at(u * arm.length)
 
-    def c1(u):
+    def c1(u):   # Hinterkante innen: tiefer Bogen vom Körper zum hintersten Finger
         p = Bp + (F4 - Bp) * u
-        return p + nrm(M - p) * 0.10 * np.linalg.norm(F4 - Bp) * math.sin(math.pi * u)
+        return p + nrm(M - p) * 0.7 * SCALLOP * np.linalg.norm(F4 - Bp) * math.sin(math.pi * u)
 
     def d0(v):
         return attach(v)
@@ -824,9 +828,9 @@ def build_membrane_R(B, chain, wp):
     P0 = B.point(B.s_of_y(3.15), math.pi / 2 + 0.35)
     chest_w = {"chest": 1.0}
 
-    def lead(u):  # Vorderkante, leicht zum Arm hin gebogen
+    def lead(u):  # Vorderkante, leicht zum Arm hin gebogen (höchstens 35 % des Abstands)
         p = P0 + (W - P0) * u
-        return p + nrm(c0(u) - p) * 0.12 * np.linalg.norm(W - P0) * math.sin(math.pi * u)
+        return p + (c0(u) - p) * 0.35 * math.sin(math.pi * u)
 
     front = {}
     for i in range(NF + 1):
@@ -866,7 +870,7 @@ def build_membrane_R(B, chain, wp):
                 else:
                     e = Fa + (Fb - Fa) * w_
                     p = (1 - w_) * (W + (Fa - W) * t) + w_ * (W + (Fb - W) * t)
-                    p = p + t * 0.16 * chord * math.sin(math.pi * w_) * nrm(W - e)                  # gewellte Hinterkante
+                    p = p + t * SCALLOP * chord * math.sin(math.pi * w_) * nrm(W - e)               # tiefe Bögen hinten
                     p = p + vec3(0, 0, 0.05 * chord * math.sin(math.pi * w_) * t ** 0.7 * (1 - 0.3 * t))
                 wgt = wmix((1 - w_, finger_weights(k + 1, t)), (w_, finger_weights(k + 2, t)))
                 gw[i, j] = V(p, wgt, (p[0], p[1]), (k + 1.0, t))
@@ -896,10 +900,10 @@ def build_horns(B, J, chain):
     part = Part("Hoerner", "horn")
     X = vec3(1, 0, 0)
 
-    def horn(p0, p1, p2, r0, weights, R=10, n=10, flat=(1.0, 1.0), uref=vec3(0, 0, 1)):
+    def horn(p0, p1, p2, r0, weights, R=10, n=10, flat=(1.0, 1.0), uref=vec3(0, 0, 1), mat="Horn"):
         cv = Curve(bezier(p0, p1, p2, 20), smooth=False, n=2)
         tube(part, cv, lambda s: r0 * (1 - s / cv.length) ** 1.1 + 0.004, R, uref, lambda s, t: weights,
-             "Horn", flat=flat, n_rings=n, cap0=True)
+             mat, flat=flat, n_rings=n, cap0=True)
 
     def spike(base, d, L, r0, weights, bend=None, R=8, n=7):
         """Gerader, leicht gebogener Stachel von base in Richtung d."""
@@ -966,8 +970,21 @@ def build_horns(B, J, chain):
             top = B.point(s, math.pi)
             d = nrm(U * math.cos(0.95) - T * math.sin(0.95))
             horn(top - U * 0.3 * h, top + d * h * 0.5, top + d * h - T * 0.2 * h, 0.38 * h,
-                 chain.weights(s), R=8, n=6, flat=(1.0, 0.25), uref=X)
+                 chain.weights(s), R=8, n=6, flat=(1.0, 0.25), uref=X, mat="Stachel")
         y -= max(0.35, 0.75 * h + 0.12)
+    # 8b) Stacheln an den Seiten des Schwanzes (flach, schräg nach hinten), wie ein gezackter Saum
+    y = -4.0
+    while y > TAIL_END + 0.9:
+        s = B.s_of_y(y)
+        rx, rt, rb, _ = B.params(y)
+        T, Sd, U = B.frame(s)
+        L = 0.12 + 0.45 * rx
+        for side in (1, -1):
+            base = B.point(s, math.pi / 2 if side > 0 else 3 * math.pi / 2)
+            d = nrm(-T * 0.8 + Sd * side * 0.6)
+            horn(base - d * 0.08, base + d * L * 0.5, base + d * L - T * 0.15 * L, 0.3 * L, chain.weights(s),
+                 R=8, n=5, flat=(1.0, 0.3), uref=U, mat="Stachel")
+        y -= 0.55
     # 9) Schwanzspitze wie eine Pfeilspitze: zwei flache Klingen schräg nach hinten, eine in der Mitte,
     #    dazu ein aufrechter Stachel
     s = B.s_of_y(TAIL_END + 0.55)
@@ -977,9 +994,10 @@ def build_horns(B, J, chain):
     for ax, L, r in ((1.0, 1.0, 0.24), (-1.0, 1.0, 0.24), (0.0, 0.95, 0.2)):
         d = nrm(-T * (0.65 if ax else 1.0) + Sd * ax + U * 0.05)
         horn(base - d * 0.05, base + d * L * 0.45, base + d * L - T * 0.25 * L, r, tw, R=10, n=8,
-             flat=(1.0, 0.22), uref=U)
+             flat=(1.0, 0.22), uref=U, mat="Stachel")
     d = nrm(-T + U * 0.9)
-    horn(base - d * 0.05, base + d * 0.25, base + d * 0.5 - T * 0.15, 0.1, tw, R=8, n=6, flat=(0.3, 1.0), uref=U)
+    horn(base - d * 0.05, base + d * 0.25, base + d * 0.5 - T * 0.15, 0.1, tw, R=8, n=6, flat=(0.3, 1.0), uref=U,
+         mat="Stachel")
     return part
 
 
@@ -1365,15 +1383,16 @@ def body_attributes(U, B, bones, mats):
 # =====================================================================
 # 7. Blender: Objekte, Skelett, UVs, Texturen backen, Export
 # =====================================================================
-MAT_ORDER = ["Haut", "Bauch", "Flughaut", "Horn", "Kralle", "Auge"]
-# Standardfarben = Hautfarbe "Grau" aus src/dragon/Customization.js (sRGB-Hex)
+MAT_ORDER = ["Haut", "Bauch", "Flughaut", "Horn", "Stachel", "Kralle", "Auge"]
+# Standardfarben = Hautfarbe "Schwarz-Rot" aus src/dragon/Customization.js (sRGB-Hex)
 MAT_DEF = {
-    "Haut": dict(color=0x6E665C, rough=0.62),
-    "Bauch": dict(color=0x9C9080, rough=0.8),
-    "Flughaut": dict(color=0x5E4C42, rough=0.85, double=True),
-    "Horn": dict(color=0xB8AB92, rough=0.55),
+    "Haut": dict(color=0x1E1B1A, rough=0.6),
+    "Bauch": dict(color=0x3A302C, rough=0.75),
+    "Flughaut": dict(color=0x4A1612, rough=0.85, double=True),
+    "Horn": dict(color=0x9A9080, rough=0.5),          # auch die Zähne → hell lassen
+    "Stachel": dict(color=0x6A1C14, rough=0.5),
     "Kralle": dict(color=0x1E1C1A, rough=0.4, metal=0.1),
-    "Auge": dict(color=0x331800, rough=0.3, emit=0xFF9A22, emit_strength=2.2),
+    "Auge": dict(color=0x331800, rough=0.3, emit=0xFF6A1A, emit_strength=2.2),
 }
 
 
@@ -1658,6 +1677,8 @@ def pat_membrane(nb):
     fib = nb.ss(0.55, 0.8, nb.noise(nb.comb(nb.mul(x, 14.0), nb.mul(y, 2.0)), 1.0, 3.0))   # feine Falten
     n2 = nb.noise(nb.comb(nb.mul(x, 3.0), nb.mul(y, 3.0)), 1.0, 3.0)
     thick = nb.ss(0.45, 0.0, bd)                       # 1 direkt am Knochen
+    _, edge_t, _ = nb.sep(nb.uv("Info"))               # 1 = am Rand der Flughaut
+    thick = nb.m("MAXIMUM", thick, nb.mul(nb.ss(0.86, 1.0, edge_t), 0.8))   # dunkler Saum am Rand
     val = nb.sub(nb.sub(0.93, nb.mul(vb, 0.15)), nb.mul(vs, 0.06))
     val = nb.sub(nb.add(val, nb.mul(nb.sub(n2, 0.5), 0.08)), nb.mul(fib, 0.035))
     val = nb.mul(val, nb.sub(1.0, nb.mul(thick, 0.3)))

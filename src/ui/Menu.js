@@ -204,7 +204,8 @@ export class Menu {
       const locked = s.locked && !allGoats;
       const b = document.createElement('button');
       b.className = 'swatch' + (custom.state.skin === id ? ' selected' : '') + (locked ? ' locked' : '');
-      b.innerHTML = `<span class="dot" style="background: radial-gradient(circle at 35% 30%, ${hex(s.belly)}, ${hex(s.body)} 55%)"></span>${locked ? '🔒' : s.label}`;
+      // Punkt: Bauch (Glanz) → Körper → Flughaut am Rand
+      b.innerHTML = `<span class="dot" style="background: radial-gradient(circle at 35% 30%, ${hex(s.belly)}, ${hex(s.body)} 55%, ${hex(s.membrane)})"></span>${locked ? '🔒' : s.label}`;
       b.title = locked ? 'Finde alle Ziegen, um den goldenen Drachen freizuschalten!' : s.label;
       b.addEventListener('click', () => {
         if (locked) {

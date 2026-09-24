@@ -2,10 +2,13 @@
 // Änderungen wirken sofort (ohne Neuladen) und werden gespeichert.
 import { storage } from '../core/utils.js';
 
-const KEY = 'dragontwin.custom.v3'; // v3: neue Standardfarbe Schwarz (wilder Drache); v2 war Grau
+const KEY = 'dragontwin.custom.v4'; // v4: neue Standardfarbe Schwarz-Rot; v3 war Schwarz, v2 Grau
 
-// Natürliche, gedämpfte Farben (wie echte Reptilien – nicht knallig)
+// Natürliche, gedämpfte Farben (wie echte Reptilien – nicht knallig).
+// spike = Rücken- und Schwanzstacheln (fehlt es, gilt die Hornfarbe). horn gilt auch für die Zähne.
 export const SKINS = {
+  blackred: { label: 'Schwarz-Rot', body: 0x1e1b1a, belly: 0x3a302c, membrane: 0x4a1612, horn: 0x9a9080, spike: 0x6a1c14, eye: 0xff6a1a, rough: 0.6 },
+  emerald: { label: 'Smaragdgrün', body: 0x0b3c1a, belly: 0x6b5a34, membrane: 0x6a4a1e, horn: 0xa88a5a, spike: 0x8a5a24, eye: 0xffc83a, metal: 0.25, rough: 0.42 },
   grey: { label: 'Grau', body: 0x6e665c, belly: 0x9c9080, membrane: 0x5e4c42, horn: 0xb8ab92, eye: 0xff9a22 },
   black: { label: 'Schwarz', body: 0x24221f, belly: 0x4a4038, membrane: 0x2e2522, horn: 0xa89c86, eye: 0xff5a1a, rough: 0.7 },
   blue: { label: 'Stahlblau', body: 0x3c4b5c, belly: 0x8a8578, membrane: 0x2e3440, horn: 0xbfb5a0, eye: 0x7ad0ff },
@@ -29,7 +32,7 @@ export class Customization {
   constructor() {
     const saved = storage.get(KEY, {});
     this.state = {
-      skin: SKINS[saved.skin] ? saved.skin : 'black',
+      skin: SKINS[saved.skin] ? saved.skin : 'blackred',
       fire: FIRE_COLORS[saved.fire] ? saved.fire : 'orange',
       rider: saved.rider !== false,
     };

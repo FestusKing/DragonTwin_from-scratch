@@ -111,7 +111,7 @@ Für eine fertige Version zum Hochladen gibt es `npm run build`. Das Ergebnis li
   - Wer alle findet, schaltet eine geheime Drachenfarbe frei.
 
 ### Anpassen
-- **Schuppenfarben:** Schwarz (Standard), Grau (wie im DragonTwin-Bild), Stahlblau, Moosgrün, Rostrot, Knochenweiss (+ 1 geheime).
+- **Schuppenfarben:** Schwarz-Rot (Standard), Smaragdgrün, Grau (wie im DragonTwin-Bild), Schwarz, Stahlblau, Moosgrün, Rostrot, Knochenweiss (+ 1 geheime).
 - **Feuerfarben:** Orange, Rot, Blau, Grün, Violett, Pink, Dunkelrot.
 - **Reiter** an oder aus.
 - Alles wirkt **sofort** und wird gespeichert.
@@ -268,7 +268,7 @@ Die „Stretch Goals“ aus der Vorgabe gehören **nicht** zum Test Flight. Sie 
 **Vereinfacht wurde:**
 
 - **Wasser-Spiegelung:** Das Wasser spiegelt den Himmel, aber nicht die Berge. Das ist viel schneller.
-- **Drachen-Modell:** Der Drache ist ein **Wyvern** wie in DragonTwin: Die Flügel sind die Arme, es gibt nur zwei Hinterbeine. Ein Skript baut ihn in Blender aus Formeln (ca. 74 000 Dreiecke, gebackene Schuppen-Texturen). Rumpf, Kopf, Beine, Arme und Muskeln sind zu einer einzigen Haut verschmolzen. Er hat einen Hals in S-Form, eine Krone aus Hörnern, Reisszähne, grosse Flügel (ca. 29 m Spannweite) und eine Stachel-Spitze am Schwanz. Im Flug streckt er den Hals nach vorne. Ein von Hand modellierter Drache (z. B. „Scales“ aus dem Film *Sintel*) wäre noch detailreicher – der ist aber nur mit Abo herunterladbar.
+- **Drachen-Modell:** Der Drache ist ein **Wyvern** wie in DragonTwin: Die Flügel sind die Arme, es gibt nur zwei Hinterbeine. Ein Skript baut ihn in Blender aus Formeln (ca. 79 000 Dreiecke, gebackene Schuppen-Texturen). Rumpf, Kopf, Beine, Arme und Muskeln sind zu einer einzigen Haut verschmolzen. Er hat einen Hals in S-Form, eine Krone aus Hörnern, Reisszähne, riesige Fledermaus-Flügel mit tiefen Bögen (ca. 35 m Spannweite) und Stacheln bis zur Schwanzspitze – im Stil der Drachen aus *Game of Thrones*. Im Flug streckt er den Hals nach vorne. Ein von Hand modellierter Drache (z. B. „Scales“ aus dem Film *Sintel*) wäre noch detailreicher – der ist aber nur mit Abo herunterladbar.
 - **Keine Umgebungsverdeckung am Bildschirm (SSAO):** Dafür müsste die ganze Szene mit allen Bäumen ein zweites Mal gezeichnet werden. Stattdessen: dunklerer Waldboden (Wald-Karte) und dunklere Innenseiten der Baumkronen.
 - **Der Test lief ohne Grafikkarte:**
   - Getestet wurde automatisch in einem Browser ohne GPU.
