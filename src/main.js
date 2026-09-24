@@ -1,5 +1,6 @@
 // Einstiegspunkt: Renderer erstellen, Welt laden, Hauptschleife starten.
 import * as THREE from 'three';
+import './fx/Atmosphere.js'; // ersetzt die Nebel-Shader (Höhen-Dunst, Sonne im Dunst)
 import '@fontsource/cinzel/700.css';
 import '@fontsource/cinzel/900.css';
 import '@fontsource/inter/400.css';

@@ -8,6 +8,7 @@
 // Die Bilder werden beim Start geladen. Fehlt etwas (z. B. Ordner gelöscht),
 // nimmt das Spiel automatisch wieder die im Code gemalten Texturen.
 import * as THREE from 'three';
+import { addAtmosphereUniforms } from './Atmosphere.js';
 
 const BASE = `${import.meta.env.BASE_URL}textures/`;
 const photos = new Map(); // Schlüssel → { info, diff, nor, arh } (Bilder)
@@ -445,6 +446,7 @@ export function makeTriplanarRock(mat, key = 'fels', tile = 5) {
     uRockScale: { value: 1 / tile },
   };
   mat.onBeforeCompile = (shader) => {
+    addAtmosphereUniforms(shader);
     Object.assign(shader.uniforms, uniforms);
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vRockPos;')

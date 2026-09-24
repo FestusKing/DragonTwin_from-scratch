@@ -2,6 +2,7 @@
 // Die Flügel schlagen im Shader (Grafikkarte) → kostet fast nichts.
 import * as THREE from 'three';
 import { mulberry32 } from '../core/utils.js';
+import { addAtmosphereUniforms } from '../fx/Atmosphere.js';
 
 function birdGeometry() {
   const p = [
@@ -28,6 +29,7 @@ export class Birds {
     for (const f of flocks) total += f.count;
     const mat = new THREE.MeshLambertMaterial({ color: 0x2b2826, side: THREE.DoubleSide });
     mat.onBeforeCompile = (shader) => {
+      addAtmosphereUniforms(shader);
       shader.uniforms.uTime = this.time;
       shader.vertexShader = shader.vertexShader
         .replace('#include <common>', '#include <common>\nuniform float uTime;')

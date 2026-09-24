@@ -19,6 +19,7 @@ import { Rain, SpeedLines } from '../fx/Rain.js';
 import { Lightning } from '../fx/Lightning.js';
 import { BurnSystem } from '../gameplay/BurnSystem.js';
 import { loadPhotoTextures } from '../fx/PhotoTextures.js';
+import { ATMOSPHERE } from '../fx/Atmosphere.js';
 
 const _white = new THREE.Color(0.85, 0.87, 0.9);
 const _v = new THREE.Vector3();
@@ -67,6 +68,7 @@ export class World {
     if (this.landmarks.stoneCircle) excl.push({ x: this.landmarks.stoneCircle.x, z: this.landmarks.stoneCircle.z, r: 26 });
     excl.push({ x: PLACES.island.x, z: PLACES.island.z, r: 12 });
     this.vegetation = new Vegetation(scene, this.terrain, excl, q.trees);
+    this.terrain.setForestMap(this.vegetation.forestTexture);
 
     progress(0.78, 'Feuer und Effekte …');
     await tick();
@@ -161,7 +163,13 @@ export class World {
     this.inCloud = lerp(this.inCloud, this.clouds.inCloud, 1 - Math.exp(-dt * 4));
     const fog = this.scene.fog;
     this.fogDensity = w.fogDensity + this.inCloud * 0.014;
-    fog.density = this.fogDensity;
+    // Höhen-Dunst: unten dichter. Weil er oben dünner ist, etwas dichter einstellen.
+    // In einer Wolke überall gleich dicht; bei Nebel-Wetter liegt der Nebel am Boden.
+    fog.density = w.fogDensity * 1.6 + this.inCloud * 0.014;
+    ATMOSPHERE.uAtmFalloff.value = lerp(1 / 450, 1 / 160, w.fog) * (1 - this.inCloud);
+    // Sonne im Dunst (nur wenn sie über dem Horizont steht, schwächer bei Bewölkung)
+    ATMOSPHERE.uAtmSunDir.value.copy(this.sky.sunDir);
+    ATMOSPHERE.uAtmSunColor.value.copy(this.sky.sunColor).multiplyScalar(smoothstep(-0.06, 0.08, this.sky.sunDir.y) * (1 - w.overcast * 0.85) * 0.8);
     fog.color.copy(this.sky.fogColor).lerp(_white.setRGB(0.8, 0.83, 0.87).multiplyScalar(0.25 + this.sky.day * 0.75), this.inCloud * 0.9);
 
     this.water.update(worldDt, this.sky, w, ctx.camera);

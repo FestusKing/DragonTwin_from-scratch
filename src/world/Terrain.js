@@ -6,6 +6,7 @@ import { Noise2D } from '../core/noise.js';
 import { clamp, lerp, smoothstep, nextFrame } from '../core/utils.js';
 import { detailNoiseTexture } from '../fx/Textures.js';
 import { terrainTextureArrays } from '../fx/PhotoTextures.js';
+import { addAtmosphereUniforms } from '../fx/Atmosphere.js';
 
 export const WORLD_SIZE = 5000; // Meter (5 × 5 km)
 export const HALF = WORLD_SIZE / 2;
@@ -296,6 +297,11 @@ export class Terrain {
     this.scorchTimer = 0;
   }
 
+  /** Wald-Karte der Vegetation übernehmen (dunklerer Waldboden). */
+  setForestMap(tex) {
+    this.uniforms.uForest.value = tex;
+  }
+
   /** Brandfleck auf den Boden malen */
   paintScorch(x, z, radius = 4, amount = 0.3) {
     const S = this.scorchSize;
@@ -388,6 +394,7 @@ export class Terrain {
       uScorch: { value: this.scorchTexture },
       uDetail: { value: detail },
       uSize: { value: WORLD_SIZE },
+      uForest: { value: new THREE.DataTexture(new Uint8Array(4), 1, 1) }, // Wald-Karte (kommt später)
       uSnow: { value: 390 },
       uWet: { value: 0 },
       // gedämpfte, natürliche Farben (wie Alpenwiesen im Spätsommer)
@@ -409,6 +416,7 @@ export class Terrain {
     }
     this.uniforms = uniforms;
     mat.onBeforeCompile = (shader) => {
+      addAtmosphereUniforms(shader);
       Object.assign(shader.uniforms, uniforms);
       shader.vertexShader = shader.vertexShader
         .replace('#include <common>', '#include <common>\nvarying vec3 vWPos;\nvarying vec3 vWNrm;')
@@ -448,7 +456,7 @@ normal = normalize((viewMatrix * vec4(gTerrN, 0.0)).xyz);
 const TERRAIN_COMMON = /* glsl */ `
 varying vec3 vWPos;
 varying vec3 vWNrm;
-uniform sampler2D uSplat, uScorch, uDetail;
+uniform sampler2D uSplat, uScorch, uDetail, uForest;
 uniform float uSize, uSnow, uWet;
 uniform vec3 cGrassA, cGrassB, cForest, cSand, cRock, cRock2, cSnow, cDirt, cWheat, cCrop;
 float gSnowT;
@@ -598,7 +606,10 @@ if (gSnowT > 0.004) {
   addLayer(col, nrm, rough, hgt, snowL, cSnow / uAvg[3], gSnowT);
 }
 
-// 4) Unter Wasser dunkler, Brandflecken, Nässe
+// 4) Waldboden dunkler, unter Wasser dunkler, Brandflecken, Nässe
+float forest = min(1.0, texture2D(uForest, suv).r) * (1.0 - gSnowT);
+col *= 1.0 - forest * 0.5;
+col = mix(col, col * vec3(0.8, 0.9, 0.75), forest * 0.6);
 col *= mix(1.0, 0.45, smoothstep(0.0, -8.0, wp.y));
 float sc = texture2D(uScorch, vec2(wp.x / uSize + 0.5, wp.z / uSize + 0.5)).r;
 col = mix(col, vec3(0.025, 0.02, 0.018), sc);
@@ -636,6 +647,7 @@ rock *= 0.8 + 0.35 * smoothstep(0.2, 0.8, det2 + det * 0.3);
 col = mix(col, rock, rockT);
 gSnowT = smoothstep(uSnow - 40.0, uSnow + 30.0, wp.y + n1 * 60.0) * (1.0 - smoothstep(0.38, 0.6, slope));
 col = mix(col, cSnow, gSnowT);
+col *= 1.0 - min(1.0, texture2D(uForest, suv).r) * (1.0 - gSnowT) * 0.5;
 col *= mix(1.0, 0.45, smoothstep(0.0, -8.0, wp.y));
 float sc = texture2D(uScorch, vec2(wp.x / uSize + 0.5, wp.z / uSize + 0.5)).r;
 col = mix(col, vec3(0.025, 0.02, 0.018), sc);

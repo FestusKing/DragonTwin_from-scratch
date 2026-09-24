@@ -7,6 +7,7 @@ import { mulberry32, smoothstep, clamp } from '../core/utils.js';
 import { box, gableRoof, gableEnds, tower, cone, battlements, scaleUV } from './BuildingGeo.js';
 import { PLACES, distToPolyline } from './Terrain.js';
 import { surfaceMaterial } from '../fx/Textures.js';
+import { addAtmosphereUniforms } from '../fx/Atmosphere.js';
 
 const WHITE = new THREE.Color(1, 1, 1);
 const CHAR = new THREE.Color(0.07, 0.06, 0.055);
@@ -81,6 +82,7 @@ export class Settlement {
     };
     const banner = new THREE.MeshStandardMaterial({ map: bannerTexture(), side: THREE.DoubleSide, roughness: 0.9, alphaTest: 0.5 });
     banner.onBeforeCompile = (shader) => {
+      addAtmosphereUniforms(shader);
       shader.uniforms.uTime = this.time;
       shader.vertexShader = shader.vertexShader
         .replace('#include <common>', '#include <common>\nuniform float uTime;')

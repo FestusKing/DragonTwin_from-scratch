@@ -9,6 +9,7 @@ import { mulberry32, smoothstep } from '../core/utils.js';
 import { HALF, WORLD_SIZE } from './Terrain.js';
 import { makeTriplanarRock } from '../fx/PhotoTextures.js';
 import { leafTexture, needleTexture, makeBroadleafTree, makeConiferTree, makeBushModel } from './TreeModels.js';
+import { addAtmosphereUniforms } from '../fx/Atmosphere.js';
 
 const CHUNKS = 4;
 const CHUNK_SIZE = WORLD_SIZE / CHUNKS;
@@ -147,6 +148,7 @@ export class Vegetation {
   _foliage(tex) {
     const mat = new THREE.MeshStandardMaterial({ vertexColors: true, map: tex, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.85 });
     mat.onBeforeCompile = (shader) => {
+      addAtmosphereUniforms(shader);
       this._sway(shader);
       this._cardAlpha(shader);
       // Beide Seiten eines Blattes gleich beleuchten (Normale nicht umdrehen)
@@ -241,6 +243,8 @@ export class Vegetation {
       i++;
     }
 
+    this._forestMap(perChunk);
+
     // Instanced Meshes pro Stück erzeugen
     const m = new THREE.Matrix4();
     const q = new THREE.Quaternion();
@@ -303,6 +307,39 @@ export class Vegetation {
       }
       this.chunks.push(chunk);
     }
+  }
+
+  /**
+   * Wald-Karte: wo Bäume stehen, bekommt der Boden weniger Licht (Waldboden).
+   * Wie die Splat-Map: 2048 × 2048 Pixel über die ganze Insel (ca. 2.4 m pro Pixel).
+   */
+  _forestMap(perChunk) {
+    const S = 2048;
+    const c = document.createElement('canvas');
+    c.width = c.height = S;
+    const g = c.getContext('2d');
+    g.fillStyle = '#000';
+    g.fillRect(0, 0, S, S);
+    g.globalCompositeOperation = 'lighter';
+    const px = S / WORLD_SIZE;
+    for (const lists of perChunk) {
+      for (let ty = 0; ty < 3; ty++) {
+        const strength = ty === 2 ? 0.12 : 0.28; // Büsche beschatten weniger
+        for (const it of lists[ty]) {
+          const x = (it.x + HALF) * px;
+          const y = (it.z + HALF) * px;
+          const r = (ty === 2 ? 2.5 : 5.5) * it.s * px + 1;
+          const grd = g.createRadialGradient(x, y, 0, x, y, r);
+          grd.addColorStop(0, `rgba(255,0,0,${strength})`);
+          grd.addColorStop(1, 'rgba(255,0,0,0)');
+          g.fillStyle = grd;
+          g.fillRect(x - r, y - r, r * 2, r * 2);
+        }
+      }
+    }
+    this.forestTexture = new THREE.CanvasTexture(c);
+    this.forestTexture.colorSpace = THREE.NoColorSpace;
+    this.forestTexture.minFilter = THREE.LinearMipmapLinearFilter;
   }
 
   _chunkIndex(x, z) {
