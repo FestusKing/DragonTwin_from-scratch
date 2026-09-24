@@ -1386,11 +1386,11 @@ def body_attributes(U, B, bones, mats):
 MAT_ORDER = ["Haut", "Bauch", "Flughaut", "Horn", "Stachel", "Kralle", "Auge"]
 # Standardfarben = Hautfarbe "Schwarz-Rot" aus src/dragon/Customization.js (sRGB-Hex)
 MAT_DEF = {
-    "Haut": dict(color=0x1E1B1A, rough=0.6),
-    "Bauch": dict(color=0x3A302C, rough=0.75),
-    "Flughaut": dict(color=0x4A1612, rough=0.85, double=True),
+    "Haut": dict(color=0x4A4340, rough=0.45),
+    "Bauch": dict(color=0x6A4436, rough=0.6),
+    "Flughaut": dict(color=0x5A1A14, rough=0.85, double=True),
     "Horn": dict(color=0x9A9080, rough=0.5),          # auch die Zähne → hell lassen
-    "Stachel": dict(color=0x6A1C14, rough=0.5),
+    "Stachel": dict(color=0x8A2418, rough=0.5),
     "Kralle": dict(color=0x1E1C1A, rough=0.4, metal=0.1),
     "Auge": dict(color=0x331800, rough=0.3, emit=0xFF6A1A, emit_strength=2.2),
 }

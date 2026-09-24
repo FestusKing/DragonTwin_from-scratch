@@ -59,7 +59,8 @@ export class Dragon {
     if (!ghost) this._createRider();
 
     // geglättete Animationswerte
-    this.s = { fold: 0, amp: 0, legs: 0, jaw: 0, neckYaw: 0, neckPitch: 0, tailYaw: 0, tailPitch: 0, hover: 0, bank: 0 };
+    this.s = { fold: 0, amp: 0, legs: 0, ground: 0, stretch: 1, jaw: 0, neckYaw: 0, neckPitch: 0, tailYaw: 0, tailPitch: 0, hover: 0, bank: 0 };
+    this.firstPerson = false; // Reiter-Sicht: Hals bleibt flach, damit er nicht die Sicht versperrt
     this.update(0, { flapPhase: 0, flapAmp: 0, fold: 0 });
   }
 
@@ -236,6 +237,7 @@ export class Dragon {
 
   setRiderHeadVisible(v) {
     if (this.riderHead) this.riderHead.visible = v;
+    this.firstPerson = !v; // Kopf unsichtbar = Kamera sitzt im Kopf des Reiters
   }
 
   // ------------------------------------------------------------ Positionen für andere Systeme
@@ -252,7 +254,8 @@ export class Dragon {
 
   getRiderEye(out) {
     if (!this.riderHead) return this.root.getWorldPosition(out);
-    return this.riderHead.localToWorld(out.set(0, 0.05, -0.1));
+    // etwas über dem Kopf des Reiters: so sieht man über Hals und Hörner hinweg
+    return this.riderHead.localToWorld(out.set(0, 0.55, -0.1));
   }
 
   /** Richtung (im Modell in Ruhepose angegeben) so drehen, wie der Knochen jetzt in der Welt steht. */
@@ -273,18 +276,24 @@ export class Dragon {
     this.bones[name].quaternion.copy(r.local).multiply(_q);
   }
 
-  /** Einen Flügel stellen. side: 'R' oder 'L'. Winkel wie beim alten Code-Drachen. */
-  _wing(side, { fold, t1, t2, t3, sweep }) {
+  /**
+   * Einen Flügel stellen. side: 'R' oder 'L'.
+   * raise (0..1): angelegten Flügel hochstellen (am Boden): Ellbogen hoch, Handgelenk hoch über
+   * der Schulter, die Flughaut hängt nach unten – statt flach auf dem Rücken zu liegen.
+   */
+  _wing(side, { fold, t1, t2, t3, sweep, raise = 0 }) {
     const sg = side === 'R' ? 1 : -1; // links = gespiegelt
     const f = smoothstep(0, 1, fold);
+    const r = raise * f;
     // Draufsicht-Drehung (y): negativ = nach hinten (rechts). Hochklappen (z): positiv = hoch (rechts).
-    this._pose(`upperarm_${side}`, 0, -sg * (f * FOLD_UPPER + sweep), sg * t1, 'ZYX');
-    this._pose(`forearm_${side}`, 0, -sg * f * FOLD_FORE, sg * t2, 'ZYX');
-    this._pose(`hand_${side}`, 0, 0, sg * t3, 'ZYX');
+    // Reihenfolge XZY: erst anlegen (y), dann hochklappen (z), zuletzt aufstellen (x, nur am Boden).
+    this._pose(`upperarm_${side}`, -0.55 * r, -sg * (f * FOLD_UPPER + sweep), sg * (t1 - 0.1 * r), 'XZY');
+    this._pose(`forearm_${side}`, 0, -sg * f * FOLD_FORE, sg * (t2 - 1.0 * r), 'XZY');
+    this._pose(`hand_${side}`, 0, 0, sg * (t3 + 0.15 * r), 'XZY');
     for (let k = 0; k < 4; k++) {
-      this._pose(`finger${k + 1}_1_${side}`, 0, -sg * f * FOLD_FINGERS[k], sg * t3 * 0.3 * (k / 3), 'ZYX');
+      this._pose(`finger${k + 1}_1_${side}`, 0, -sg * f * FOLD_FINGERS[k], sg * (t3 * 0.3 * (k / 3) + 0.15 * r * (0.4 + 0.2 * k)), 'XZY');
       // äussere Fingerglieder biegen sich im Schlag etwas nach (wirkt weicher)
-      this._pose(`finger${k + 1}_2_${side}`, 0, 0, sg * t3 * 0.4, 'ZYX');
+      this._pose(`finger${k + 1}_2_${side}`, 0, 0, sg * (t3 * 0.4 + 0.1 * r), 'XZY');
     }
     // Daumen klappt beim Anlegen mit
     this._pose(`thumb_${side}`, 0, sg * f * 0.6, 0, 'ZYX');
@@ -304,6 +313,9 @@ export class Dragon {
     s.amp = damp(s.amp, a.flapAmp || 0, 5, dt);
     s.hover = damp(s.hover, a.hover || 0, 3, dt);
     s.legs = damp(s.legs, Math.max(a.grounded || 0, (a.hover || 0) * 0.5), 3, dt);
+    s.ground = damp(s.ground, a.grounded || 0, 3, dt);
+    // Hals: im Flug gestreckt, am Boden in S-Form; in der Reiter-Sicht immer gestreckt
+    s.stretch = damp(s.stretch, this.firstPerson ? 1 : 1 - s.legs, 4, dt);
     s.jaw = damp(s.jaw, Math.max(a.fire || 0, a.roar || 0), 10, dt);
     s.bank = damp(s.bank, a.bank || 0, 4, dt);
     const yawRate = a.yawRate || 0;
@@ -329,10 +341,11 @@ export class Dragon {
       const asym = -roll * sg * 0.12 - s.bank * sg * 0.04;
       this._wing(side, {
         fold: clamp(fold + (sg * roll > 0 ? Math.abs(roll) * 0.08 : 0), 0, 1),
-        t1: base1 + amp * (Math.cos(ph) * 0.78 + 0.08) + asym - grounded * 0.55,
+        t1: base1 + amp * (Math.cos(ph) * 0.78 + 0.08) + asym - s.ground * 0.1,
         t2: amp * Math.cos(ph - 0.9) * 0.38 - glide * 0.04,
         t3: amp * Math.cos(ph - 1.7) * 0.32 + glide * 0.05,
         sweep: s.fold * 0.2 + (a.boost ? 0.05 : 0),
+        raise: s.ground,
       });
     }
 
@@ -342,7 +355,7 @@ export class Dragon {
 
     // --- Hals: im Flug gestreckt, am Boden in S-Form; gleicht das Wippen aus, schaut in die Kurve ---
     const neckBob = amp * Math.sin(ph) * 0.04;
-    const stretch = 1 - s.legs; // 1 = fliegt, 0 = steht, beim Schweben halb
+    const stretch = s.stretch; // 1 = gestreckt (Flug, Reiter-Sicht), 0 = S-Form (am Boden)
     for (let i = 0; i < NECK.length; i++) {
       const x = NECK_FLIGHT[i] * stretch + neckBob * (i < 2 ? 1 : -1) + s.neckPitch * 0.2 + s.hover * (i === 0 ? 0.12 : -0.04) + Math.sin(t * 0.9 + i) * 0.012;
       const y = s.neckYaw * 0.2 + Math.sin(t * 0.6 + i * 0.5) * 0.016;

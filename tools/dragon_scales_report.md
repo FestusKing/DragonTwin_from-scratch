@@ -129,8 +129,8 @@ Flughaut mit gewellter Hinterkante.
 | Punkt | Wert |
 |---|---|
 | Datei | `public/models/dragon_scales.glb` |
-| Grösse | 6 308 332 Bytes (ca. 6,3 MB) |
-| SHA256 | `26dc331405faf09b01e3342820c4ae1b4f384cd544e39a063193ac22945a1524` |
+| Grösse | 6 308 340 Bytes (ca. 6,3 MB) |
+| SHA256 | `6db1be799de8bcd2a32f3e9b11c1eeace623ddd0c6f3c9c123700d160d7d7e78` |
 | Meshes | 1 (`Drache`), 7 Materialien → 7 Draw-Calls |
 | Dreiecke / Punkte | 79 286 / 46 754 |
 | Knochen | 50, alle verformend, max. 4 Knochen pro Punkt |
@@ -180,6 +180,16 @@ Flughaut mit gewellter Hinterkante.
   - `src/ui/Menu.js`: Die Farbpunkte im Menü zeigen jetzt auch die Flughaut-Farbe am Rand.
   - Geprüft mit Bildschirmfotos (Schwarz-Rot und Smaragdgrün): Fliegen, Gegenlicht,
     Reiter-Sicht, Feuer, Dorf, Stehen und Laufen (Flügel liegen angelegt am Körper).
+- Nach dem ersten Test des Benutzers (Version 5.1):
+  - Schwarz-Rot war fast reines Schwarz: Man sah keine Schuppen und keine Form. Jetzt
+    Anthrazit (`0x4a4340`) mit rötlichem Bauch und etwas mehr Glanz. Auch die Farben in
+    der GLB sind angepasst.
+  - Am Boden lagen die angelegten Flügel wie flache Bretter auf dem Rücken. Jetzt werden sie
+    hochgestellt (`raise` in `_wing`): Ellbogen und Handgelenk hoch, die Flughaut hängt
+    nach unten wie ein Segel.
+  - Reiter-Sicht beim Schweben: Der aufgerichtete Hals versperrte die Sicht (nachts eine
+    schwarze Wand). Jetzt bleibt der Hals in der Reiter-Sicht immer gestreckt, und die
+    Kamera sitzt etwas über dem Kopf des Reiters.
 - Getestet mit Bildschirmfotos im echten Spiel (Chromium ohne Grafikkarte).
   Dafür wurden die Projekt-Pakete mit `npm ci --ignore-scripts` installiert
   (Prüfsummen aus `package-lock.json`, keine Installations-Skripte).
