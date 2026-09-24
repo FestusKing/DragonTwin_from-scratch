@@ -8,6 +8,7 @@ import { Noise2D } from '../core/noise.js';
 import { mulberry32, smoothstep } from '../core/utils.js';
 import { HALF, WORLD_SIZE } from './Terrain.js';
 import { makeTriplanarRock } from '../fx/PhotoTextures.js';
+import { leafTexture, needleTexture, makeBroadleafTree, makeConiferTree, makeBushModel } from './TreeModels.js';
 
 const CHUNKS = 4;
 const CHUNK_SIZE = WORLD_SIZE / CHUNKS;
@@ -43,39 +44,6 @@ function jitter(geo, amount, seed) {
   return geo;
 }
 
-const ico = (r, d) => mergeVertices(new THREE.IcosahedronGeometry(r, d).deleteAttribute('uv').deleteAttribute('normal'));
-
-export function makeConifer() {
-  // Hohe, schlanke Tanne aus 5 Etagen, leicht unregelmässig
-  const parts = [colored(new THREE.CylinderGeometry(0.22, 0.45, 5, 6).translate(0, 2.5, 0), 0x3f3226)];
-  const tiers = 5;
-  for (let i = 0; i < tiers; i++) {
-    const t = i / (tiers - 1);
-    const r = 3.0 - t * 2.1;
-    const h = 4.2 - t * 1.3;
-    const y = 3.2 + i * 2.15;
-    const shade = [0x1e2b1b, 0x223020, 0x263523, 0x2a3a26, 0x2e3f29][i];
-    parts.push(colored(jitter(new THREE.ConeGeometry(r, h, 9, 2).rotateY(i * 0.7), 0.35, 20 + i).translate(0, y + h / 2, 0), shade));
-  }
-  const g = mergeGeometries(parts);
-  g.computeVertexNormals();
-  return g;
-}
-
-export function makeBroadleaf() {
-  // Laubbaum: mehrere unregelmässige Blätterbüschel, weich schattiert
-  const parts = [
-    colored(new THREE.CylinderGeometry(0.32, 0.6, 5, 7).translate(0, 2.5, 0), 0x4a3b2d),
-    colored(jitter(ico(3.3, 1), 1.0, 1).scale(1, 0.8, 1).translate(0, 7.2, 0), 0x3b4a27),
-    colored(jitter(ico(2.4, 1), 0.8, 2).translate(1.9, 6.2, 0.8), 0x44522b),
-    colored(jitter(ico(2.2, 1), 0.8, 3).translate(-1.7, 6.5, -1.1), 0x354322),
-    colored(jitter(ico(1.9, 1), 0.6, 6).translate(0.3, 8.8, -0.9), 0x40502a),
-  ];
-  const g = mergeGeometries(parts);
-  g.computeVertexNormals();
-  return g;
-}
-
 export function makeDeadTree() {
   const parts = [colored(new THREE.CylinderGeometry(0.22, 0.45, 6, 5).translate(0, 3, 0), 0x1d1a17)];
   const rnd = mulberry32(8);
@@ -87,15 +55,6 @@ export function makeDeadTree() {
     parts.push(colored(b, 0x1d1a17));
   }
   const g = mergeGeometries(parts);
-  g.computeVertexNormals();
-  return g;
-}
-
-export function makeBush() {
-  const g = mergeGeometries([
-    colored(jitter(ico(1.4, 1), 0.5, 4).scale(1.2, 0.75, 1).translate(0, 0.8, 0), 0x38462a),
-    colored(jitter(ico(1.0, 0), 0.3, 5).translate(0.9, 0.6, 0.4), 0x414e2c),
-  ]);
   g.computeVertexNormals();
   return g;
 }
@@ -122,44 +81,93 @@ export class Vegetation {
     this.time = { value: 0 };
     this.wind = { value: 0.3 };
 
-    const types = [
-      { name: 'conifer', geo: makeConifer(), burnable: true, height: 11.5 },
-      { name: 'broad', geo: makeBroadleaf(), burnable: true, height: 9.5 },
-      { name: 'bush', geo: makeBush(), burnable: false, height: 2 },
-      { name: 'rock', geo: makeRock(12), burnable: false, height: 1.5 },
-    ];
-    this.types = types;
-    this.material = this._material(true);
+    // Laub und Nadeln: Textur mit durchsichtigen Rändern (siehe TreeModels.js)
+    const leaf = this._foliage(leafTexture());
+    const needle = this._foliage(needleTexture());
     this.rockMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.95, color: 0xb0aaa0 });
     makeTriplanarRock(this.rockMaterial, 'fels', 4); // Foto-Fels, falls geladen
+    const types = [
+      { name: 'conifer', geo: makeConiferTree(5), ...needle, burnable: true, height: 12.5 },
+      { name: 'broad', geo: makeBroadleafTree(7), ...leaf, burnable: true, height: 10 },
+      { name: 'bush', geo: makeBushModel(3), ...leaf, burnable: false, height: 2 },
+      { name: 'rock', geo: makeRock(12), mat: this.rockMaterial, depth: null, burnable: false, height: 1.5 },
+    ];
+    this.types = types;
     this.deadGeo = makeDeadTree();
     this.deadMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1 });
 
     this._place(exclusions, density);
   }
 
-  _material(sway) {
-    const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 });
-    if (sway) {
-      mat.onBeforeCompile = (shader) => {
-        shader.uniforms.uTime = this.time;
-        shader.uniforms.uWind = this.wind;
-        shader.vertexShader = shader.vertexShader
-          .replace('#include <common>', '#include <common>\nuniform float uTime;\nuniform float uWind;')
-          .replace(
-            '#include <begin_vertex>',
-            `#include <begin_vertex>
+  /** Wind: Baumkronen schwanken (oben stärker als unten). */
+  _sway(shader) {
+    shader.uniforms.uTime = this.time;
+    shader.uniforms.uWind = this.wind;
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nuniform float uTime;\nuniform float uWind;')
+      .replace(
+        '#include <begin_vertex>',
+        `#include <begin_vertex>
 #ifdef USE_INSTANCING
   vec3 ip = vec3(instanceMatrix[3][0], instanceMatrix[3][1], instanceMatrix[3][2]);
   float sw = sin(uTime * 1.4 + ip.x * 0.05 + ip.z * 0.043) + 0.4 * sin(uTime * 3.1 + ip.z * 0.2);
   float k = max(0.0, position.y - 2.5) * 0.035 * (0.3 + uWind);
   transformed.x += sw * k;
   transformed.z += sw * k * 0.6;
+  // Blätter zittern leicht (nur Karten, die haben uv > 0.02)
+  float leafK = step(0.02, uv.x) * step(uv.y, 0.98) * (0.04 + uWind * 0.08);
+  transformed += normal * sin(uTime * 7.0 + dot(position, vec3(3.1, 2.3, 1.7)) + ip.x) * leafK;
 #endif`
-          );
-      };
-    }
-    return mat;
+      );
+  }
+
+  /**
+   * Textur nur auf den Karten: Stamm und Kern (u < 0.02) nehmen die Eckpunkt-Farbe
+   * und werden nie ausgeschnitten. Aus der Ferne (kleine Mipmap-Stufe) werden die
+   * Blattränder durchsichtiger → dort die Deckkraft anheben, sonst "verdunstet" der Baum.
+   */
+  _cardAlpha(shader) {
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <map_fragment>',
+      `#ifdef USE_MAP
+  vec4 sampledDiffuseColor = texture2D(map, vMapUv);
+  if (vMapUv.x < 0.02) {
+    sampledDiffuseColor = vec4(1.0);
+  } else {
+    vec2 tx = vMapUv * vec2(textureSize(map, 0));
+    float lod = 0.5 * log2(max(dot(dFdx(tx), dFdx(tx)), dot(dFdy(tx), dFdy(tx))));
+    sampledDiffuseColor.a *= 1.0 + max(lod, 0.0) * 0.28;
+  }
+  diffuseColor *= sampledDiffuseColor;
+#endif`
+    );
+  }
+
+  /** Material für Laub/Nadeln + passendes Schatten-Material (mit ausgestanztem Umriss). */
+  _foliage(tex) {
+    const mat = new THREE.MeshStandardMaterial({ vertexColors: true, map: tex, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.85 });
+    mat.onBeforeCompile = (shader) => {
+      this._sway(shader);
+      this._cardAlpha(shader);
+      // Beide Seiten eines Blattes gleich beleuchten (Normale nicht umdrehen)
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <normal_fragment_begin>', THREE.ShaderChunk.normal_fragment_begin.replace('normal *= faceDirection;', ''))
+        // etwas Licht scheint durch die Blätter (Gegenlicht)
+        .replace(
+          '#include <lights_fragment_end>',
+          `#include <lights_fragment_end>
+#if NUM_DIR_LIGHTS > 0
+  float backLit = max(0.0, dot(geometryViewDir, -directionalLights[0].direction));
+  reflectedLight.directDiffuse += directionalLights[0].color * diffuseColor.rgb * pow(backLit, 3.0) * 0.35;
+#endif`
+        );
+    };
+    const depth = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: tex, alphaTest: 0.5 });
+    depth.onBeforeCompile = (shader) => {
+      this._sway(shader);
+      this._cardAlpha(shader);
+    };
+    return { mat, depth };
   }
 
   _place(exclusions, density) {
@@ -251,10 +259,10 @@ export class Vegetation {
           continue;
         }
         const type = this.types[ty];
-        const mat = ty === 3 ? this.rockMaterial : this.material;
-        const mesh = new THREE.InstancedMesh(type.geo, mat, list.length);
+        const mesh = new THREE.InstancedMesh(type.geo, type.mat, list.length);
         mesh.castShadow = true;
-        mesh.receiveShadow = ty !== 3 ? false : true;
+        mesh.receiveShadow = true;
+        if (type.depth) mesh.customDepthMaterial = type.depth;
         for (let i = 0; i < list.length; i++) {
           const it = list[i];
           pos.set(it.x, it.y, it.z);
