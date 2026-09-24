@@ -211,10 +211,10 @@ export function timberWallTexture() {
     const S = 256;
     const c = canvas(S);
     const g = c.getContext('2d', { willReadFrequently: true });
-    g.fillStyle = '#e6dcc6';
+    g.fillStyle = '#c9bfab';
     g.fillRect(0, 0, S, S);
     noiseFill(g, S, 0, 28, 5, 0.06);
-    g.fillStyle = '#4a3222';
+    g.fillStyle = '#3a291d';
     const beam = 14;
     // Rahmen
     g.fillRect(0, 0, S, beam);
@@ -223,7 +223,7 @@ export function timberWallTexture() {
     g.fillRect(S / 2 - beam / 2, 0, beam, S);
     g.fillRect(0, S / 2 - beam / 2, S, beam * 0.8);
     // Diagonalstreben
-    g.strokeStyle = '#4a3222';
+    g.strokeStyle = '#3a291d';
     g.lineWidth = beam * 0.85;
     g.beginPath();
     g.moveTo(beam, S / 2);
@@ -242,14 +242,14 @@ export function thatchTexture() {
     const S = 256;
     const c = canvas(S);
     const g = c.getContext('2d');
-    g.fillStyle = '#9a7b45';
+    g.fillStyle = '#6e5d3e';
     g.fillRect(0, 0, S, S);
     const rnd = mulberry32(11);
     for (let i = 0; i < 2600; i++) {
       const x = rnd() * S;
       const y = rnd() * S;
       const l = 10 + rnd() * 22;
-      const b = 100 + rnd() * 90;
+      const b = 70 + rnd() * 70;
       g.strokeStyle = `rgba(${b + 40},${b + 15},${b * 0.45},${0.5 + rnd() * 0.5})`;
       g.lineWidth = 1 + rnd() * 1.5;
       g.beginPath();
@@ -270,7 +270,7 @@ export function tileRoofTexture() {
     const S = 256;
     const c = canvas(S);
     const g = c.getContext('2d');
-    g.fillStyle = '#7a3322';
+    g.fillStyle = '#4e2a20';
     g.fillRect(0, 0, S, S);
     const rows = 12;
     const cols = 10;
@@ -282,7 +282,7 @@ export function tileRoofTexture() {
         const x = col * w + (r % 2 ? w / 2 : 0);
         const y = r * h;
         const shade = 90 + rnd() * 50;
-        g.fillStyle = `rgb(${shade + 40},${shade * 0.45},${shade * 0.3})`;
+        g.fillStyle = `rgb(${shade * 0.9 + 10},${shade * 0.5},${shade * 0.38})`;
         g.beginPath();
         g.ellipse(x + w / 2, y + h * 0.55, w * 0.46, h * 0.6, 0, 0, Math.PI);
         g.fill();
@@ -365,5 +365,122 @@ export function detailNoiseTexture() {
     }
     g.putImageData(img, 0, 0);
     return toTexture(c, { srgb: false, repeat: true });
+  });
+}
+
+// ---------- Realistischere Drachenhaut ----------
+
+/** Kachelbares Werte-Rauschen (wiederholt sich alle "period" Einheiten) */
+function periodicNoise(seed) {
+  const rnd = mulberry32(seed);
+  const table = new Float32Array(256 * 256);
+  for (let i = 0; i < table.length; i++) table[i] = rnd();
+  return (x, y, period) => {
+    const xi = Math.floor(x);
+    const yi = Math.floor(y);
+    const fx = x - xi;
+    const fy = y - yi;
+    const u = fx * fx * (3 - 2 * fx);
+    const v = fy * fy * (3 - 2 * fy);
+    const w = (a, b) => table[(((b % period) + period) % period) * 256 + (((a % period) + period) % period)];
+    const a = w(xi, yi);
+    const b = w(xi + 1, yi);
+    const c = w(xi, yi + 1);
+    const d = w(xi + 1, yi + 1);
+    return (a + (b - a) * u) * (1 - v) + (c + (d - c) * u) * v;
+  };
+}
+
+function heightToNormal(h, S, strength) {
+  const data = new Uint8Array(S * S * 4);
+  for (let y = 0; y < S; y++) {
+    for (let x = 0; x < S; x++) {
+      const l = h[y * S + ((x - 1 + S) % S)];
+      const r = h[y * S + ((x + 1) % S)];
+      const d = h[((y - 1 + S) % S) * S + x];
+      const u = h[((y + 1) % S) * S + x];
+      let nx = (l - r) * strength;
+      let ny = (d - u) * strength;
+      const len = Math.hypot(nx, ny, 1);
+      const i = (y * S + x) * 4;
+      data[i] = ((nx / len) * 0.5 + 0.5) * 255;
+      data[i + 1] = ((ny / len) * 0.5 + 0.5) * 255;
+      data[i + 2] = ((1 / len) * 0.5 + 0.5) * 255;
+      data[i + 3] = 255;
+    }
+  }
+  const t = new THREE.DataTexture(data, S, S, THREE.RGBAFormat);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.magFilter = THREE.LinearFilter;
+  t.minFilter = THREE.LinearMipmapLinearFilter;
+  t.generateMipmaps = true;
+  t.anisotropy = 4;
+  t.needsUpdate = true;
+  return t;
+}
+
+/**
+ * Normal-Map für Drachenhaut: kleine, überlappende Schuppen + Falten.
+ * (Normal-Map = jedes Pixel speichert eine "Flächenrichtung" → Licht wirkt rau)
+ */
+export function dragonSkinNormalTexture() {
+  return cached('dragonSkinN', () => {
+    const S = 512;
+    const h = new Float32Array(S * S);
+    const n = periodicNoise(91);
+    const rows = 32;
+    const cols = 24;
+    for (let y = 0; y < S; y++) {
+      for (let x = 0; x < S; x++) {
+        // Schuppen: versetzte Reihen, jede Schuppe wölbt sich nach oben
+        const gy = (y / S) * rows;
+        const row = Math.floor(gy);
+        const gx = (x / S) * cols + (row % 2 ? 0.5 : 0);
+        const fx = gx - Math.floor(gx) - 0.5;
+        const fy = gy - row;
+        const jitter = n(Math.floor(gx) * 3.1, row * 2.3, 256) * 0.3;
+        const scale = Math.max(0, 1 - Math.hypot(fx * 1.6, (fy - 0.35) * 1.2)) * (0.7 + jitter);
+        // Falten: grobes Rauschen
+        const w1 = n((x / S) * 8, (y / S) * 8, 8);
+        const w2 = n((x / S) * 32, (y / S) * 32, 32);
+        h[y * S + x] = scale * 0.8 + w1 * 1.2 + w2 * 0.35;
+      }
+    }
+    return heightToNormal(h, S, 2.2);
+  });
+}
+
+/** Flughaut: helle Grundfarbe mit dunklen Adern und Flecken (wird mit der Hautfarbe multipliziert) */
+export function membraneTexture() {
+  return cached('membrane', () => {
+    const S = 512;
+    const c = canvas(S);
+    const g = c.getContext('2d', { willReadFrequently: true });
+    g.fillStyle = '#d8d0c8';
+    g.fillRect(0, 0, S, S);
+    noiseFill(g, S, 0, 38, 17, 0.02);
+    const rnd = mulberry32(23);
+    // verästelte Adern
+    const vein = (x, y, ang, width, depth) => {
+      g.strokeStyle = `rgba(60,35,30,${0.25 + width * 0.12})`;
+      g.lineWidth = width;
+      g.beginPath();
+      g.moveTo(x, y);
+      const len = 30 + rnd() * 50;
+      for (let i = 0; i < 6; i++) {
+        ang += (rnd() - 0.5) * 0.6;
+        x += Math.cos(ang) * len / 6;
+        y += Math.sin(ang) * len / 6;
+        g.lineTo(x, y);
+      }
+      g.stroke();
+      if (depth > 0) {
+        vein(x, y, ang + 0.5, width * 0.65, depth - 1);
+        vein(x, y, ang - 0.5, width * 0.65, depth - 1);
+      }
+    };
+    for (let i = 0; i < 14; i++) vein(rnd() * S, rnd() * S, rnd() * 6.28, 3, 3);
+    const t = toTexture(c, { repeat: true });
+    return t;
   });
 }

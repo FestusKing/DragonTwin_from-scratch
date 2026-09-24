@@ -72,16 +72,16 @@ export class Clouds {
       const cl = {
         x: (rnd() - 0.5) * AREA,
         z: (rnd() - 0.5) * AREA,
-        y: 400 + rnd() * 170,
-        rx: 130 + rnd() * 170,
-        ry: 50 + rnd() * 60,
-        rz: 110 + rnd() * 150,
+        y: 480 + rnd() * 220,
+        rx: 260 + rnd() * 340,
+        ry: 70 + rnd() * 70,
+        rz: 220 + rnd() * 280,
         thresh: rnd(),
         wx: 0,
         wz: 0,
       };
       this.clusters.push(cl);
-      const n = 7 + Math.floor(rnd() * 8);
+      const n = 14 + Math.floor(rnd() * 10);
       for (let i = 0; i < n; i++) {
         const a = rnd() * Math.PI * 2;
         const r = Math.sqrt(rnd());
@@ -93,7 +93,7 @@ export class Clouds {
           lx,
           ly,
           lz,
-          size: 80 + rnd() * 110,
+          size: 180 + rnd() * 200,
           rot: rnd() * Math.PI * 2,
           variant: Math.floor(rnd() * 4),
           shade: (ly / cl.ry) * 0.5 + 0.5,
@@ -128,7 +128,7 @@ export class Clouds {
       uFogColor: { value: new THREE.Color() },
       uDark: { value: 0 },
       uFogDensity: { value: 0.0001 },
-      uOpacity: { value: 0.92 },
+      uOpacity: { value: 0.62 },
       uSunI: { value: 1 },
       uNight: { value: 0 },
     };

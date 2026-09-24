@@ -3,7 +3,7 @@
 // Positionen gezeichnet. Das ist VIEL schneller als tausend einzelne Objekte.
 // Die Karte ist in 4×4 Stücke geteilt, damit Unsichtbares weggelassen wird.
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { Noise2D } from '../core/noise.js';
 import { mulberry32, smoothstep } from '../core/utils.js';
 import { HALF, WORLD_SIZE } from './Terrain.js';
@@ -12,7 +12,10 @@ const CHUNKS = 4;
 const CHUNK_SIZE = WORLD_SIZE / CHUNKS;
 
 function colored(geo, hex) {
-  geo = geo.index ? geo.toNonIndexed() : geo;
+  // indiziert lassen → gemeinsame Eckpunkte → weiche Schattierung
+  geo.deleteAttribute('uv');
+  geo.deleteAttribute('normal');
+  geo = geo.index ? geo : mergeVertices(geo);
   const c = new THREE.Color(hex);
   const n = geo.getAttribute('position').count;
   const arr = new Float32Array(n * 3);
@@ -22,7 +25,6 @@ function colored(geo, hex) {
     arr[i * 3 + 2] = c.b;
   }
   geo.setAttribute('color', new THREE.BufferAttribute(arr, 3));
-  geo.deleteAttribute('uv');
   return geo;
 }
 
@@ -40,24 +42,33 @@ function jitter(geo, amount, seed) {
   return geo;
 }
 
+const ico = (r, d) => mergeVertices(new THREE.IcosahedronGeometry(r, d).deleteAttribute('uv').deleteAttribute('normal'));
+
 export function makeConifer() {
-  const parts = [
-    colored(new THREE.CylinderGeometry(0.3, 0.5, 4, 6).translate(0, 2, 0), 0x5a3d25),
-    colored(new THREE.ConeGeometry(3.3, 5.2, 7).translate(0, 5, 0), 0x2b4a22),
-    colored(new THREE.ConeGeometry(2.6, 4.6, 7).rotateY(0.4).translate(0, 7.6, 0), 0x315429),
-    colored(new THREE.ConeGeometry(1.7, 4.0, 7).rotateY(0.9).translate(0, 10.1, 0), 0x3a5f2f),
-  ];
+  // Hohe, schlanke Tanne aus 5 Etagen, leicht unregelmässig
+  const parts = [colored(new THREE.CylinderGeometry(0.22, 0.45, 5, 6).translate(0, 2.5, 0), 0x3f3226)];
+  const tiers = 5;
+  for (let i = 0; i < tiers; i++) {
+    const t = i / (tiers - 1);
+    const r = 3.0 - t * 2.1;
+    const h = 4.2 - t * 1.3;
+    const y = 3.2 + i * 2.15;
+    const shade = [0x1e2b1b, 0x223020, 0x263523, 0x2a3a26, 0x2e3f29][i];
+    parts.push(colored(jitter(new THREE.ConeGeometry(r, h, 9, 2).rotateY(i * 0.7), 0.35, 20 + i).translate(0, y + h / 2, 0), shade));
+  }
   const g = mergeGeometries(parts);
   g.computeVertexNormals();
   return g;
 }
 
 export function makeBroadleaf() {
+  // Laubbaum: mehrere unregelmässige Blätterbüschel, weich schattiert
   const parts = [
-    colored(new THREE.CylinderGeometry(0.35, 0.6, 5, 6).translate(0, 2.5, 0), 0x5b4029),
-    colored(jitter(new THREE.IcosahedronGeometry(3.4, 1), 0.9, 1).scale(1, 0.85, 1).translate(0, 7, 0), 0x4b6c29),
-    colored(jitter(new THREE.IcosahedronGeometry(2.3, 0), 0.5, 2).translate(1.9, 6.1, 0.8), 0x567a2e),
-    colored(jitter(new THREE.IcosahedronGeometry(2.1, 0), 0.5, 3).translate(-1.6, 6.5, -1.1), 0x44632a),
+    colored(new THREE.CylinderGeometry(0.32, 0.6, 5, 7).translate(0, 2.5, 0), 0x4a3b2d),
+    colored(jitter(ico(3.3, 1), 1.0, 1).scale(1, 0.8, 1).translate(0, 7.2, 0), 0x3b4a27),
+    colored(jitter(ico(2.4, 1), 0.8, 2).translate(1.9, 6.2, 0.8), 0x44522b),
+    colored(jitter(ico(2.2, 1), 0.8, 3).translate(-1.7, 6.5, -1.1), 0x354322),
+    colored(jitter(ico(1.9, 1), 0.6, 6).translate(0.3, 8.8, -0.9), 0x40502a),
   ];
   const g = mergeGeometries(parts);
   g.computeVertexNormals();
@@ -74,13 +85,15 @@ export function makeDeadTree() {
     b.translate(0, 3 + rnd() * 2.2, 0);
     parts.push(colored(b, 0x1d1a17));
   }
-  return mergeGeometries(parts);
+  const g = mergeGeometries(parts);
+  g.computeVertexNormals();
+  return g;
 }
 
 export function makeBush() {
   const g = mergeGeometries([
-    colored(jitter(new THREE.IcosahedronGeometry(1.4, 0), 0.4, 4).scale(1.2, 0.8, 1).translate(0, 0.8, 0), 0x3f5d24),
-    colored(jitter(new THREE.IcosahedronGeometry(1.0, 0), 0.3, 5).translate(0.9, 0.6, 0.4), 0x4a6b2a),
+    colored(jitter(ico(1.4, 1), 0.5, 4).scale(1.2, 0.75, 1).translate(0, 0.8, 0), 0x38462a),
+    colored(jitter(ico(1.0, 0), 0.3, 5).translate(0.9, 0.6, 0.4), 0x414e2c),
   ]);
   g.computeVertexNormals();
   return g;
@@ -116,7 +129,7 @@ export class Vegetation {
     ];
     this.types = types;
     this.material = this._material(true);
-    this.rockMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.95 });
+    this.rockMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.95, color: 0xb0aaa0 });
     this.deadGeo = makeDeadTree();
     this.deadMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1 });
 
@@ -124,7 +137,7 @@ export class Vegetation {
   }
 
   _material(sway) {
-    const mat = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.88 });
+    const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 });
     if (sway) {
       mat.onBeforeCompile = (shader) => {
         shader.uniforms.uTime = this.time;

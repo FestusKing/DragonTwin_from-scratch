@@ -85,6 +85,7 @@ export class Game {
     this.world = new World(this.scene, preset.world);
     await this.world.build(progress);
     this.world.audio = this.audio;
+    this.world.sky.setupEnvironment(this.renderer);
 
     progress(0.96, 'Drache schlüpft …');
     this.dragon = new Dragon();
@@ -535,7 +536,7 @@ export class Game {
       damage: this.damage,
       night: w.sky.night,
     });
-    this.renderer.toneMappingExposure = lerp(1.0, 1.8, w.sky.night) * (1 + w.weather.overcast * 0.12);
+    this.renderer.toneMappingExposure = lerp(0.9, 1.7, w.sky.night) * (1 + w.weather.overcast * 0.12);
     this.post.render(dt);
     input.endFrame();
   }

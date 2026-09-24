@@ -87,8 +87,8 @@ export class Wing {
     ];
     for (let k = 0; k < 4; k++) this.bones.push({ m: seg(0.04, 0.13), a: P.W, b: P.F[k] });
     // Daumenkralle am Handgelenk
-    const cg = new THREE.ConeGeometry(0.16, 0.9, 5);
-    cg.translate(0, 0.45, 0);
+    const cg = new THREE.ConeGeometry(0.2, 1.3, 5);
+    cg.translate(0, 0.65, 0);
     this.thumb = new THREE.Mesh(cg, clawMat);
     this.thumb.castShadow = true;
     this.group.add(this.thumb);
@@ -101,7 +101,14 @@ export class Wing {
     this._up = new THREE.Vector3(0, 1, 0);
     this._d = new THREE.Vector3();
     this._t = new THREE.Vector3();
-    this.pose({ fold: 0, t1: 0.1, t2: 0, t3: 0, sweep: 0 });
+    this.pose({ fold: 0, t1: 0, t2: 0, t3: 0, sweep: 0 });
+    // Texturkoordinaten einmal aus der gespreizten Form (Draufsicht) berechnen
+    const uvArr = new Float32Array(n * 2);
+    for (let i = 0; i < n; i++) {
+      uvArr[i * 2] = this.pts[i].x / 7;
+      uvArr[i * 2 + 1] = this.pts[i].z / 7;
+    }
+    this.geometry.setAttribute('uv', new THREE.BufferAttribute(uvArr, 2));
     // Einmalig prüfen, ob die Dreiecke nach oben zeigen, sonst umdrehen
     this.geometry.computeVertexNormals();
     const nrm = this.geometry.getAttribute('normal');

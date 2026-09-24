@@ -63,8 +63,10 @@ export class Terrain {
 
     // 2) Gebirge im Norden (negatives z)
     const mMask = smoothstep(150, -1300, wz);
-    const ridge = n.ridged(wx * 0.0011 + 5, wz * 0.0011 + 9, 5);
-    h += mMask * (ridge * 430 + 30);
+    // Grate (ridged) gemischt mit weichem Rauschen → massive statt nadelspitze Berge
+    const ridge = n.ridged(wx * 0.0009 + 5, wz * 0.0009 + 9, 6, 2.0, 0.55);
+    const soft = n.fbm(wx * 0.0007 + 40, wz * 0.0007, 4) * 0.5 + 0.5;
+    h += mMask * (ridge * 330 + soft * 140 + 30);
     const P = PLACES;
     const dp = Math.hypot(x - P.peak.x, z - P.peak.z);
     h += 470 * Math.exp(-(dp * dp) / (470 * 470)) * (0.75 + 0.5 * ridge);
@@ -354,7 +356,7 @@ export class Terrain {
       roughness: 0.93,
       metalness: 0,
       bumpMap: detail,
-      bumpScale: 1.6,
+      bumpScale: 2.6,
     });
     const col = (hex) => new THREE.Color(hex);
     const uniforms = {
@@ -362,18 +364,19 @@ export class Terrain {
       uScorch: { value: this.scorchTexture },
       uDetail: { value: detail },
       uSize: { value: WORLD_SIZE },
-      uSnow: { value: 420 },
+      uSnow: { value: 390 },
       uWet: { value: 0 },
-      cGrassA: { value: col(0x4a6a24) },
-      cGrassB: { value: col(0x7a8a3a) },
-      cForest: { value: col(0x33501c) },
-      cSand: { value: col(0xc9b58a) },
-      cRock: { value: col(0x77706a) },
-      cRock2: { value: col(0x524c47) },
-      cSnow: { value: col(0xf2f5fa) },
-      cDirt: { value: col(0x7a5f40) },
-      cWheat: { value: col(0xc9a650) },
-      cCrop: { value: col(0x5c7a2c) },
+      // gedämpfte, natürliche Farben (wie Alpenwiesen im Spätsommer)
+      cGrassA: { value: col(0x4f5c33) },
+      cGrassB: { value: col(0x6e6b44) },
+      cForest: { value: col(0x2f3a22) },
+      cSand: { value: col(0xafa283) },
+      cRock: { value: col(0x6a645b) },
+      cRock2: { value: col(0x3a3632) },
+      cSnow: { value: col(0xe2e6ec) },
+      cDirt: { value: col(0x66523d) },
+      cWheat: { value: col(0xa39058) },
+      cCrop: { value: col(0x535e35) },
     };
     this.uniforms = uniforms;
     mat.onBeforeCompile = (shader) => {
@@ -417,8 +420,10 @@ col = mix(col, cDirt * (0.75 + 0.5 * det), splat.r);
 float sandT = 1.0 - smoothstep(1.5, 4.5 + n1 * 2.0, wp.y);
 col = mix(col, cSand * (0.85 + 0.3 * det), sandT);
 vec3 rock = mix(cRock2, cRock, det * 0.7 + det2 * 0.5);
-float rockT = smoothstep(0.24, 0.4, slope + n1 * 0.06);
-rockT = max(rockT, smoothstep(250.0, 430.0, wp.y + n1 * 70.0) * 0.55);
+float rockT = smoothstep(0.17, 0.33, slope + n1 * 0.06);
+rockT = max(rockT, smoothstep(200.0, 380.0, wp.y + n1 * 70.0) * 0.75);
+// dunkle Rinnen in steilen Felsen
+rock *= 0.8 + 0.35 * smoothstep(0.2, 0.8, det2 + det * 0.3);
 col = mix(col, rock, rockT);
 gSnowT = smoothstep(uSnow - 40.0, uSnow + 30.0, wp.y + n1 * 60.0) * (1.0 - smoothstep(0.38, 0.6, slope));
 col = mix(col, cSnow, gSnowT);

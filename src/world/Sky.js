@@ -10,9 +10,9 @@ const KEYS = [
   { e: -0.14, zen: 0x0a1230, hor: 0x1e2442 },
   { e: -0.03, zen: 0x1c2a58, hor: 0xb0584a },
   { e: 0.05, zen: 0x35599a, hor: 0xf09a5c },
-  { e: 0.18, zen: 0x3a70bd, hor: 0xb5cde2 },
-  { e: 0.5, zen: 0x2a5fb5, hor: 0xa6c5e4 },
-  { e: 1.0, zen: 0x2458ae, hor: 0x9fc0e2 },
+  { e: 0.18, zen: 0x46729f, hor: 0xc2cfd8 },
+  { e: 0.5, zen: 0x3a6899, hor: 0xb8c8d4 },
+  { e: 1.0, zen: 0x345f8f, hor: 0xb2c3d0 },
 ].map((k) => ({ e: k.e, zen: new THREE.Color(k.zen), hor: new THREE.Color(k.hor) }));
 
 const _c1 = new THREE.Color();
@@ -173,6 +173,36 @@ export class Sky {
     this._lightMat = new THREE.Matrix4();
   }
 
+  /**
+   * Umgebungslicht (Image Based Lighting): Der Himmel wird alle paar Sekunden
+   * in eine kleine "Rundum-Textur" gerendert. Alle Materialien nutzen sie für
+   * weiches Licht von allen Seiten und für Spiegelungen (z. B. auf den Hörnern).
+   */
+  setupEnvironment(renderer) {
+    this.pmrem = new THREE.PMREMGenerator(renderer);
+    this.envScene = new THREE.Scene();
+    this.envSky = new THREE.Mesh(this.mesh.geometry, this.mesh.material);
+    this.envScene.add(this.envSky);
+    this.envTimer = 0;
+    this.envTarget = null;
+  }
+
+  _updateEnvironment(dt) {
+    if (!this.pmrem) return;
+    this.envTimer -= dt;
+    if (this.envTimer > 0) return;
+    this.envTimer = 2.5;
+    // Sonnenscheibe im Umgebungsbild abschwächen (sonst zu grelle Reflexe)
+    const flash = this.uniforms.uFlash.value;
+    this.uniforms.uFlash.value = 0;
+    const rt = this.pmrem.fromScene(this.envScene, 0.02, 1, 30000);
+    this.uniforms.uFlash.value = flash;
+    this.envTarget?.dispose();
+    this.envTarget = rt;
+    this.scene.environment = rt.texture;
+    this.scene.environmentIntensity = 0.55;
+  }
+
   setShadowQuality(size) {
     if (size <= 0) {
       this.light.castShadow = false;
@@ -250,7 +280,7 @@ export class Sky {
     this.hemi.groundColor.setRGB(0.28, 0.24, 0.17).multiplyScalar(0.35 + this.day * 0.65);
     // Dämmerung: Himmel ist noch hell → mehr Umgebungslicht
     const twilight = Math.max(0, 1 - Math.abs(e + 0.02) / 0.12);
-    this.hemi.intensity = (0.85 + this.day * 0.45 + twilight * 0.35 + oc * 0.25 * this.day) * (1 - w.darkness * 0.6) + this.flash * 3;
+    this.hemi.intensity = (0.6 + this.day * 0.25 + twilight * 0.3 + oc * 0.25 * this.day) * (1 - w.darkness * 0.6) + this.flash * 3;
     this.ambient.copy(this.hemi.color).multiplyScalar(this.hemi.intensity);
 
     // Schatten-Kamera folgt dem Spieler, auf Texel-Raster eingerastet (kein Flimmern)
@@ -266,6 +296,7 @@ export class Sky {
     u.uMoonBright.value = 0.5 + this.night * 0.8;
     u.uSunVis.value = smoothstep(-0.12, 0.0, e);
     this.mesh.position.copy(camera.position);
+    this._updateEnvironment(dt);
   }
 
   _placeLight(focus) {

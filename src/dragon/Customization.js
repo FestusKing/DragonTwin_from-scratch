@@ -2,15 +2,17 @@
 // Änderungen wirken sofort (ohne Neuladen) und werden gespeichert.
 import { storage } from '../core/utils.js';
 
-const KEY = 'dragontwin.custom.v1';
+const KEY = 'dragontwin.custom.v2'; // v2: neue Standardfarbe Grau
 
+// Natürliche, gedämpfte Farben (wie echte Reptilien – nicht knallig)
 export const SKINS = {
-  black: { label: 'Schwarz', body: 0x1c1b22, belly: 0x4a4038, membrane: 0x2a1f2a, horn: 0xc8bca0, eye: 0xff5a1a, metal: 0.3, rough: 0.4 },
-  blue: { label: 'Blau', body: 0x1f4f95, belly: 0xc9b58c, membrane: 0x173766, horn: 0xdcd0b4, eye: 0xffc020 },
-  green: { label: 'Grün', body: 0x2f6a2a, belly: 0xc2b27a, membrane: 0x2a4a1e, horn: 0xd6c8a4, eye: 0xfff040 },
-  red: { label: 'Rot', body: 0x7c1b16, belly: 0xd4a86a, membrane: 0x5a1210, horn: 0x2a2220, eye: 0xffe070 },
-  bone: { label: 'Knochenweiss', body: 0xcfc6b2, belly: 0x9c8e76, membrane: 0x8a7a66, horn: 0x3a3028, eye: 0x40c0ff },
-  gold: { label: 'Gold ✦', body: 0xc9982e, belly: 0xf0dca0, membrane: 0x9a6a1a, horn: 0xfff4d0, eye: 0xff3010, metal: 0.85, rough: 0.28, locked: true },
+  grey: { label: 'Grau', body: 0x6e665c, belly: 0x9c9080, membrane: 0x5e4c42, horn: 0xb8ab92, eye: 0xff9a22 },
+  black: { label: 'Schwarz', body: 0x24221f, belly: 0x4a4038, membrane: 0x2e2522, horn: 0xa89c86, eye: 0xff5a1a, rough: 0.7 },
+  blue: { label: 'Stahlblau', body: 0x3c4b5c, belly: 0x8a8578, membrane: 0x2e3440, horn: 0xbfb5a0, eye: 0x7ad0ff },
+  green: { label: 'Moosgrün', body: 0x4a5236, belly: 0x9a9170, membrane: 0x3e3f2a, horn: 0xb8ac8c, eye: 0xfff040 },
+  red: { label: 'Rostrot', body: 0x6a2e22, belly: 0xa88660, membrane: 0x4a1e18, horn: 0x3a302a, eye: 0xffe070 },
+  bone: { label: 'Knochenweiss', body: 0xb8ae9c, belly: 0x8e8270, membrane: 0x7a6a5a, horn: 0x3a3028, eye: 0x40c0ff },
+  gold: { label: 'Gold ✦', body: 0xa67c2c, belly: 0xd8c08a, membrane: 0x7a5418, horn: 0xf0e2c0, eye: 0xff3010, metal: 0.7, rough: 0.35, locked: true },
 };
 
 export const FIRE_COLORS = {
@@ -27,7 +29,7 @@ export class Customization {
   constructor() {
     const saved = storage.get(KEY, {});
     this.state = {
-      skin: SKINS[saved.skin] ? saved.skin : 'blue',
+      skin: SKINS[saved.skin] ? saved.skin : 'grey',
       fire: FIRE_COLORS[saved.fire] ? saved.fire : 'orange',
       rider: saved.rider !== false,
     };

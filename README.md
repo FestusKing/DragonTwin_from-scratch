@@ -107,7 +107,7 @@ Für eine fertige Version zum Hochladen gibt es `npm run build`. Das Ergebnis li
   - Wer alle findet, schaltet eine geheime Drachenfarbe frei.
 
 ### Anpassen
-- **Schuppenfarben:** Schwarz, Blau, Grün, Rot, Knochenweiss (+ 1 geheime).
+- **Schuppenfarben:** Grau (Standard, wie im DragonTwin-Bild), Schwarz, Stahlblau, Moosgrün, Rostrot, Knochenweiss (+ 1 geheime).
 - **Feuerfarben:** Orange, Rot, Blau, Grün, Violett, Pink, Dunkelrot.
 - **Reiter** an oder aus.
 - Alles wirkt **sofort** und wird gespeichert.
@@ -246,11 +246,19 @@ Die „Stretch Goals“ aus der Vorgabe gehören **nicht** zum Test Flight. Sie 
 **Vereinfacht wurde:**
 
 - **Wasser-Spiegelung:** Das Wasser spiegelt den Himmel, aber nicht die Berge. Das ist viel schneller.
-- **Drachen-Modell:** stilisiert (Low-Poly) statt realistisch. Dafür reagieren Flügel, Hals und Schwanz auf jede Bewegung.
+- **Drachen-Modell:** Der Drache ist ein **Wyvern** wie in DragonTwin: Die Flügel sind die Arme, es gibt nur zwei Hinterbeine. Er wird komplett im Code gebaut (mit Leder-Normal-Map, Flecken und Hornkrone). Ein professionell modellierter Drache aus Blender wäre noch detailreicher.
 - **Der Test lief ohne Grafikkarte:**
   - Getestet wurde automatisch in einem Browser ohne GPU.
   - Die Logik braucht nur ca. 2 ms pro Bild.
   - Die echten FPS auf deinem Laptop konnte ich nicht messen.
+
+---
+
+## 🖼️ Echte Foto-Texturen (optional, später)
+
+Geplant sind kostenlose **CC0-Texturen** von [Poly Haven](https://polyhaven.com) (Fels, Gras, Holz …).
+CC0 bedeutet: frei nutzbar, auch ohne Namensnennung.
+Dafür muss die Cloud-Umgebung die Domains `polyhaven.com` bzw. `ambientcg.com` erlauben.
 
 ---
 

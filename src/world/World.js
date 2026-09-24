@@ -53,7 +53,7 @@ export class World {
     this.sky = new Sky(scene);
     this.weather = new Weather();
     this.water = new Water(scene, this.terrain);
-    this.clouds = new Clouds(scene, q.clouds);
+    this.clouds = new Clouds(scene, Math.round(q.clouds * 0.6)); // grosse Wolken → weniger nötig
     scene.fog = new THREE.FogExp2(0xa6c5e4, 0.00012);
 
     progress(0.62, 'Wälder pflanzen …');

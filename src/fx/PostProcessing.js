@@ -13,7 +13,7 @@ import { FXAAPass } from 'three/addons/postprocessing/FXAAPass.js';
 const GradeShader = {
   uniforms: {
     tDiffuse: { value: null },
-    uVignette: { value: 0.45 },
+    uVignette: { value: 0.55 },
     uSat: { value: 0.92 },
     uTint: { value: new THREE.Color(1.03, 1.0, 0.95) },
     uBlur: { value: 0 },
@@ -21,7 +21,7 @@ const GradeShader = {
     uWhiteColor: { value: new THREE.Color(0.8, 0.82, 0.86) },
     uDamage: { value: 0 },
     uAberration: { value: 0 },
-    uContrast: { value: 1.05 },
+    uContrast: { value: 1.12 },
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -120,8 +120,8 @@ export class PostProcessing {
   set({ blur = 0, white = 0, damage = 0, aberration = 0, whiteColor = null, night = 0 }) {
     const u = this.grade.uniforms;
     // Nachts: weniger Farbe, kühler Blauton (wie Mondlicht)
-    u.uSat.value = 0.92 - night * 0.4;
-    u.uTint.value.setRGB(1.03 - night * 0.2, 1.0 - night * 0.06, 0.95 + night * 0.2);
+    u.uSat.value = 0.8 - night * 0.35;
+    u.uTint.value.setRGB(1.02 - night * 0.2, 1.0 - night * 0.06, 0.97 + night * 0.2);
     u.uBlur.value = blur;
     u.uWhite.value = white;
     u.uDamage.value = damage;

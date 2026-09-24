@@ -93,8 +93,8 @@ export class Water {
         uSunColor: { value: new THREE.Color(1, 1, 1) },
         uZenith: { value: new THREE.Color() },
         uHorizon: { value: new THREE.Color() },
-        uDeep: { value: new THREE.Color(0x0a2c44) },
-        uShallow: { value: new THREE.Color(0x2a8c8a) },
+        uDeep: { value: new THREE.Color(0x0b2330) },
+        uShallow: { value: new THREE.Color(0x2f6c68) },
         uAmbient: { value: new THREE.Color(0.5, 0.6, 0.7) },
       },
     ]);

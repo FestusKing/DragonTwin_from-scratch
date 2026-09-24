@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { damp } from '../core/utils.js';
 
 export const WEATHER_TYPES = {
-  clear: { label: 'Klar', overcast: 0.0, cloudCover: 0.38, rain: 0, fog: 0, fogDensity: 0.00011, darkness: 0, wind: 0.2, lightning: 0 },
+  clear: { label: 'Klar', overcast: 0.0, cloudCover: 0.5, rain: 0, fog: 0, fogDensity: 0.00017, darkness: 0, wind: 0.2, lightning: 0 },
   cloudy: { label: 'Bewölkt', overcast: 0.55, cloudCover: 0.82, rain: 0, fog: 0.1, fogDensity: 0.0002, darkness: 0.08, wind: 0.45, lightning: 0 },
   rain: { label: 'Regen', overcast: 0.9, cloudCover: 1.0, rain: 0.75, fog: 0.35, fogDensity: 0.00065, darkness: 0.3, wind: 0.6, lightning: 0 },
   fog: { label: 'Nebel', overcast: 0.55, cloudCover: 0.45, rain: 0, fog: 1.0, fogDensity: 0.0032, darkness: 0.08, wind: 0.05, lightning: 0 },
