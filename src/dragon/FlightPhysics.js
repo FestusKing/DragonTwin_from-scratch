@@ -44,7 +44,7 @@ const CL_ALPHA = 4.2; // Zusatz-Auftrieb pro Radiant Anstellwinkel
 const STALL_ANGLE = 0.34; // ≈ 20°: ab hier Strömungsabriss
 const CD0 = 0.035; // Grund-Widerstand (Körper + Flügel)
 const K_INDUCED = 0.06; // "induzierter" Widerstand: Auftrieb kostet Tempo
-const BRAKE_CD = 0.45; // Zusatz-Widerstand beim Bremsen (V)
+const BRAKE_CD = 0.7; // Zusatz-Widerstand beim Bremsen (V)
 const MAX_G = 6; // maximale Kurvenkraft in "g" (sonst wirkt es zu zackig)
 
 const PITCH_RATE = 1.45; // max. Drehrate Nase hoch/runter (rad/s)

@@ -235,7 +235,7 @@ export class Particles {
     this.smoke = new ParticleSystem(scene, {
       max: Math.floor(2500 * quality),
       texture: puffTexture(7),
-      colors: [0x3a3632, 0x5a5550, 0x77736e],
+      colors: [0x2a2724, 0x403c38, 0x5a5652],
       additive: false,
       alpha: 0.5,
       gravity: 3.5,
@@ -266,7 +266,7 @@ export class Particles {
   }
 
   update(dt, wind, sky, fogDensity) {
-    const light = _light.copy(sky.ambient).multiplyScalar(0.7).add(_tmp.copy(sky.lightColor).multiplyScalar(sky.light.intensity * 0.12));
+    const light = _light.copy(sky.ambient).multiplyScalar(0.5).add(_tmp.copy(sky.lightColor).multiplyScalar(sky.light.intensity * 0.08));
     for (const s of [this.smoke, this.spray]) s.setEnvironment(light, sky.fogColor, fogDensity);
     for (const s of [this.fire, this.sparks]) s.setEnvironment(light, sky.fogColor, fogDensity * 0.6);
     this.fire.update(dt, wind);

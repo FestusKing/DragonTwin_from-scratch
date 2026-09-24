@@ -3,6 +3,7 @@
 // Tipp im Spiel: Ab und zu meckert eine Ziege in der Nähe → hinhören!
 import * as THREE from 'three';
 import { storage, mulberry32 } from '../core/utils.js';
+import { mergeParts } from '../dragon/geo.js';
 
 const KEY = 'dragontwin.goats.v1';
 const FIND_RADIUS = 17; // so nah muss man heran (Meter)
@@ -18,50 +19,32 @@ function makeGoat(variant) {
   const body = new THREE.MeshStandardMaterial({ color: bodyCol, roughness: 1, flatShading: true });
   const dark = new THREE.MeshStandardMaterial({ color: darkCol, roughness: 1, flatShading: true });
   const horn = new THREE.MeshStandardMaterial({ color: 0xcfc2a0, roughness: 0.7, flatShading: true });
+  const B = (w, h, d) => new THREE.BoxGeometry(w, h, d);
+  // Teile pro Material zusammenfassen → wenige Draw-Calls
   const g = new THREE.Group();
-  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.5, 1.0), body);
-  torso.position.y = 0.8;
-  g.add(torso);
-  const legs = [];
-  for (const [x, z] of [[-0.18, 0.36], [0.18, 0.36], [-0.18, -0.36], [0.18, -0.36]]) {
-    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.58, 0.11), dark);
-    leg.geometry.translate(0, -0.29, 0);
-    leg.position.set(x, 0.6, z);
-    g.add(leg);
-    legs.push(leg);
-  }
+  g.add(new THREE.Mesh(mergeParts([{ geo: B(0.55, 0.5, 1.0), p: [0, 0.8, 0] }]), body));
+  const legParts = [[-0.18, 0.36], [0.18, 0.36], [-0.18, -0.36], [0.18, -0.36]].map(([x, z]) => ({ geo: B(0.11, 0.58, 0.11), p: [x, 0.31, z] }));
+  g.add(new THREE.Mesh(mergeParts(legParts), dark));
   const neck = new THREE.Group();
   neck.position.set(0, 0.95, 0.42);
-  const neckMesh = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.42, 0.22), body);
-  neckMesh.position.set(0, 0.16, 0.05);
-  neckMesh.rotation.x = 0.4;
-  neck.add(neckMesh);
+  neck.add(new THREE.Mesh(mergeParts([{ geo: B(0.22, 0.42, 0.22), p: [0, 0.16, 0.05], r: [0.4, 0, 0] }]), body));
   const head = new THREE.Group();
   head.position.set(0, 0.38, 0.14);
-  const skull = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.26, 0.42), body);
-  skull.position.z = 0.14;
-  skull.rotation.x = 0.35;
-  head.add(skull);
-  for (const s of [-1, 1]) {
-    const h = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.34, 5), horn);
-    h.position.set(s * 0.07, 0.2, 0.02);
-    h.rotation.set(-0.9, 0, s * 0.15);
-    head.add(h);
-    const ear = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.05, 0.08), dark);
-    ear.position.set(s * 0.16, 0.08, 0.02);
-    ear.rotation.z = s * -0.4;
-    head.add(ear);
-    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 5, 4), new THREE.MeshBasicMaterial({ color: 0x111111 }));
-    eye.position.set(s * 0.125, 0.07, 0.14);
-    head.add(eye);
+  const hornParts = [];
+  const darkParts = [{ geo: new THREE.ConeGeometry(0.05, 0.18, 4), p: [0, -0.14, 0.3], r: [Math.PI, 0, 0] }];
+  const eyeParts = [];
+  for (const sd of [-1, 1]) {
+    hornParts.push({ geo: new THREE.ConeGeometry(0.045, 0.34, 5), p: [sd * 0.07, 0.2, 0.02], r: [-0.9, 0, sd * 0.15] });
+    darkParts.push({ geo: B(0.18, 0.05, 0.08), p: [sd * 0.16, 0.08, 0.02], r: [0, 0, sd * -0.4] });
+    eyeParts.push({ geo: new THREE.SphereGeometry(0.025, 5, 4), p: [sd * 0.125, 0.07, 0.14] });
   }
-  const beard = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.18, 4), dark);
-  beard.position.set(0, -0.14, 0.3);
-  beard.rotation.x = Math.PI;
-  head.add(beard);
+  head.add(new THREE.Mesh(mergeParts([{ geo: B(0.24, 0.26, 0.42), p: [0, 0, 0.14], r: [0.35, 0, 0] }]), body));
+  head.add(new THREE.Mesh(mergeParts(hornParts), horn));
+  head.add(new THREE.Mesh(mergeParts(darkParts), dark));
+  head.add(new THREE.Mesh(mergeParts(eyeParts), new THREE.MeshBasicMaterial({ color: 0x111111 })));
   neck.add(head);
   g.add(neck);
-  const tail = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.2, 0.06), body);
+  const tail = new THREE.Mesh(B(0.08, 0.2, 0.06), body);
   tail.position.set(0, 1.05, -0.52);
   tail.rotation.x = -0.5;
   g.add(tail);
@@ -75,7 +58,7 @@ function makeGoat(variant) {
   g.add(bell);
   g.traverse((o) => o.isMesh && (o.castShadow = true));
   g.scale.setScalar(1.5);
-  return { group: g, neck, head, legs, tail, bell };
+  return { group: g, neck, head, tail, bell };
 }
 
 export class Goats {

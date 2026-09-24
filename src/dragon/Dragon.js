@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 import { clamp, damp, lerp } from '../core/utils.js';
 import { scaleBumpTexture } from '../fx/Textures.js';
-import { taperedTube, bezierPoints } from './geo.js';
+import { taperedTube, bezierPoints, mergeParts } from './geo.js';
 import { Wing } from './Wing.js';
 
 export const MODEL_SCALE = 0.7; // ganzes Modell verkleinern (≈ 21 m lang, 26 m Spannweite)
@@ -88,9 +88,9 @@ export class Dragon {
     const bump = scaleBumpTexture();
     if (this.ghost) {
       const gm = new THREE.MeshBasicMaterial({
-        color: 0x66ccff,
+        color: 0x7fd8ff,
         transparent: true,
-        opacity: 0.28,
+        opacity: 0.45,
         depthWrite: false,
         side: THREE.DoubleSide,
         blending: THREE.AdditiveBlending,
@@ -102,7 +102,8 @@ export class Dragon {
       body: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55, metalness: 0.15, bumpMap: bump, bumpScale: 2.5 }),
       skin: new THREE.MeshStandardMaterial({ color: 0x224a8a, roughness: 0.55, metalness: 0.15, bumpMap: bump, bumpScale: 2 }),
       belly: new THREE.MeshStandardMaterial({ color: 0xc8b48a, roughness: 0.6, metalness: 0.05 }),
-      membrane: new THREE.MeshStandardMaterial({ color: 0x1b3560, roughness: 0.75, metalness: 0, side: THREE.DoubleSide }),
+      // leichtes Eigenleuchten = Licht scheint durch die dünne Flughaut
+      membrane: new THREE.MeshStandardMaterial({ color: 0x1b3560, emissive: 0x1b3560, emissiveIntensity: 0.25, roughness: 0.75, metalness: 0, side: THREE.DoubleSide }),
       horn: new THREE.MeshStandardMaterial({ color: 0xd9ccb0, roughness: 0.45, metalness: 0.05 }),
       claw: new THREE.MeshStandardMaterial({ color: 0x1e1c1a, roughness: 0.35, metalness: 0.2 }),
       eye: new THREE.MeshStandardMaterial({ color: 0x331800, emissive: 0xffaa22, emissiveIntensity: 5 }),
@@ -203,77 +204,66 @@ export class Dragon {
   }
 
   // ------------------------------------------------------------ Kopf
+  // Alle festen Kopfteile werden pro Material zu EINEM Mesh verschmolzen
+  // (spart viele Draw-Calls = mehr FPS).
   _createHead() {
     const m = this.mats;
     const head = new THREE.Group();
     this.bones.head.add(head);
     this.head = head;
-    const add = (geo, mat, x = 0, y = 0, z = 0, parent = head) => {
-      const mesh = new THREE.Mesh(geo, mat);
-      mesh.position.set(x, y, z);
-      parent.add(mesh);
-      return mesh;
+    const mesh = (parts, mat, parent = head) => {
+      const me = new THREE.Mesh(mergeParts(parts), mat);
+      parent.add(me);
+      return me;
     };
-    const skull = add(new THREE.SphereGeometry(1, 18, 12), m.skin, 0, 0.22, -0.5);
-    skull.scale.set(0.74, 0.6, 1.05);
-    const snoutGeo = new THREE.CylinderGeometry(0.36, 0.56, 2.0, 12);
-    snoutGeo.rotateX(-Math.PI / 2);
-    const snout = add(snoutGeo, m.skin, 0, 0.12, -1.75);
-    snout.scale.set(1.05, 0.7, 1);
-    const tip = add(new THREE.SphereGeometry(0.38, 12, 8), m.skin, 0, 0.12, -2.7);
-    tip.scale.set(1.05, 0.72, 0.9);
+    const snoutGeo = new THREE.CylinderGeometry(0.36, 0.56, 2.0, 12).rotateX(-Math.PI / 2);
+    const skinParts = [
+      { geo: new THREE.SphereGeometry(1, 18, 12), p: [0, 0.22, -0.5], s: [0.74, 0.6, 1.05] },
+      { geo: snoutGeo, p: [0, 0.12, -1.75], s: [1.05, 0.7, 1] },
+      { geo: new THREE.SphereGeometry(0.38, 12, 8), p: [0, 0.12, -2.7], s: [1.05, 0.72, 0.9] },
+    ];
+    const hornParts = [];
+    const eyeParts = [];
+    const finParts = [];
+    const toothGeo = new THREE.ConeGeometry(0.06, 0.24, 4);
+    for (let i = 0; i < 6; i++) {
+      for (const sd of [-1, 1]) hornParts.push({ geo: toothGeo, p: [sd * (0.3 + i * 0.03), -0.08, -2.5 + i * 0.3], r: [Math.PI, 0, 0] });
+    }
+    for (const sd of [-1, 1]) {
+      eyeParts.push({ geo: new THREE.SphereGeometry(0.15, 10, 8), p: [sd * 0.56, 0.45, -0.95] });
+      skinParts.push({ geo: new THREE.BoxGeometry(0.34, 0.13, 0.7), p: [sd * 0.47, 0.6, -0.8], r: [0.1, sd * 0.25, sd * -0.35] });
+      // Hörner
+      const h1 = bezierPoints(new THREE.Vector3(sd * 0.38, 0.55, -0.25), new THREE.Vector3(sd * 0.8, 1.35, 0.8), new THREE.Vector3(sd * 0.62, 1.15, 2.3), 10);
+      hornParts.push({ geo: taperedTube(h1, h1.map((_, i) => 0.24 * (1 - i / 9) + 0.015), 8) });
+      const h2 = bezierPoints(new THREE.Vector3(sd * 0.62, 0.15, -0.15), new THREE.Vector3(sd * 1.15, 0.35, 0.55), new THREE.Vector3(sd * 1.28, 0.05, 1.35), 8);
+      hornParts.push({ geo: taperedTube(h2, h2.map((_, i) => 0.13 * (1 - i / 7) + 0.01), 6) });
+      // Wangen-Stacheln
+      for (let i = 0; i < 3; i++) {
+        hornParts.push({ geo: new THREE.ConeGeometry(0.07, 0.5 - i * 0.1, 4), p: [sd * (0.55 + i * 0.05), -0.2, -0.5 + i * 0.35], r: [Math.PI / 2 + 0.3, 0, sd * -0.8] });
+      }
+      // kleine Nackenfächer
+      const fin = new THREE.BufferGeometry();
+      fin.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, sd * 0.9, 0.5, 0.9, 0, 0.1, 1.2], 3));
+      finParts.push({ geo: fin, p: [sd * 0.45, 0.3, 0] });
+    }
+    mesh(skinParts, m.skin);
+    mesh(hornParts, m.horn);
+    mesh(eyeParts, m.eye);
+    mesh(finParts, m.membrane);
     // Kiefer (klappt beim Feuerspeien auf)
     this.jaw = new THREE.Group();
     this.jaw.position.set(0, -0.12, -0.35);
     head.add(this.jaw);
-    const jawGeo = new THREE.CylinderGeometry(0.3, 0.46, 2.3, 10);
-    jawGeo.rotateX(-Math.PI / 2);
-    const jaw = add(jawGeo, m.belly, 0, -0.18, -1.2, this.jaw);
-    jaw.scale.set(1, 0.5, 1);
-    // Zähne
-    const toothGeo = new THREE.ConeGeometry(0.06, 0.24, 4);
-    for (let i = 0; i < 6; i++) {
-      for (const s of [-1, 1]) {
-        const t = add(toothGeo, m.horn, s * (0.24 + i * 0.022), -0.1, -2.2 + i * 0.28, this.jaw);
-        t.rotation.x = 0;
-        const u = add(toothGeo, m.horn, s * (0.3 + i * 0.03), -0.08, -2.5 + i * 0.3);
-        u.rotation.x = Math.PI;
-      }
-    }
+    const jawGeo = new THREE.CylinderGeometry(0.3, 0.46, 2.3, 10).rotateX(-Math.PI / 2);
+    mesh([{ geo: jawGeo, p: [0, -0.18, -1.2], s: [1, 0.5, 1] }], m.belly, this.jaw);
+    const lower = [];
+    for (let i = 0; i < 6; i++) for (const sd of [-1, 1]) lower.push({ geo: toothGeo, p: [sd * (0.24 + i * 0.022), -0.1, -2.2 + i * 0.28] });
+    mesh(lower, m.horn, this.jaw);
     // Leuchtender Rachen beim Feuer
-    this.mouthGlow = add(new THREE.SphereGeometry(0.32, 10, 8), m.mouth, 0, -0.1, -2.1);
+    this.mouthGlow = new THREE.Mesh(new THREE.SphereGeometry(0.32, 10, 8), m.mouth);
+    this.mouthGlow.position.set(0, -0.1, -2.1);
     this.mouthGlow.visible = false;
-    // Augen (leuchten → Bloom)
-    for (const s of [-1, 1]) {
-      add(new THREE.SphereGeometry(0.15, 10, 8), m.eye, s * 0.56, 0.45, -0.95);
-      const brow = add(new THREE.BoxGeometry(0.34, 0.13, 0.7), m.skin, s * 0.47, 0.6, -0.8);
-      brow.rotation.set(0.1, s * 0.25, s * -0.35);
-      // Hörner
-      const h1 = bezierPoints(
-        new THREE.Vector3(s * 0.38, 0.55, -0.25),
-        new THREE.Vector3(s * 0.8, 1.35, 0.8),
-        new THREE.Vector3(s * 0.62, 1.15, 2.3),
-        10
-      );
-      add(taperedTube(h1, h1.map((_, i) => 0.24 * (1 - i / 9) + 0.015), 8), m.horn);
-      const h2 = bezierPoints(
-        new THREE.Vector3(s * 0.62, 0.15, -0.15),
-        new THREE.Vector3(s * 1.15, 0.35, 0.55),
-        new THREE.Vector3(s * 1.28, 0.05, 1.35),
-        8
-      );
-      add(taperedTube(h2, h2.map((_, i) => 0.13 * (1 - i / 7) + 0.01), 6), m.horn);
-      // Wangen-Stacheln
-      for (let i = 0; i < 3; i++) {
-        const sp = add(new THREE.ConeGeometry(0.07, 0.5 - i * 0.1, 4), m.horn, s * (0.55 + i * 0.05), -0.2, -0.5 + i * 0.35);
-        sp.rotation.set(Math.PI / 2 + 0.3, 0, s * -0.8);
-      }
-      // kleine Nackenfächer
-      const fin = new THREE.BufferGeometry();
-      fin.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, s * 0.9, 0.5, 0.9, 0, 0.1, 1.2], 3));
-      fin.computeVertexNormals();
-      add(fin, m.membrane, s * 0.45, 0.3, 0.0);
-    }
+    head.add(this.mouthGlow);
     // Markierungen für Maul (Feuer) und Nüstern (Rauch)
     this.mouth = new THREE.Object3D();
     this.mouth.position.set(0, -0.12, -3.0);
@@ -288,6 +278,7 @@ export class Dragon {
     const geo = new THREE.ConeGeometry(0.2, 1, 5);
     geo.translate(0, 0.5, 0);
     const boneList = BONES.map(([name, z]) => ({ name, z }));
+    const perBone = new Map(); // Stacheln pro Knochen sammeln → 1 Mesh pro Knochen
     for (let z = -8.8; z < 15.8; z += 1.05) {
       if (z > -5.2 && z < -1.9) continue; // Platz für Sattel und Reiter
       // Radius an dieser Stelle interpolieren
@@ -302,12 +293,14 @@ export class Dragon {
       for (const bn of boneList) if (Math.abs(bn.z - z) < Math.abs(best.z - z)) best = bn;
       if (best.name === 'head') best = boneList.find((x) => x.name === 'neck3');
       const size = 0.35 + ry * 0.55;
-      const sp = new THREE.Mesh(geo, this.mats.horn);
-      if (best.name.startsWith('neck') || z < -1.9) (this.neckSpikes || (this.neckSpikes = [])).push(sp);
-      sp.scale.set(size * 0.9, size, size * 0.9);
-      sp.position.set(0, y0 + ry * 1.08, z - best.z);
-      sp.rotation.x = 0.55; // nach hinten geneigt
-      this.bones[best.name].add(sp);
+      if (!perBone.has(best.name)) perBone.set(best.name, []);
+      perBone.get(best.name).push({ geo, p: [0, y0 + ry * 1.08, z - best.z], r: [0.55, 0, 0], s: [size * 0.9, size, size * 0.9] });
+    }
+    this.neckSpikes = [];
+    for (const [name, parts] of perBone) {
+      const sp = new THREE.Mesh(mergeParts(parts), this.mats.horn);
+      this.bones[name].add(sp);
+      if (name.startsWith('neck') || name === 'chest') this.neckSpikes.push(sp);
     }
     // Schwanz-Spitze: Spaten-Form
     const fin = new THREE.BufferGeometry();
@@ -324,6 +317,9 @@ export class Dragon {
   // ------------------------------------------------------------ Beine
   _createLegs() {
     const m = this.mats;
+    const clawGeo = new THREE.ConeGeometry(0.1, 0.55, 5).rotateX(-Math.PI / 2 - 0.3);
+    const clawParts = [-1, 0, 1].map((i) => ({ geo: clawGeo, p: [i * 0.16, -0.05, -0.3], r: [0, i * 0.2, 0] }));
+    const footGeo = mergeParts(clawParts);
     const limb = (parent, x, y, z, upper, lower, r1, r2, r3) => {
       const hip = new THREE.Group();
       hip.position.set(x, y, z);
@@ -335,17 +331,9 @@ export class Dragon {
       hip.add(knee);
       const lo = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, -lower, -lower * 0.25)];
       knee.add(new THREE.Mesh(taperedTube(lo, [r2, r3], 8), m.skin));
-      const foot = new THREE.Group();
+      const foot = new THREE.Mesh(footGeo, m.claw);
       foot.position.set(0, -lower, -lower * 0.25);
       knee.add(foot);
-      const clawGeo = new THREE.ConeGeometry(0.1, 0.55, 5);
-      clawGeo.rotateX(-Math.PI / 2 - 0.3);
-      for (let i = -1; i <= 1; i++) {
-        const c = new THREE.Mesh(clawGeo, m.claw);
-        c.position.set(i * 0.16, -0.05, -0.3);
-        c.rotation.y = i * 0.2;
-        foot.add(c);
-      }
       return { hip, knee };
     };
     this.legs = {
@@ -379,44 +367,50 @@ export class Dragon {
     const steel = new THREE.MeshStandardMaterial({ color: 0x9aa0a8, roughness: 0.35, metalness: 0.8 });
     const skinM = new THREE.MeshStandardMaterial({ color: 0xd9a582, roughness: 0.7 });
     const capeM = new THREE.MeshStandardMaterial({ color: 0x8a1c1c, roughness: 0.85, side: THREE.DoubleSide });
-    const add = (geo, mat, x, y, z, rx = 0, ry = 0, rz = 0, parent = r) => {
-      const mm = new THREE.Mesh(geo, mat);
-      mm.position.set(x, y, z);
-      mm.rotation.set(rx, ry, rz);
-      parent.add(mm);
-      return mm;
+    const add = (parts, mat, parent) => {
+      const me = new THREE.Mesh(mergeParts(parts), mat);
+      parent.add(me);
+      return me;
     };
-    add(new THREE.BoxGeometry(0.8, 0.22, 1.1), leather, 0, 0, 0);
-    add(new THREE.BoxGeometry(0.1, 0.25, 0.1), leather, 0, 0.2, -0.45);
-    // Beine (rittlings)
-    for (const s of [-1, 1]) {
-      add(new THREE.BoxGeometry(0.16, 0.5, 0.18), cloth, s * 0.33, 0.02, 0.05, -0.4, 0, s * 0.75);
-      add(new THREE.BoxGeometry(0.14, 0.5, 0.16), leather, s * 0.5, -0.3, -0.12, 0.3, 0, s * 0.2);
+    const B = (w, h, d) => new THREE.BoxGeometry(w, h, d);
+    // Sattel + Beine (rittlings)
+    const leatherBase = [{ geo: B(0.8, 0.22, 1.1) }, { geo: B(0.1, 0.25, 0.1), p: [0, 0.2, -0.45] }];
+    const clothBase = [];
+    for (const sd of [-1, 1]) {
+      clothBase.push({ geo: B(0.16, 0.5, 0.18), p: [sd * 0.33, 0.02, 0.05], r: [-0.4, 0, sd * 0.75] });
+      leatherBase.push({ geo: B(0.14, 0.5, 0.16), p: [sd * 0.5, -0.3, -0.12], r: [0.3, 0, sd * 0.2] });
     }
+    add(leatherBase, leather, r);
+    add(clothBase, cloth, r);
     const torso = new THREE.Group();
     torso.position.set(0, 0.2, 0.05);
     torso.rotation.x = -0.25;
     r.add(torso);
-    add(new THREE.BoxGeometry(0.44, 0.6, 0.26), steel, 0, 0.32, 0, 0, 0, 0, torso);
-    add(new THREE.BoxGeometry(0.5, 0.12, 0.3), leather, 0, 0.05, 0, 0, 0, 0, torso);
-    // Arme halten die Zügel
-    for (const s of [-1, 1]) {
-      add(new THREE.BoxGeometry(0.12, 0.45, 0.12), steel, s * 0.28, 0.42, -0.15, -1.0, 0, s * 0.15, torso);
-      add(new THREE.BoxGeometry(0.1, 0.1, 0.1), leather, s * 0.2, 0.25, -0.45, 0, 0, 0, torso);
+    // Rüstung + Arme halten die Zügel
+    const steelParts = [{ geo: B(0.44, 0.6, 0.26), p: [0, 0.32, 0] }];
+    const leatherParts = [{ geo: B(0.5, 0.12, 0.3), p: [0, 0.05, 0] }];
+    for (const sd of [-1, 1]) {
+      steelParts.push({ geo: B(0.12, 0.45, 0.12), p: [sd * 0.28, 0.42, -0.15], r: [-1.0, 0, sd * 0.15] });
+      leatherParts.push({ geo: B(0.1, 0.1, 0.1), p: [sd * 0.2, 0.25, -0.45] });
     }
+    add(steelParts, steel, torso);
+    add(leatherParts, leather, torso);
     const head = new THREE.Group();
     head.position.set(0, 0.78, 0);
     torso.add(head);
     this.riderHead = head;
-    add(new THREE.SphereGeometry(0.12, 10, 8), skinM, 0, 0, -0.01, 0, 0, 0, head);
-    const helm = add(new THREE.SphereGeometry(0.14, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.55), steel, 0, 0.02, 0, 0, 0, 0, head);
-    helm.scale.y = 1.1;
-    add(new THREE.BoxGeometry(0.03, 0.14, 0.04), steel, 0, -0.03, -0.14, 0, 0, 0, head);
-    add(new THREE.ConeGeometry(0.03, 0.25, 5), capeM, 0, 0.2, 0.05, -0.5, 0, 0, head);
+    add([{ geo: new THREE.SphereGeometry(0.12, 10, 8), p: [0, 0, -0.01] }], skinM, head);
+    add([
+      { geo: new THREE.SphereGeometry(0.14, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.55), p: [0, 0.02, 0], s: [1, 1.1, 1] },
+      { geo: B(0.03, 0.14, 0.04), p: [0, -0.03, -0.14] },
+    ], steel, head);
+    add([{ geo: new THREE.ConeGeometry(0.03, 0.25, 5), p: [0, 0.2, 0.05], r: [-0.5, 0, 0] }], capeM, head);
     // Umhang (weht im Wind)
     const capeGeo = new THREE.PlaneGeometry(0.62, 1.3, 4, 10);
     capeGeo.translate(0, -0.65, 0);
-    this.cape = add(capeGeo, capeM, 0, 0.62, 0.16, 0, 0, 0, torso);
+    this.cape = new THREE.Mesh(capeGeo, capeM);
+    this.cape.position.set(0, 0.62, 0.16);
+    torso.add(this.cape);
     this.capeBase = capeGeo.getAttribute('position').array.slice();
   }
 
@@ -428,6 +422,7 @@ export class Dragon {
     this.mats.skin.color.copy(body);
     this.mats.belly.color.copy(belly);
     this.mats.membrane.color.set(skin.membrane);
+    this.mats.membrane.emissive.set(skin.membrane);
     this.mats.skin.metalness = this.mats.body.metalness = skin.metal ?? 0.15;
     this.mats.skin.roughness = this.mats.body.roughness = skin.rough ?? 0.55;
     this.mats.horn.color.set(skin.horn ?? 0xd9ccb0);

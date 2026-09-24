@@ -56,8 +56,8 @@ export function makeBroadleaf() {
   const parts = [
     colored(new THREE.CylinderGeometry(0.35, 0.6, 5, 6).translate(0, 2.5, 0), 0x5b4029),
     colored(jitter(new THREE.IcosahedronGeometry(3.4, 1), 0.9, 1).scale(1, 0.85, 1).translate(0, 7, 0), 0x4b6c29),
-    colored(jitter(new THREE.IcosahedronGeometry(2.3, 1), 0.7, 2).translate(1.9, 6.1, 0.8), 0x567a2e),
-    colored(jitter(new THREE.IcosahedronGeometry(2.1, 1), 0.7, 3).translate(-1.6, 6.5, -1.1), 0x44632a),
+    colored(jitter(new THREE.IcosahedronGeometry(2.3, 0), 0.5, 2).translate(1.9, 6.1, 0.8), 0x567a2e),
+    colored(jitter(new THREE.IcosahedronGeometry(2.1, 0), 0.5, 3).translate(-1.6, 6.5, -1.1), 0x44632a),
   ];
   const g = mergeGeometries(parts);
   g.computeVertexNormals();
@@ -79,8 +79,8 @@ export function makeDeadTree() {
 
 export function makeBush() {
   const g = mergeGeometries([
-    colored(jitter(new THREE.IcosahedronGeometry(1.4, 1), 0.5, 4).scale(1.2, 0.8, 1).translate(0, 0.8, 0), 0x3f5d24),
-    colored(jitter(new THREE.IcosahedronGeometry(1.0, 1), 0.4, 5).translate(0.9, 0.6, 0.4), 0x4a6b2a),
+    colored(jitter(new THREE.IcosahedronGeometry(1.4, 0), 0.4, 4).scale(1.2, 0.8, 1).translate(0, 0.8, 0), 0x3f5d24),
+    colored(jitter(new THREE.IcosahedronGeometry(1.0, 0), 0.3, 5).translate(0.9, 0.6, 0.4), 0x4a6b2a),
   ]);
   g.computeVertexNormals();
   return g;
@@ -189,7 +189,7 @@ export class Vegetation {
       trees++;
     }
     // Büsche
-    const bushes = Math.floor(2500 * density);
+    const bushes = Math.floor(1800 * density);
     for (let i = 0, a = 0; i < bushes && a < bushes * 8; a++) {
       const x = (rnd() - 0.5) * (WORLD_SIZE - 200);
       const z = (rnd() - 0.5) * (WORLD_SIZE - 200);
@@ -272,6 +272,7 @@ export class Vegetation {
       if (burnableCount > 0) {
         const dead = new THREE.InstancedMesh(this.deadGeo, this.deadMaterial, burnableCount);
         dead.count = 0;
+        dead.visible = false; // erst sichtbar, wenn ein Baum abgebrannt ist
         dead.castShadow = true;
         dead.frustumCulled = false;
         this.group.add(dead);
@@ -312,6 +313,7 @@ export class Vegetation {
       );
       chunk.dead.setMatrixAt(chunk.deadCount++, dm);
       chunk.dead.count = chunk.deadCount;
+      chunk.dead.visible = true;
       chunk.dead.instanceMatrix.needsUpdate = true;
     }
   }
@@ -328,6 +330,7 @@ export class Vegetation {
       if (c.dead) {
         c.deadCount = 0;
         c.dead.count = 0;
+        c.dead.visible = false;
       }
     }
   }

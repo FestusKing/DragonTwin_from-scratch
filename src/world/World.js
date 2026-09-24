@@ -183,7 +183,7 @@ export class World {
       c.t -= dt;
       if (c.t <= 0) {
         c.t = 0.35 + Math.random() * 0.3;
-        smoke.spawn(c.x, c.y, c.z, (Math.random() - 0.5) * 0.5, 2.2, (Math.random() - 0.5) * 0.5, 6 + Math.random() * 3, 1.2, 7, 1.2, 1.2, 1.25);
+        smoke.spawn(c.x, c.y, c.z, (Math.random() - 0.5) * 0.5, 2.2, (Math.random() - 0.5) * 0.5, 6 + Math.random() * 3, 1.2, 7, 1.9, 1.9, 2.0);
       }
     }
   }

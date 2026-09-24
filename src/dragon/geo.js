@@ -1,5 +1,6 @@
 // Geometrie-Helfer für den Drachen.
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 /**
  * Röhre, die entlang einer Punktliste läuft und dünner werden kann.
@@ -64,4 +65,29 @@ export function bezierPoints(p0, p1, p2, count) {
     ));
   }
   return pts;
+}
+
+/**
+ * Viele kleine Teile zu EINER Geometrie verschmelzen (spart Draw-Calls).
+ * parts: [{ geo, p: [x,y,z], r: [x,y,z] (Euler), s: [x,y,z] | Zahl }]
+ */
+export function mergeParts(parts) {
+  const m = new THREE.Matrix4();
+  const q = new THREE.Quaternion();
+  const e = new THREE.Euler();
+  const list = parts.map(({ geo, p = [0, 0, 0], r = [0, 0, 0], s = 1 }) => {
+    let g = geo.index ? geo.toNonIndexed() : geo.clone();
+    if (!g.getAttribute('normal')) g.computeVertexNormals();
+    if (!g.getAttribute('uv')) {
+      g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(g.getAttribute('position').count * 2), 2));
+    }
+    for (const name of Object.keys(g.attributes)) if (!['position', 'normal', 'uv'].includes(name)) g.deleteAttribute(name);
+    const sc = Array.isArray(s) ? s : [s, s, s];
+    e.set(r[0], r[1], r[2]);
+    q.setFromEuler(e);
+    m.compose(new THREE.Vector3(...p), q, new THREE.Vector3(...sc));
+    g.applyMatrix4(m);
+    return g;
+  });
+  return mergeGeometries(list);
 }

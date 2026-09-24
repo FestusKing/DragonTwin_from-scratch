@@ -645,7 +645,7 @@ export class Game {
       this.dragon.getNostril(_mouth);
       const v = this.physics.velocity;
       for (let i = 0; i < (fireI > 0 ? 1 : 4); i++) {
-        this.world.particles.smoke.spawn(_mouth.x, _mouth.y, _mouth.z, v.x * 0.8 + (Math.random() - 0.5), v.y * 0.8 + 1, v.z * 0.8 + (Math.random() - 0.5), 1.5, 0.4, 2.5, 1.3, 1.3, 1.3);
+        this.world.particles.smoke.spawn(_mouth.x, _mouth.y, _mouth.z, v.x * 0.8 + (Math.random() - 0.5), v.y * 0.8 + 1, v.z * 0.8 + (Math.random() - 0.5), 1.5, 0.4, 2.5, 1.8, 1.8, 1.8);
       }
     }
   }
