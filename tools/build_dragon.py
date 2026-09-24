@@ -744,9 +744,21 @@ def build_membrane_R(B, chain, wp):
         t = smooth(0.9, 1.0, u)
         return {"forearm_R": 1 - t, "hand_R": t}
 
+    # Knochen-Linien in der Draufsicht (für "dickere Haut nahe an den Knochen")
+    bone_lines = [(attach(0.0), E), (E, W)] + [(W, Fk) for Fk in F] + [(attach(0.0), attach(1.0))]
+
+    def bone_dist(p):
+        best = 9.0
+        for a0, a1 in bone_lines:
+            d = a1[:2] - a0[:2]
+            t = min(max(np.dot(p[:2] - a0[:2], d) / max(np.dot(d, d), 1e-9), 0.0), 1.0)
+            best = min(best, float(np.linalg.norm(p[:2] - (a0[:2] + d * t))))
+        return best
+
     keys = {}
 
     def V(p, w, uv_pat, inf):
+        inf = (bone_dist(p), inf[1])
         key = tuple(np.round(p, 5))
         if key not in keys:
             keys[key] = (part.vert(p, w), uv_pat, inf)
@@ -1190,6 +1202,8 @@ def pat_skin(nb, na, belly_edge, mouth="none", plate_k=0.55):
     h = nb.sub(h, nb.mul(groove, 0.6))
     dors = nb.ss(0.28, 0.5, d)
     val = nb.mul(val, nb.sub(1.0, nb.mul(dors, 0.2)))                 # Rücken etwas dunkler
+    blot = nb.ss(0.56, 0.72, nb.noise(nb.comb(nb.mul(a, 9.0), nb.mul(b, 1.6)), 1.0, 2.0))
+    val = nb.mul(val, nb.sub(1.0, nb.mul(nb.mul(blot, nb.ss(0.18, 0.4, d)), 0.28)))  # Flecken oben
     mott = nb.noise(nb.comb(nb.mul(a, 7.0), nb.mul(b, 2.2)), 1.0, 3.0)
     val = nb.mul(val, nb.add(0.86, nb.mul(mott, 0.28)))               # grosse Flecken
     r, g, bl = val, nb.mul(val, 0.985), nb.mul(val, 0.955)
@@ -1241,19 +1255,22 @@ def pat_eye(nb):
 
 
 def pat_membrane(nb):
-    """Flughaut: feine Adern, die grob in Flugrichtung laufen, leichte Flecken."""
+    """Flughaut: Adern grob in Flugrichtung, an den Knochen dicker (dunkler), dazwischen dünn."""
     x, y, _ = nb.sep(nb.uv("Pattern"))
+    bd, _, _ = nb.sep(nb.uv("Info"))                  # Abstand zum nächsten Knochen (Meter)
     wob = nb.noise(nb.comb(nb.mul(x, 0.8), nb.mul(y, 0.8)), 1.0, 2.0)
     xb, yb = nb.add(x, nb.mul(wob, 0.5)), nb.add(y, nb.mul(wob, 0.5))
     big = nb.voronoi(nb.comb(nb.mul(xb, 1.1), nb.mul(yb, 0.33)), "DISTANCE_TO_EDGE", 1.0).outputs["Distance"]
     small = nb.voronoi(nb.comb(nb.mul(xb, 3.0), nb.mul(yb, 1.2)), "DISTANCE_TO_EDGE", 1.0).outputs["Distance"]
-    vb, vs = nb.ss(0.022, 0.0, big), nb.ss(0.016, 0.0, small)
+    vb, vs = nb.ss(0.026, 0.0, big), nb.ss(0.018, 0.0, small)
     n2 = nb.noise(nb.comb(nb.mul(x, 3.0), nb.mul(y, 3.0)), 1.0, 3.0)
-    val = nb.sub(nb.sub(0.92, nb.mul(vb, 0.16)), nb.mul(vs, 0.07))
+    thick = nb.ss(0.45, 0.0, bd)                       # 1 direkt am Knochen
+    val = nb.sub(nb.sub(0.95, nb.mul(vb, 0.3)), nb.mul(vs, 0.12))
     val = nb.add(val, nb.mul(nb.sub(n2, 0.5), 0.1))
+    val = nb.mul(val, nb.sub(1.0, nb.mul(thick, 0.3)))
     v = nb.add(vb, nb.mul(vs, 0.5))
-    return (nb.add(val, nb.mul(v, 0.05)), nb.sub(val, nb.mul(v, 0.04)), nb.sub(val, nb.mul(v, 0.05)),
-            nb.add(nb.mul(vb, 1.0), nb.mul(vs, 0.5)))
+    return (nb.add(val, nb.mul(v, 0.06)), nb.sub(val, nb.mul(v, 0.06)), nb.sub(val, nb.mul(v, 0.08)),
+            nb.add(nb.add(nb.mul(vb, 1.0), nb.mul(vs, 0.5)), nb.mul(thick, 0.6)))
 
 
 PATTERNS = {

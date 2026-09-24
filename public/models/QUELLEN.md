@@ -33,7 +33,7 @@ Blender gebaut: `tools/build_dragon.py`.
 
 ### Kurz-Steckbrief
 
-- Format: glTF 2.0 binär (GLB), ca. 5,5 MB
+- Format: glTF 2.0 binär (GLB), ca. 5,6 MB
 - ca. 63 400 Dreiecke, 1 Mesh mit 6 Materialien, 50 Knochen (Skinning)
 - Texturen: 2 × 2048 × 2048 (Haut: Farbe + Normal-Map), 2 × 2048 × 1024 (Flughaut)
 - Meter, +Y oben, Kopf zeigt nach −Z (wie im Spiel)

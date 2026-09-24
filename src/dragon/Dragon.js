@@ -8,6 +8,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { clamp, damp, lerp, smoothstep } from '../core/utils.js';
 import { mergeParts } from './geo.js';
+import { addAtmosphereUniforms } from '../fx/Atmosphere.js';
 
 const MODEL_URL = `${import.meta.env.BASE_URL}models/dragon_scales.glb`;
 
@@ -107,12 +108,27 @@ export class Dragon {
       this.mats[m.material.name] = m.material;
     }
     const M = this.mats;
-    // Flughaut: dünn → Licht scheint leicht durch (Adern bleiben sichtbar)
+    // Flughaut: dünn → Licht scheint durch. Steht die Sonne hinter dem Flügel,
+    // leuchtet die Haut warm auf und die Adern (dunkler in der Textur) werden sichtbar.
     if (M.Flughaut) {
       M.Flughaut.side = THREE.DoubleSide;
       M.Flughaut.emissiveMap = M.Flughaut.map;
-      M.Flughaut.emissiveIntensity = 0.16;
+      M.Flughaut.emissiveIntensity = 0.12;
+      M.Flughaut.onBeforeCompile = (shader) => {
+        addAtmosphereUniforms(shader);
+        shader.fragmentShader = shader.fragmentShader.replace(
+          '#include <lights_fragment_end>',
+          `#include <lights_fragment_end>
+#if NUM_DIR_LIGHTS > 0
+  float through = max(0.0, dot(geometryViewDir, -directionalLights[0].direction));
+  vec3 tint = diffuseColor.rgb * vec3(1.7, 0.85, 0.6); // Licht wird im Gewebe rötlich
+  reflectedLight.directDiffuse += directionalLights[0].color * tint * (pow(through, 2.5) * 0.4 + 0.05);
+#endif`
+        );
+      };
     }
+    // Schuppen etwas deutlicher (Normal-Map)
+    if (M.Haut) M.Haut.normalScale.setScalar(1.35);
     this.mats.mouth = new THREE.MeshBasicMaterial({ color: new THREE.Color(8, 3, 0.6), transparent: true, opacity: 0.9 });
   }
 

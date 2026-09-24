@@ -6,9 +6,10 @@ Inspiriert vom „Test Flight“ aus DragonTwin.
 Fast alles wird **im Code erzeugt**:
 
 - Landschaft
-- Drache
+- Bäume (Blätter- und Nadel-Texturen werden im Code gemalt)
 - Dorf
 - Musik und Geräusche
+- Drache: ein 3D-Modell, das ein **Skript in Blender** baut (`tools/build_dragon.py` → `public/models/dragon_scales.glb`)
 
 **Ausnahme: Foto-Texturen.** Boden und Gebäude benutzen 10 echte Foto-Texturen
 von [Poly Haven](https://polyhaven.com) (Lizenz CC0, frei nutzbar).
@@ -116,6 +117,11 @@ Für eine fertige Version zum Hochladen gibt es `npm run build`. Das Ergebnis li
 - Alles wirkt **sofort** und wird gespeichert.
 
 ### Technik
+- **Drache als 3D-Modell (GLB)** mit Skelett: 50 Knochen bewegen Flügel, Hals, Kiefer, Schwanz und Beine.
+  Im Gegenlicht scheint die Flughaut rötlich durch.
+- **Bäume aus „Karten“:** kleine Flächen mit Blätter- bzw. Nadel-Textur, deren Ränder ausgestanzt werden → blättrige Umrisse.
+- **Luft-Perspektive:** Dunst ist unten dichter als oben, in Richtung Sonne leuchtet er warm. Nebel-Wetter liegt am Boden.
+- **Berge mit Erosion:** scharfe Hauptgrate, glatte Flanken statt „Haifischzähne“.
 - **Post-Processing:** Bloom, Vignette, ACES-Tonemapping, Tempo-Unschärfe beim Boost.
 - **Boden-Shader:** mischt 5 Foto-Schichten (Gras, Fels, Sand, Schnee, Erde) je nach Höhe und Steilheit.
   Felswände werden von drei Seiten projiziert („triplanar“), damit nichts verzerrt.
@@ -156,9 +162,10 @@ src/
     Terrain.js          Landschaft aus Rauschen + Formen (See, Fluss, Küste)
     Sky.js              Himmel, Sonne, Mond, Sterne, Licht
     Weather.js          Wetter-Zustände mit weichen Übergängen
-    Clouds.js           Wolken zum Durchfliegen
+    Clouds.js           Wolken zum Durchfliegen (Volumen-Licht, flacher Boden)
     Water.js            Wasser mit Wellen, Spiegelung, Ufer-Schaum
-    Vegetation.js       Bäume, Büsche, Felsen (Instancing)
+    Vegetation.js       Bäume, Büsche, Felsen (Instancing), Wald-Karte für den Boden
+    TreeModels.js       Baum-Modelle + im Code gemalte Blätter-/Nadel-Texturen
     Settlement.js       Dorf, Burg, Kirche, Windmühle, Leuchtturm …
     Landmarks.js        Felsbogen, Wrack, Steinkreis, ferne Berge
     Goats.js            Die versteckten Ziegen
@@ -166,8 +173,8 @@ src/
     Colliders.js        Kollision mit Gebäuden
     World.js            Baut alles zusammen
   dragon/
-    Dragon.js           Drachen-Modell + Animation (Knochen/Skinning)
-    Wing.js             Flügel mit Fingerknochen und Flughaut
+    Dragon.js           Lädt das Drachen-Modell (GLB) und bewegt die Knochen
+    Wing.js             (alt, wird nicht mehr benutzt – kann gelöscht werden)
     FlightPhysics.js    ⭐ Die Flugphysik (ausführlich kommentiert)
     FireBreath.js       Feuer speien + Überhitzung
     Customization.js    Farben und Reiter
@@ -180,6 +187,7 @@ src/
   fx/
     Particles.js        Partikel (Feuer, Rauch, Funken, Gischt)
     PostProcessing.js   Bloom, Farbkorrektur, Vignette
+    Atmosphere.js       Höhen-Dunst und Sonne im Dunst (für alle Materialien)
     Rain.js             Regen + Tempo-Streifen
     Lightning.js        Blitze
     PhotoTextures.js    Foto-Texturen laden (Boden, Gebäude, Felsen)
@@ -187,8 +195,12 @@ src/
   ui/
     HUD.js, Menu.js, Minimap.js, styles.css
 public/textures/        Die Foto-Texturen (JPG) + QUELLEN.md mit Autoren
+public/models/          Das Drachen-Modell (GLB) + QUELLEN.md
 tools/
   fetch_textures.py     Lädt die Foto-Texturen von Poly Haven und bereitet sie vor
+  build_dragon.py       Baut den Drachen in Blender (bpy) und exportiert die GLB
+  dragon_scales_bones.json   Knochen, Masse und Ankerpunkte des Drachen
+  dragon_scales_report.md    Bericht: wie der Drache entstanden ist und geprüft wurde
 ```
 
 ---
@@ -256,11 +268,31 @@ Die „Stretch Goals“ aus der Vorgabe gehören **nicht** zum Test Flight. Sie 
 **Vereinfacht wurde:**
 
 - **Wasser-Spiegelung:** Das Wasser spiegelt den Himmel, aber nicht die Berge. Das ist viel schneller.
-- **Drachen-Modell:** Der Drache ist ein **Wyvern** wie in DragonTwin: Die Flügel sind die Arme, es gibt nur zwei Hinterbeine. Er wird komplett im Code gebaut (mit Leder-Normal-Map, Flecken und Hornkrone). Ein professionell modellierter Drache aus Blender wäre noch detailreicher.
+- **Drachen-Modell:** Der Drache ist ein **Wyvern** wie in DragonTwin: Die Flügel sind die Arme, es gibt nur zwei Hinterbeine. Ein Skript baut ihn in Blender aus Formeln (ca. 63 000 Dreiecke, gebackene Schuppen-Texturen). Ein von Hand modellierter Drache (z. B. „Scales“ aus dem Film *Sintel*) wäre noch detailreicher – der ist aber nur mit Abo herunterladbar.
+- **Keine Umgebungsverdeckung am Bildschirm (SSAO):** Dafür müsste die ganze Szene mit allen Bäumen ein zweites Mal gezeichnet werden. Stattdessen: dunklerer Waldboden (Wald-Karte) und dunklere Innenseiten der Baumkronen.
 - **Der Test lief ohne Grafikkarte:**
   - Getestet wurde automatisch in einem Browser ohne GPU.
   - Die Logik braucht nur ca. 2 ms pro Bild.
   - Die echten FPS auf deinem Laptop konnte ich nicht messen.
+
+---
+
+## 🌲 Realistischer Look
+
+![Vorher / Nachher: Landschaft, Laubbaum, Tanne, Drache](docs/realistischer.jpg)
+
+| Was | Vorher | Nachher | Datei |
+| --- | --- | --- | --- |
+| Drache | aus Röhren und Kugeln im Code | 3D-Modell mit Skelett, Schuppen, durchscheinender Flughaut | `src/dragon/Dragon.js`, `tools/build_dragon.py` |
+| Bäume | Kugeln und Kegel | Kern + viele Blätter-/Nadel-Karten, zittern im Wind, Schatten mit Blatt-Umriss | `src/world/TreeModels.js` |
+| Berge | viele gleich hohe Spitzen | erodierte Grate, glatte Flanken, grosse Massive | `src/core/noise.js`, `src/world/Terrain.js` |
+| Luft | gleichmässiger Nebel | Dunst unten dichter, Sonne leuchtet im Dunst, Bodennebel | `src/fx/Atmosphere.js` |
+| Wolken | helle Kleckse | Licht von der Sonnenseite, grauer flacher Boden, Silberrand | `src/world/Clouds.js` |
+| Waldboden | gleich hell | unter Bäumen dunkler (auch weit weg) | `src/world/Vegetation.js` |
+
+**So wurde getestet:** Die Bilder oben sind echte Bildschirmfotos aus dem Spiel
+(gleiche Kamera, gleiche Uhrzeit), gemacht in einem Browser ohne Grafikkarte.
+Wie schnell es auf deinem Computer läuft, konnte ich nicht messen – siehe *Tipps zur Leistung*.
 
 ---
 

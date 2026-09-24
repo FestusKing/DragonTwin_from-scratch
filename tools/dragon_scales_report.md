@@ -82,8 +82,8 @@ Hinterkante.
 | Punkt | Wert |
 |---|---|
 | Datei | `public/models/dragon_scales.glb` |
-| Grösse | 5 539 272 Bytes (ca. 5,5 MB) |
-| SHA256 | `a92b153e065a0a66805711c104f0ba332f7e1b552dd5f7353f443de4ee924416` |
+| Grösse | 5 564 624 Bytes (ca. 5,6 MB) |
+| SHA256 | `788d95af3e4106bb8c5efd3c78d34bcbc0b418f9404711dd7db7c8b7cb607ab7` |
 | Meshes | 1 (`Drache`), 6 Materialien → 6 Draw-Calls |
 | Dreiecke / Punkte | 63 374 / 35 004 |
 | Knochen | 50, alle verformend, max. 4 Knochen pro Punkt |
@@ -106,7 +106,19 @@ Hinterkante.
 
 ---
 
-## Hinweise für den Einbau ins Spiel (Teil C)
+## Teil C – Einbau ins Spiel (erledigt)
+
+- `src/dragon/Dragon.js` lädt die GLB und bewegt die Knochen. Der alte Code-Drache ist ersetzt.
+- Flügelschlag, Flügel anlegen, Hals, Kopf, Kiefer, Schwanz und Beine funktionieren wie vorher.
+- Reiter, Feuer, Rauch und der Geister-Drache im Rennen benutzen die Anker.
+- Die Flughaut scheint im Gegenlicht rötlich durch (eigener Shader-Zusatz).
+- Version 2 des Modells: kräftigere Adern, dickere (dunklere) Haut an den Knochen,
+  dunkle Flecken auf dem Rücken.
+- Getestet mit Bildschirmfotos im echten Spiel (Chromium ohne Grafikkarte).
+  Dafür wurden die Projekt-Pakete mit `npm ci --ignore-scripts` installiert
+  (Prüfsummen aus `package-lock.json`, keine Installations-Skripte).
+
+## Technische Hinweise zum Modell
 
 - **Richtung und Grösse:** Meter, +Y oben, der Kopf zeigt nach **−Z**, rechts ist +X.
   Das Modell ist schon so gross wie der bisherige Drache im Spiel (Skalierung 1).
@@ -140,10 +152,8 @@ Hinterkante.
 
 - Das ist **nicht** der Sintel-Drache. Er ist einfacher: keine modellierten Muskeln,
   das Maul-Innere ist schlicht, die Flughaut ist eine dünne Fläche.
-- Im Spiel selbst wurde das Modell **nicht** getestet. Dafür hätte man die
-  Projekt-Pakete (npm) installieren müssen, und das war nicht erlaubt.
-  Geprüft wurde mit Blender und dem Khronos-Validator.
-  **Bitte beim Einbau im Browser kontrollieren.**
+- Die Bildrate auf einem echten Computer mit Grafikkarte konnte hier nicht
+  gemessen werden (Test lief mit Software-Grafik).
 - Ganz nah sieht man an wenigen Textur-Nähten (Bauchnaht, zwei Schnitte am Schwanz)
   eine feine Linie.
 - Normal-Maps als JPEG haben leichte Kompressions-Spuren. Aus der Spiel-Entfernung
