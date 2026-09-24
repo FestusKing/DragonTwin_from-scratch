@@ -1,75 +1,116 @@
 # Bericht: Drachen-Modell „Scales“ (Sintel) – Download
 
-**Ergebnis: ABGEBROCHEN – der Download war nicht möglich.**
-Es wurde nichts heruntergeladen, nichts installiert und nichts umgewandelt.
+**Ergebnis: ABGEBROCHEN – der Download geht nur mit Anmeldung (Login).**
+Laut Sicherheitsregel 1 wurde das **nicht umgangen**.
+Es wurde **kein Modell** heruntergeladen, **nichts installiert** und **nichts umgewandelt**.
 
-Datum der Prüfung: 24.09.2026, ca. 12:48 UTC
+Datum der Prüfung: 24.09.2026, ca. 12:51–12:53 UTC (2. Versuch)
 
 ---
 
-## 1. Was versucht wurde
+## 1. Kurz erklärt
 
-Aufgerufene Adressen (nur HTTPS, nur offizielle Blender-Domains):
+- Beim 1. Versuch war die Blender-Seite durch den Netzwerk-Filter gesperrt.
+  **Das ist jetzt gelöst:** `studio.blender.org` antwortet normal (HTTP 200).
+- **Neues Problem:** Auf der Modell-Seite ist der Download-Knopf gesperrt.
+  Dort steht: **„Login to Download“** (mit Schloss-Symbol).
+- Das gilt für **beide** Versionen (v2 und v1).
+- Regel 1 sagt: Anmeldung oder Abo nötig → **nicht umgehen, abbrechen**.
+  Genau das wurde gemacht.
 
-| Adresse | Ergebnis |
+## 2. Geprüfte Adressen
+
+Nur HTTPS, nur offizielle Blender-Domains. Es wurden nur Web-Seiten (HTML) gelesen.
+Sie lagen nur im Arbeitsordner **ausserhalb** des Repos und wurden danach gelöscht.
+
+| Adresse | Antwort | Was steht dort? |
+|---|---|---|
+| https://studio.blender.org/characters/5d403c21ee3219164b952e20/v2/ | 200 (56 KB) | Modell-Seite v2. Knopf „Login to Download“ (gesperrt) |
+| https://studio.blender.org/characters/5d403c21ee3219164b952e20/v1/ | 200 (58 KB) | Modell-Seite v1. Knopf „Login to Download“ (gesperrt) |
+| https://studio.blender.org/projects/sintel/ | 200 (54 KB) | Projekt-Seite Sintel. Kein freier Download des Modells |
+| https://studio.blender.org/join/ | 200 (52 KB) | Abo-Seite. Zugang zu „production assets“ mit Abo |
+| https://durian.blender.org/download/ | 200 (27 KB) | Offizielle Sintel-Download-Seite: nur Film, Trailer, Musik, Untertitel – **keine Modelle** |
+| https://download.blender.org/durian/ | 200 (70 Bytes) | Keine Datei-Liste, nur „Please visit www.blender.org …“ |
+
+## 3. Warum der Download nicht möglich ist (genau)
+
+- Auf beiden Modell-Seiten ist der Knopf **deaktiviert** (`disabled`) und zeigt ein Schloss.
+- Im HTML-Code gibt es für nicht angemeldete Besucher **keinen Download-Link**.
+- Die Seite meldet selbst: Besucher ist **nicht angemeldet** (`"is_authenticated": false`).
+- Die Abo-Seite (`/join/`) nennt bei den bezahlten Abos:
+  „Full access to production assets“. Charaktere gehören zu diesen Assets.
+  - monatlich: 17 $ pro Monat
+  - alle drei Monate: 11.50 $ pro Monat
+- **Vermutung:** Man braucht ein **Blender-ID-Konto mit bezahltem Abo**.
+  Ob ein kostenloses Konto reicht, kann man ohne Konto nicht prüfen.
+
+**Was bewusst NICHT gemacht wurde** (Regel 1):
+
+- kein Konto angelegt, kein Login
+- keine versteckten Download-Adressen erraten oder ausprobiert
+- keine anderen Webseiten, keine Mirrors
+- keine Tricks am Netzwerk-Filter
+
+## 4. Infos zum Modell (von den Seiten abgelesen)
+
+| Version | Für Blender | Veröffentlicht | Veröffentlicht von | Lizenz |
+|---|---|---|---|---|
+| v2 | 3.4 | 16.11.2022 | Beau Gerbrands | CC-BY 4.0 |
+| v1 | 2.80 | 30.07.2019 | Andy Goralczyk | CC-BY 4.0 |
+
+Nützlich für später (aus der Beschreibung von v2):
+
+- Die Collection heisst **`CH-Dragon.Adult`**.
+- Die Materialien sind schon **Principled BSDF** → passt gut zu glTF.
+- Am Knochen **„Root“** gibt es einen Regler für die Detail-Stufe (max. 5)
+  und einen Schalter **„dragon_low“** (auf 1 = einfaches Modell für Animation).
+- Lizenz [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/):
+  Teilen und Verändern ist erlaubt, aber man muss **Blender Studio / Blender Foundation nennen**.
+
+## 5. Pflicht-Angaben aus dem Auftrag
+
+| Punkt | Ergebnis |
 |---|---|
-| https://studio.blender.org/characters/5d403c21ee3219164b952e20/v2/ | gesperrt (403) |
-| https://studio.blender.org/characters/5d403c21ee3219164b952e20/v1/ | gesperrt (403) |
-| https://studio.blender.org/ (Startseite) | gesperrt (403) |
-| https://www.blender.org/ | gesperrt (403) |
-| https://download.blender.org/ | gesperrt (403) |
-| https://cloud.blender.org/ | gesperrt (403) |
+| Heruntergeladene Modell-Datei | **keine** |
+| Dateigrösse / SHA256 | – (keine Datei) |
+| Dateityp-Prüfung (`file`, „BLENDER“ / ZIP) | – (nichts zu prüfen) |
+| Text-Blöcke / Skripte in der .blend | – (keine Datei geöffnet) |
+| Installationen | **keine** (`bpy` nicht installiert, `gltf-validator` nicht gestartet) |
+| Exportiert (Meshes, Dreiecke, Knochen, Texturen, GLB) | **nichts** |
+| Validator-Ergebnis | – (nichts zu prüfen) |
 
-Zum Vergleich funktionieren (Antwort 200):
+Geänderte Datei im Repo: **nur dieser Bericht**.
+Es gibt also noch **keine** `public/models/dragon_scales.glb`, keine `QUELLEN.md`,
+keine Knochen-JSON und kein Umwandlungs-Skript.
 
-- https://pypi.org/simple/bpy/ (für das Blender-Python-Paket)
-- https://registry.npmjs.org/gltf-validator (für den Khronos-Validator)
+## 6. Früherer Versuch (1. Versuch, ca. 12:48 UTC)
 
-## 2. Warum es nicht ging (genau)
+- Damals hat der Netzwerk-Filter der Cloud-Umgebung alle `*.blender.org`-Adressen
+  gesperrt (Proxy-Antwort 403).
+- Das ist inzwischen behoben (siehe Abschnitt 2).
 
-- Die Fehlermeldung war: `CONNECT tunnel failed, response 403`.
-- Das heisst: **Nicht die Blender-Webseite** hat abgelehnt, sondern der
-  **Netzwerk-Filter der Cloud-Umgebung** (Proxy). Die Verbindung wurde gar
-  nicht erst aufgebaut.
-- Der Proxy meldet dazu: „gateway answered 403 to CONNECT (policy denial)“
-  für `studio.blender.org:443`.
-- Alle Blender-Domains sind betroffen, nicht nur eine.
-- Gemäss Sicherheitsregel 1 wurde das **nicht umgangen** (keine Mirrors,
-  keine anderen Seiten, keine Tricks am Proxy).
+## 7. Offene Punkte – Entscheidung nötig
 
-**Vermutliche Ursache:** Die neue Netzwerk-Einstellung der Umgebung ist in
-dieser Sitzung noch nicht aktiv. Die Regeln werden meistens beim Start des
-Containers geladen. Eine Änderung gilt dann erst für eine **neue Sitzung**.
+**Möglichkeit A – Modell selbst mit eigenem Konto holen**
 
-## 3. Dateien, Prüfsummen, Dateityp-Prüfung
+1. Auf https://studio.blender.org mit der eigenen Blender ID anmelden
+   (vermutlich mit bezahltem Abo).
+2. „Scales (adult dragon)“ **v2** herunterladen.
+3. Die .blend-Datei **nicht** ins Repo legen (Regel 2).
+4. Umwandeln auf dem eigenen Computer. Eine neue Sitzung kann dafür
+   `tools/convert_dragon.py` schreiben und an einem Test-Modell prüfen.
+5. Sicherheit beim Öffnen in Blender:
+   - „Auto Run Python Scripts“ ist in Blender von Anfang an **aus**. So lassen.
+   - Kommt eine Warnung zu Python-Skripten: **„Ignore“** wählen.
+6. Die fertige GLB-Datei darf ins Repo (CC-BY 4.0), mit Namensnennung in
+   `public/models/QUELLEN.md`.
 
-- Heruntergeladene Dateien: **keine**
-- Dateigrösse / SHA256: – (nichts heruntergeladen)
-- Dateityp-Prüfung (`file`, Magic-Bytes „BLENDER“ / ZIP): – (nichts zu prüfen)
-- Text-Blöcke / Skripte in der .blend: – (keine Datei geöffnet)
+**Möglichkeit B – anderes Drachen-Modell**
 
-## 4. Installationen
+- Ein Modell wählen, das **ohne Anmeldung** frei verfügbar ist (Lizenz CC0 oder CC-BY).
+- Dafür muss Regel 1 angepasst werden (sie erlaubt nur `*.blender.org`).
 
-- **Keine.** `bpy` wurde nicht installiert, weil es ohne Modell nichts
-  umzuwandeln gibt. `gltf-validator` wurde ebenfalls nicht gestartet.
+**Möglichkeit C – beim Drachen aus Code bleiben**
 
-## 5. Was exportiert wurde
-
-- **Nichts.** Es gibt keine `public/models/dragon_scales.glb`,
-  keine `QUELLEN.md`, keine Knochen-JSON und kein Umwandlungs-Skript.
-- Einzige neue Datei: dieser Bericht.
-
-## 6. Offene Punkte / nächste Schritte
-
-1. **Netzwerk freigeben:** In den Einstellungen der Cloud-Umgebung
-   (Umgebungs-Menü oben in der Sitzung → Bearbeiten → *Network access*)
-   `studio.blender.org` erlauben (bei Bedarf auch `blender.org` bzw.
-   `*.blender.org`, falls der Download über eine Unter-Domain läuft).
-   Infos: https://code.claude.com/docs/en/claude-code-on-the-web
-2. Danach eine **neue Sitzung** starten und den Auftrag wiederholen.
-3. **Achtung Abo:** Auf Blender Studio sind viele Charakter-Downloads nur
-   für zahlende Mitglieder freigeschaltet. Das konnte hier nicht geprüft
-   werden. Falls der Download eine Anmeldung verlangt, muss der Auftrag
-   laut Regel 1 wieder abgebrochen werden. Mögliche Lösung dann: das
-   Modell selbst (mit eigenem Konto) herunterladen und bereitstellen, oder
-   ein anderes frei verfügbares Modell (z. B. CC0/CC-BY) wählen.
+- Der bisherige Drache (Teil A, alles im Code) funktioniert weiter.
+- Das Spiel braucht das Modell nicht, um zu laufen.
