@@ -5,6 +5,7 @@ Laut Sicherheitsregel 1 wurde das **nicht umgangen**.
 Es wurde **kein Modell** heruntergeladen, **nichts installiert** und **nichts umgewandelt**.
 
 Datum der Prüfung: 24.09.2026, ca. 12:51–12:53 UTC (2. Versuch)
+Nochmals geprüft: 24.09.2026, 13:09 UTC (3. Versuch) – **gleiches Ergebnis**, siehe Abschnitt 6.
 
 ---
 
@@ -83,11 +84,17 @@ Geänderte Datei im Repo: **nur dieser Bericht**.
 Es gibt also noch **keine** `public/models/dragon_scales.glb`, keine `QUELLEN.md`,
 keine Knochen-JSON und kein Umwandlungs-Skript.
 
-## 6. Früherer Versuch (1. Versuch, ca. 12:48 UTC)
+## 6. Alle Versuche
 
-- Damals hat der Netzwerk-Filter der Cloud-Umgebung alle `*.blender.org`-Adressen
-  gesperrt (Proxy-Antwort 403).
-- Das ist inzwischen behoben (siehe Abschnitt 2).
+| Versuch | Zeit (UTC) | Ergebnis |
+|---|---|---|
+| 1 | ca. 12:48 | Netzwerk-Filter sperrte alle `*.blender.org`-Adressen (Proxy-Antwort 403). Inzwischen behoben. |
+| 2 | ca. 12:51–12:53 | Seite erreichbar, aber „Login to Download“ bei v1 und v2 (siehe oben). |
+| 3 | 13:09 | Gleich wie Versuch 2: v1 und v2 zeigen „Login to Download“, Besucher nicht angemeldet. Keine Anmelde-Daten in der Umgebung, nichts Neues im Repo. |
+
+**Wichtig:** Nochmals versuchen hilft nicht. Das Problem ist kein Netzwerk-Fehler,
+sondern eine **Anmelde-Pflicht**. Die Cloud-Sitzung hat kein Blender-Konto.
+Erst wenn sich etwas ändert (siehe Abschnitt 7), kann es klappen.
 
 ## 7. Offene Punkte – Entscheidung nötig
 
