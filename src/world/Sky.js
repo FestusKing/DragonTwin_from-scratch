@@ -218,8 +218,8 @@ export class Sky {
     this.zenith.lerp(_c1, oc * 0.85);
     _c2.setRGB(lum * 1.05, lum * 1.07, lum * 1.1);
     this.horizon.lerp(_c2, oc * 0.8);
-    this.zenith.multiplyScalar(1 - w.darkness * 0.5);
-    this.horizon.multiplyScalar(1 - w.darkness * 0.45);
+    this.zenith.multiplyScalar(1 - w.darkness * 0.75);
+    this.horizon.multiplyScalar(1 - w.darkness * 0.7);
 
     // Sonnenfarbe: orange am Horizont, weiss am Mittag
     if (e < 0.12) this.sunColor.setRGB(1.0, 0.45 + e * 2.5, 0.2 + e * 1.5);
@@ -229,7 +229,7 @@ export class Sky {
 
     // Nebelfarbe = Horizont (so verschmilzt die Ferne mit dem Himmel)
     this.fogColor.copy(this.horizon);
-    const fogLum = lum * (1 - w.darkness * 0.55);
+    const fogLum = lum * (1 - w.darkness * 0.8);
     if (w.fog > 0) this.fogColor.lerp(_c1.setRGB(fogLum * 1.1, fogLum * 1.12, fogLum * 1.15), w.fog * 0.7);
 
     // Hauptlicht: Sonne am Tag, Mond in der Nacht
@@ -246,9 +246,11 @@ export class Sky {
 
     // Himmelslicht
     // nachts bläuliches "Mondlicht"-Ambiente, damit man noch etwas sieht
-    this.hemi.color.copy(this.zenith).lerp(_c1.setRGB(1, 1, 1), 0.25).lerp(_c2.setRGB(0.3, 0.4, 0.7), this.night * 0.85);
-    this.hemi.groundColor.setRGB(0.28, 0.24, 0.17).multiplyScalar(0.3 + this.day * 0.7);
-    this.hemi.intensity = (0.6 + this.day * 0.7 + oc * 0.25 * this.day) * (1 - w.darkness * 0.6) + this.flash * 3;
+    this.hemi.color.copy(this.zenith).lerp(_c1.setRGB(1, 1, 1), 0.4).lerp(_c2.setRGB(0.32, 0.42, 0.75), this.night * 0.7);
+    this.hemi.groundColor.setRGB(0.28, 0.24, 0.17).multiplyScalar(0.35 + this.day * 0.65);
+    // Dämmerung: Himmel ist noch hell → mehr Umgebungslicht
+    const twilight = Math.max(0, 1 - Math.abs(e + 0.02) / 0.12);
+    this.hemi.intensity = (0.85 + this.day * 0.45 + twilight * 0.35 + oc * 0.25 * this.day) * (1 - w.darkness * 0.6) + this.flash * 3;
     this.ambient.copy(this.hemi.color).multiplyScalar(this.hemi.intensity);
 
     // Schatten-Kamera folgt dem Spieler, auf Texel-Raster eingerastet (kein Flimmern)

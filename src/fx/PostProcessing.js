@@ -117,8 +117,11 @@ export class PostProcessing {
   }
 
   /** Effekt-Stärken setzen */
-  set({ blur = 0, white = 0, damage = 0, aberration = 0, whiteColor = null }) {
+  set({ blur = 0, white = 0, damage = 0, aberration = 0, whiteColor = null, night = 0 }) {
     const u = this.grade.uniforms;
+    // Nachts: weniger Farbe, kühler Blauton (wie Mondlicht)
+    u.uSat.value = 0.92 - night * 0.4;
+    u.uTint.value.setRGB(1.03 - night * 0.2, 1.0 - night * 0.06, 0.95 + night * 0.2);
     u.uBlur.value = blur;
     u.uWhite.value = white;
     u.uDamage.value = damage;

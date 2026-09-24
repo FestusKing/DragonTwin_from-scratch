@@ -524,8 +524,9 @@ export class Game {
       aberration: playing && this.physics.boosting ? 0.6 + fast : fast * 0.5,
       white: w.inCloud * 0.5,
       damage: this.damage,
+      night: w.sky.night,
     });
-    this.renderer.toneMappingExposure = lerp(1.0, 1.55, w.sky.night) * (1 + w.weather.overcast * 0.12);
+    this.renderer.toneMappingExposure = lerp(1.0, 1.8, w.sky.night) * (1 + w.weather.overcast * 0.12);
     this.post.render(dt);
     input.endFrame();
   }

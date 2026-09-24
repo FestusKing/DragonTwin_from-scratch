@@ -45,13 +45,14 @@ const STALL_ANGLE = 0.34; // ≈ 20°: ab hier Strömungsabriss
 const CD0 = 0.035; // Grund-Widerstand (Körper + Flügel)
 const K_INDUCED = 0.06; // "induzierter" Widerstand: Auftrieb kostet Tempo
 const BRAKE_CD = 0.45; // Zusatz-Widerstand beim Bremsen (V)
-const MAX_G = 4.5; // maximale Kurvenkraft in "g" (sonst wirkt es zu zackig)
+const MAX_G = 6; // maximale Kurvenkraft in "g" (sonst wirkt es zu zackig)
 
 const PITCH_RATE = 1.45; // max. Drehrate Nase hoch/runter (rad/s)
 const ROLL_RATE = 2.6; // max. Rollrate (rad/s)
 const RESPONSE = 4.5; // wie schnell die Drehung auf Eingaben reagiert (Trägheit)
 const WEATHERVANE = 0.075; // Nase dreht sich in Flugrichtung (wie ein Pfeil)
-const TRIM = 0.07; // Nase leicht über der Flugbahn → etwas Auftrieb im Gleitflug
+const TRIM = 0.05; // Nase leicht über der Flugbahn → etwas Auftrieb im Gleitflug (ohne Flughilfe)
+const MAX_BANK = 1.2; // max. Schräglage mit Flughilfe (≈ 70°)
 
 const FLAP_FREQ = 1.55; // Flügelschläge pro Sekunde
 const FLAP_FREQ_FAST = 2.3;
@@ -227,16 +228,52 @@ export class FlightPhysics {
     // ---------- 1) DREHEN: Eingaben → Drehraten ----------
     // Bei wenig Tempo haben die Flügel weniger "Griff" → weniger Kontrolle
     const authority = clamp(speed / 25, 0.35, 1);
-    let tPitch = input.pitch * PITCH_RATE * authority;
-    let tRoll = -input.roll * ROLL_RATE * authority; // negativ = rechts rollen
-    const tYaw = -input.roll * 0.22 * authority; // etwas Gieren macht Kurven direkter
     // Querlage (bank): > 0 = rechter Flügel unten
     this.bank = Math.atan2(-_r.y, _u.y);
-    if (assist && Math.abs(input.roll) < 0.1) {
-      // Flughilfe: Ohne Eingabe richtet sich der Drache langsam gerade aus
-      tRoll += this.bank * 1.6 * (1 - Math.abs(_f.y));
+    // Dünne Luft in grosser Höhe
+    const density = clamp(1 - (pos.y - 1400) / 900, 0.25, 1);
+    // Anstellwinkel α (Luft von unten = positiv) und Schiebewinkel β (Luft von der Seite)
+    let alpha = 0;
+    let beta = 0;
+    if (speed > 1) {
+      _dir.copy(_air).divideScalar(speed);
+      alpha = Math.atan2(-_dir.dot(_u), _dir.dot(_f));
+      beta = Math.asin(clamp(_dir.dot(_r), -1, 1));
     }
-    if (input.dive) tPitch -= 0.15; // Sturzflug: Nase will nach unten
+    let tPitch;
+    let tRoll;
+    let tYaw;
+    if (assist) {
+      // ===== FLUGHILFE ("Fly-by-Wire") =====
+      // a) Auto-Trimm: genau so viel Anstellwinkel, dass der Auftrieb das
+      //    Gewicht trägt – auch in der Kurve (dort braucht es mehr Auftrieb).
+      const spread = 1 - 0.8 * this.fold;
+      const qd = K_AIR * density * speed * speed;
+      const gamma = Math.asin(clamp(_air.y / Math.max(speed, 1e-3), -1, 1)); // Steigwinkel
+      const cosBank = Math.max(Math.cos(this.bank), 0.35);
+      const wantLift = Math.min(MAX_G * G, (G * Math.cos(gamma) * 0.97) / cosBank);
+      const trim = clamp(((wantLift / Math.max(qd * spread, 1e-3)) - CL0) / CL_ALPHA, -0.15, STALL_ANGLE - 0.04);
+      // b) S/W wählen den Ziel-Anstellwinkel: hochziehen = mehr Auftrieb (enge
+      //    Kurve, Steigen), drücken = weniger. Nie über den Abrisswinkel.
+      const maxA = STALL_ANGLE - 0.03;
+      let alphaDes = input.pitch >= 0 ? trim + input.pitch * (maxA - trim) : trim + input.pitch * (trim + 0.22);
+      if (input.dive) alphaDes = Math.min(alphaDes, -0.02);
+      tPitch = speed > 8 ? clamp((alphaDes - alpha) * 7, -2.4, 2.4) : input.pitch * PITCH_RATE * authority;
+      // c) A/D geben eine ZIEL-Schräglage vor (max. ~70°). Loslassen → gerade.
+      //    Beim kräftigen Hochziehen (Looping) bleibt die Hilfe aus.
+      const pulling = Math.abs(input.pitch) > 0.5 && Math.abs(input.roll) < 0.1;
+      if (Math.abs(_f.y) < 0.9 && !pulling) {
+        tRoll = clamp(-(input.roll * MAX_BANK - this.bank) * 3, -ROLL_RATE, ROLL_RATE) * authority;
+      } else tRoll = -input.roll * ROLL_RATE * 0.5;
+      // d) Nase seitlich in die Flugrichtung drehen (kein Rutschen)
+      tYaw = speed > 8 ? clamp(-beta * 4, -1.5, 1.5) : -input.roll * 0.4;
+    } else {
+      // Ohne Flughilfe: direkte Drehraten (Fassrollen und Loopings möglich!)
+      tPitch = input.pitch * PITCH_RATE * authority;
+      tRoll = -input.roll * ROLL_RATE * authority; // negativ = rechts rollen
+      tYaw = -input.roll * 0.22 * authority;
+      if (input.dive) tPitch -= 0.15;
+    }
     // Trägheit: die Drehrate nähert sich dem Ziel nur langsam an
     const k = 1 - Math.exp(-RESPONSE * dt);
     this.angVel.x += (tPitch - this.angVel.x) * k;
@@ -250,9 +287,10 @@ export class FlightPhysics {
       q.multiply(_q);
     }
 
-    // ---------- 2) WINDFAHNEN-EFFEKT ----------
-    // Wie ein Pfeil dreht sich die Nase von selbst in die Flugrichtung.
-    if (speed > 3) {
+    // ---------- 2) WINDFAHNEN-EFFEKT (ohne Flughilfe) ----------
+    // Wie ein Pfeil dreht sich die Nase von selbst in die Flugrichtung,
+    // plus ein kleiner Winkel TRIM nach oben (damit die Flügel tragen).
+    if (!assist && speed > 3) {
       this.forward(_f);
       this.up(_u);
       _dir.copy(_air).divideScalar(speed).addScaledVector(_u, TRIM).normalize();
@@ -263,6 +301,14 @@ export class FlightPhysics {
         const kw = Math.min(WEATHERVANE * speed, 6);
         _q.setFromAxisAngle(_tmp.divideScalar(s), angle * (1 - Math.exp(-kw * dt)));
         q.premultiply(_q); // Welt-System: vorne anmultiplizieren
+      }
+    } else if (assist && speed <= 8) {
+      // Sehr langsam (Strömungsabriss): Nase kippt nach vorne-unten
+      this.forward(_f);
+      if (_f.y > -0.5) {
+        this.right(_r);
+        _q.setFromAxisAngle(_r, -0.8 * dt);
+        q.premultiply(_q);
       }
     }
     q.normalize();
@@ -276,26 +322,23 @@ export class FlightPhysics {
     // Flügel anlegen beim Sturzflug (weniger Auftrieb, weniger Widerstand)
     this.fold = damp(this.fold, input.dive ? 0.85 : 0, 5, dt);
     const spread = 1 - 0.8 * this.fold;
-    // Dünne Luft in grosser Höhe
-    const density = clamp(1 - (pos.y - 1400) / 900, 0.25, 1);
 
     if (speed > 0.5) {
       _dir.copy(_air).divideScalar(speed); // Flugrichtung
       // Anstellwinkel α: Luft kommt von unten → positiv
       const alpha = Math.atan2(-_dir.dot(_u), _dir.dot(_f));
-      let CL = liftCoefficient(alpha) * spread;
+      const CL = liftCoefficient(alpha) * spread;
       const qd = K_AIR * density * speed * speed; // "Staudruck"-Faktor
 
       // AUFTRIEB: senkrecht zur Flugrichtung, in Richtung "oben" des Drachen
       _tmp.crossVectors(_r, _dir).normalize();
-      let lift = qd * CL;
-      // Kurvenhilfe: in Schräglage etwas mehr Auftrieb, damit man nicht absackt
-      if (assist) lift *= 1 + Math.min(0.5, Math.abs(Math.sin(this.bank)) * 0.45) * (Math.abs(input.roll) > 0.1 || Math.abs(this.bank) > 0.3 ? 1 : 0);
-      lift = clamp(lift, -MAX_G * G, MAX_G * G);
+      const lift = clamp(qd * CL, -MAX_G * G, MAX_G * G);
       _acc.addScaledVector(_tmp, lift);
 
-      // WIDERSTAND: gegen die Flugrichtung
-      let CD = CD0 - 0.018 * this.fold + K_INDUCED * CL * CL;
+      // WIDERSTAND: gegen die Flugrichtung. Der "induzierte" Teil hängt vom
+      // tatsächlich erzeugten Auftrieb ab (CLeff), nicht vom begrenzten Wunsch.
+      const CLeff = lift / Math.max(qd, 1e-3);
+      let CD = CD0 - 0.018 * this.fold + K_INDUCED * CLeff * CLeff;
       if (this.braking) CD += BRAKE_CD;
       if (speed > 120) CD += ((speed - 120) / 40) ** 2 * 0.05; // Höchstgeschwindigkeit
       _acc.addScaledVector(_dir, -qd * CD);
@@ -318,10 +361,15 @@ export class FlightPhysics {
     if (this.flapAmp > 0.01) {
       // Nur der Abschlag (Phase 0–0.5) drückt richtig. Mittelwert der Formel = 1.
       const stroke = 0.4 + 0.6 * (Math.max(0, Math.sin(this.flapPhase * Math.PI * 2)) / 0.318);
-      const fwdThrust = 7 * Math.max(0, 1 - speed / 60) + 1.2;
-      const upThrust = 4 + 6 * Math.max(0, 1 - speed / 35);
+      // Beim steilen Steigen wird Flattern immer weniger wirksam (kein "Raketen-Drache")
+      const climb = clamp(1 - (vel.y - 6) / 10, 0.15, 1);
+      const fwdThrust = (7 * Math.max(0, 1 - speed / 60) + 1.2) * climb;
+      const upThrust = (4 + 6 * Math.max(0, 1 - speed / 35)) * climb;
       _acc.addScaledVector(_f, fwdThrust * stroke * this.flapAmp * density);
-      _acc.addScaledVector(_u, upThrust * stroke * this.flapAmp * density);
+      // Hub zeigt überwiegend nach OBEN (Welt) – sonst würde Dauer-Flattern
+      // den Drachen in einen Looping drehen.
+      _tmp.copy(_u).lerp(UP, 0.7).normalize();
+      _acc.addScaledVector(_tmp, upThrust * stroke * this.flapAmp * density);
     }
 
     // SCHUB 2: Boost (verbraucht Ausdauer)

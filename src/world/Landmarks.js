@@ -36,8 +36,10 @@ export class Landmarks {
 
   /** Küste suchen: von (x, zStart) nach Süden gehen, bis Wasser kommt. */
   findCoast(x, zStart) {
+    const h = (z) => this.terrain.heightAt(x, z);
     for (let z = zStart; z < 2500; z += 4) {
-      if (this.terrain.heightAt(x, z) < 0) return z;
+      // Nur "echtes" Meer zählt – kleine Tümpel im Landesinneren nicht
+      if (h(z) < 0 && h(z + 60) < 0 && h(z + 150) < -3 && h(z + 300) < -6) return z;
     }
     return 2000;
   }
