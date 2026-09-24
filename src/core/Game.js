@@ -17,6 +17,7 @@ import { Customization } from '../dragon/Customization.js';
 import { RingRace } from '../gameplay/RingRace.js';
 import { Tutorial } from '../gameplay/Tutorial.js';
 import { PostProcessing } from '../fx/PostProcessing.js';
+import { SpeedFx } from '../fx/SpeedFx.js';
 import { PARTICLE_SCALE } from '../fx/Particles.js';
 import { HUD } from '../ui/HUD.js';
 import { Menu } from '../ui/Menu.js';
@@ -47,6 +48,8 @@ const _q = new THREE.Quaternion();
 const _e = new THREE.Euler();
 const _prev = new THREE.Vector3();
 const _mouth = new THREE.Vector3();
+const _tipR = new THREE.Vector3();
+const _tipL = new THREE.Vector3();
 
 export class Game {
   constructor(renderer) {
@@ -94,6 +97,15 @@ export class Game {
     this.scene.add(this.dragon.root);
     this.physics = new FlightPhysics();
     this.fire = new FireBreath(this.scene, this.world.particles, preset.world.particles);
+    this.speedFx = new SpeedFx(this.scene);
+    this.speedFx.onBoom = () => {
+      // "Schallmauer": Knall, Beben, Blickwinkel reisst auf, kurzes Aufblitzen
+      this.audio.playBoom();
+      this.rig.addShake(1.1);
+      this.rig.kick(14);
+      this.hud.doFlash(0.18);
+    };
+    this.wasBoosting = false;
     this.race = new RingRace(this.scene, this.world, this.audio);
     this.tutorial = new Tutorial(this.input, this.audio, {
       ...this.hud.tutorialUI(),
@@ -442,6 +454,7 @@ export class Game {
       hover: p.hovering || p.frozen,
       grounded: p.grounded,
       boost: p.boosting,
+      dive: p.fold,
     };
   }
 
@@ -483,6 +496,7 @@ export class Game {
     a.roar = this.roarAnim > 0 ? 1 : 0;
     if (!paused) d.update(dt, a);
     this._nostrilSmoke(dt, fireI, paused);
+    if (!paused) this._speedEffects(dt, a, playing);
 
     // Welt
     this.world.update(dt, {
@@ -647,6 +661,34 @@ export class Game {
     }
     if (p.boosting) this.rig.addShake(dt * 0.25);
     if (sp > 110) this.rig.addShake(dt * 0.3 * (sp - 110) / 40);
+  }
+
+  /** Kondensstreifen, Dampfkegel, Schallmauer, Boost-Stoss */
+  _speedEffects(dt, a, playing) {
+    const p = this.physics;
+    const d = this.dragon;
+    d.root.updateMatrixWorld(true);
+    d.getWingTip('R', _tipR);
+    d.getWingTip('L', _tipL);
+    const turnRate = Math.hypot(a.pitchRate || 0, a.yawRate || 0);
+    this.speedFx.update(dt, {
+      tipR: _tipR,
+      tipL: _tipL,
+      speed: p.speed,
+      turnG: (p.speed * turnRate) / 9.81,
+      boost: p.boosting,
+      pos: p.position,
+      vel: p.velocity,
+      camPos: this.camera.position,
+      active: playing && !p.grounded,
+    });
+    // Boost-Start: Ruck, Wusch, Blickwinkel reisst kurz auf
+    if (playing && p.boosting && !this.wasBoosting) {
+      this.rig.addShake(0.45);
+      this.rig.kick(7);
+      this.audio.playWhoosh();
+    }
+    this.wasBoosting = p.boosting;
   }
 
   _nostrilSmoke(dt, fireI, paused) {

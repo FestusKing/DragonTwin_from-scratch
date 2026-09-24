@@ -130,7 +130,7 @@ void main() {
 }`;
 
 export class SpeedLines {
-  constructor(scene, count = 350) {
+  constructor(scene, count = 550) {
     this.uniforms = {
       uCam: { value: new THREE.Vector3() },
       uBox: { value: new THREE.Vector3(70, 40, 70) },
@@ -157,9 +157,9 @@ export class SpeedLines {
     const u = this.uniforms;
     u.uCam.value.copy(camera.position);
     u.uVel.value.copy(vel);
-    const k = Math.max(0, Math.min(1, (speed - 40) / 60));
-    u.uOpacity.value = k * 0.35 * brightness;
-    u.uLen.value = 0.04 + k * 0.05;
+    const k = Math.max(0, Math.min(1, (speed - 30) / 55));
+    u.uOpacity.value = k * 0.55 * brightness;
+    u.uLen.value = 0.05 + k * 0.07;
     this.mesh.visible = k > 0.01;
   }
 }

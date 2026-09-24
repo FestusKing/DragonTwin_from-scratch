@@ -83,6 +83,15 @@ export class Dragon {
         o.receiveShadow = !this.ghost;
       }
     });
+    // Flügelspitzen (für Kondensstreifen): Spitze = Fingermitte + (Fingermitte − Handgelenk)
+    this.tipOffset = {};
+    for (const side of ['R', 'L']) {
+      const b1 = this.bones[`finger1_1_${side}`];
+      const b2 = this.bones[`finger1_2_${side}`];
+      const p1 = b1.getWorldPosition(new THREE.Vector3());
+      const tip = b2.getWorldPosition(new THREE.Vector3()).multiplyScalar(2).sub(p1);
+      this.tipOffset[side] = b2.worldToLocal(tip);
+    }
     this.anchor = {
       mouth: this.scene.getObjectByName('Anker_Maul'),
       nostril: this.scene.getObjectByName('Anker_Nuestern'),
@@ -246,6 +255,11 @@ export class Dragon {
     // Richtung, in die der Kopf schaut (im Modell: nach vorne-unten, der Kopf ist in Ruhe gesenkt)
     if (outDir) this._boneDir('head', outDir.set(0, -0.25, -1));
     return outPos;
+  }
+
+  /** Weltposition einer Flügelspitze ('R' oder 'L'). Vorher root.updateMatrixWorld() aufrufen. */
+  getWingTip(side, out) {
+    return this.bones[`finger1_2_${side}`].localToWorld(out.copy(this.tipOffset[side]));
   }
 
   getNostril(out) {

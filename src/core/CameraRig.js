@@ -31,6 +31,7 @@ export class CameraRig {
     this.yawOff = 0;
     this.pitchOff = 0;
     this.shake = 0;
+    this.fovKick = 0; // kurzer "Stoss" im Blickwinkel (Boost, Knall)
     this.time = 0;
     this.orbitAngle = 0;
     this.fpQuat = new THREE.Quaternion();
@@ -39,6 +40,11 @@ export class CameraRig {
 
   addShake(a) {
     if (settings.get('cameraShake')) this.shake = Math.min(1.5, this.shake + a);
+  }
+
+  /** Blickwinkel kurz aufreissen (in Grad), klingt von selbst ab */
+  kick(deg) {
+    this.fovKick = Math.min(20, this.fovKick + deg);
   }
 
   /** Blick mit Maus/Stick (dx, dy in Pixeln bzw. Stick-Werten) */
@@ -91,7 +97,8 @@ export class CameraRig {
       cam.position.z += Math.sin(tt * 2.1 + 2) * s * 0.5;
       this.shake = damp(this.shake, 0, 3, dt);
     }
-    cam.fov = this.fov;
+    this.fovKick *= Math.exp(-2.5 * dt);
+    cam.fov = this.fov + this.fovKick;
     cam.updateProjectionMatrix();
     if (dt > 0) this.camVelocity.copy(cam.position).sub(this.prev).divideScalar(dt);
     if (this.camVelocity.lengthSq() > 250 * 250) this.camVelocity.setLength(250);
@@ -140,7 +147,7 @@ export class CameraRig {
     _look.copy(t.pos).addScaledVector(_f, 9).addScaledVector(WUP, 2.5);
     this.lookPos.lerp(_look, 1 - Math.exp(-12 * dt));
     cam.lookAt(this.lookPos);
-    const targetFov = 62 + speedK * 20 + (t.boost ? 5 : 0);
+    const targetFov = 62 + speedK * 22 + (t.boost ? 6 : 0) + (t.dive || 0) * 8;
     this.fov = damp(this.fov, targetFov, 3, dt);
   }
 

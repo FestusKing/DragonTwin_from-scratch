@@ -412,6 +412,25 @@ export class AudioManager {
     this._noiseBurst(this.sfxBus, { dur: 0.6, freq: 500, freqEnd: 100, gain: 0.35 * s });
   }
 
+  /** Überschall-Knall: zwei harte Schläge kurz nacheinander + tiefes Grollen */
+  playBoom() {
+    if (!this.ready) return;
+    const crack = () => {
+      this._noiseBurst(this.sfxBus, { dur: 0.4, freq: 3000, freqEnd: 180, q: 0.5, gain: 0.75, attack: 0.002 });
+      this._tone(this.sfxBus, { freq: 55, freqEnd: 28, dur: 0.9, gain: 0.6, attack: 0.004 });
+    };
+    crack();
+    setTimeout(crack, 110);
+    this.playThunder(0.05, 0.45);
+  }
+
+  /** Boost: anschwellendes "Wuuusch" */
+  playWhoosh() {
+    if (!this.ready) return;
+    this._noiseBurst(this.sfxBus, { dur: 0.7, type: 'bandpass', freq: 280, freqEnd: 1600, q: 0.9, gain: 0.35, attack: 0.18 });
+    this._tone(this.sfxBus, { freq: 60, freqEnd: 95, dur: 0.6, gain: 0.25, attack: 0.1 });
+  }
+
   /** Ziegen-Meckern: "Määäh". pos = Weltposition (für räumlichen Klang) */
   playBleat(pos = null, volume = 1) {
     if (!this.ready || this.goatVoices > 4) return;
