@@ -10,7 +10,7 @@ import { CameraRig } from './CameraRig.js';
 import { clamp, damp, lerp, formatTime } from './utils.js';
 import { World } from '../world/World.js';
 import { PLACES } from '../world/Terrain.js';
-import { Dragon } from '../dragon/Dragon.js';
+import { Dragon, loadDragonModel } from '../dragon/Dragon.js';
 import { FlightPhysics } from '../dragon/FlightPhysics.js';
 import { FireBreath } from '../dragon/FireBreath.js';
 import { Customization } from '../dragon/Customization.js';
@@ -89,6 +89,7 @@ export class Game {
     this.world.sky.setupEnvironment(this.renderer);
 
     progress(0.96, 'Drache schlüpft …');
+    await loadDragonModel();
     this.dragon = new Dragon();
     this.scene.add(this.dragon.root);
     this.physics = new FlightPhysics();
