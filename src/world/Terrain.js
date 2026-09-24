@@ -65,10 +65,11 @@ export class Terrain {
 
     // 2) Gebirge im Norden (negatives z)
     const mMask = smoothstep(150, -1300, wz);
-    // Grate (ridged) gemischt mit weichem Rauschen → massive statt nadelspitze Berge
-    const ridge = n.ridged(wx * 0.0009 + 5, wz * 0.0009 + 9, 6, 2.0, 0.55);
-    const soft = n.fbm(wx * 0.0007 + 40, wz * 0.0007, 4) * 0.5 + 0.5;
-    h += mMask * (ridge * 330 + soft * 140 + 30);
+    // Erodierte Grate gemischt mit weichem Rauschen → massive Berge mit scharfen
+    // Hauptgraten und glatten Flanken (5 Schichten: feiner wäre kleiner als das Raster)
+    const ridge = n.erodedRidged(wx * 0.00082 + 5, wz * 0.00082 + 9, 5, 2.0, 0.55, 0.12);
+    const soft = n.fbm(wx * 0.0006 + 40, wz * 0.0006, 4) * 0.5 + 0.5;
+    h += mMask * (ridge * 400 + soft * 150 + 30);
     const P = PLACES;
     const dp = Math.hypot(x - P.peak.x, z - P.peak.z);
     h += 470 * Math.exp(-(dp * dp) / (470 * 470)) * (0.75 + 0.5 * ridge);
@@ -404,7 +405,7 @@ export class Terrain {
       cSand: { value: col(0xafa283) },
       cRock: { value: col(0x6a645b) },
       cRock2: { value: col(0x3a3632) },
-      cSnow: { value: col(0xe2e6ec) },
+      cSnow: { value: col(0xcfd5de) }, // nicht ganz weiss: sonst überstrahlt der Schnee in der Sonne
       cDirt: { value: col(0x66523d) },
       cWheat: { value: col(0xa39058) },
       cCrop: { value: col(0x535e35) },

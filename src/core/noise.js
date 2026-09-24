@@ -82,6 +82,43 @@ export class Noise2D {
     return sum / norm;
   }
 
+  /**
+   * "Erodiertes" Grat-Rauschen (0..1): Wo der Hang schon steil ist, werden die
+   * feineren Schichten gedämpft – wie bei echten Bergen, die Wasser und Wetter
+   * abgetragen haben. Ergebnis: scharfe Hauptgrate, glatte Flanken, keine
+   * "Haifischzähne". Die Steigung wird aus Nachbarwerten geschätzt.
+   */
+  erodedRidged(x, y, octaves = 5, lacunarity = 2.0, gain = 0.5, erosion = 0.35) {
+    let sum = 0;
+    let amp = 0.5;
+    let freq = 1;
+    let prev = 1;
+    let norm = 0;
+    let dx = 0;
+    let dy = 0;
+    const e = 0.01;
+    for (let o = 0; o < octaves; o++) {
+      const fx = x * freq;
+      const fy = y * freq;
+      const n = this.noise(fx, fy);
+      const nx = (this.noise(fx + e, fy) - n) / e;
+      const ny = (this.noise(fx, fy + e) - n) / e;
+      const a = 1 - Math.abs(n);
+      const r = a * a;
+      const sg = n >= 0 ? 1 : -1;
+      // Gedämpft wird mit der Steigung der gröberen Schichten (die grösste bleibt ungedämpft)
+      sum += (r * amp * prev) / (1 + erosion * (dx * dx + dy * dy));
+      // Steigung dieser Schicht (in Einheiten der Grund-Frequenz) aufsummieren
+      dx += -2 * a * sg * nx * freq * amp * prev;
+      dy += -2 * a * sg * ny * freq * amp * prev;
+      norm += amp;
+      prev = r;
+      amp *= gain;
+      freq *= lacunarity;
+    }
+    return sum / norm;
+  }
+
   /** Grat-Rauschen: ergibt scharfe Bergkämme (0..1). */
   ridged(x, y, octaves = 5, lacunarity = 2.1, gain = 0.5) {
     let sum = 0;
