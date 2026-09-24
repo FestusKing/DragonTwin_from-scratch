@@ -24,6 +24,10 @@ export async function loadDragonModel() {
 }
 
 const NECK = ['neck_01', 'neck_02', 'neck_03', 'neck_04', 'neck_05'];
+// Im Modell steht der Hals in S-Form hoch (wie am Boden). Im Flug wird er nach vorne gestreckt:
+// Halsansatz tiefer, oberer Hals und Kopf wieder hoch (Nicken in Radiant, + = hoch).
+const NECK_FLIGHT = [-0.45, -0.15, 0.05, 0.2, 0.2];
+const HEAD_FLIGHT = 0.25;
 const TAIL = ['tail_01', 'tail_02', 'tail_03', 'tail_04', 'tail_05', 'tail_06', 'tail_07', 'tail_08'];
 // Flügel anlegen: Drehung in der Draufsicht (Radiant) für Oberarm, Unterarm, Finger 1–4.
 // Im Modell sind die Flügel gespreizt; angelegt zeigt der Oberarm nach hinten,
@@ -235,8 +239,8 @@ export class Dragon {
   // ------------------------------------------------------------ Positionen für andere Systeme
   getMouth(outPos, outDir) {
     this.anchor.mouth.getWorldPosition(outPos);
-    // Richtung, in die der Kopf schaut (im Modell: nach vorne, leicht nach unten)
-    if (outDir) this._boneDir('head', outDir.set(0, -0.18, -1));
+    // Richtung, in die der Kopf schaut (im Modell: nach vorne-unten, der Kopf ist in Ruhe gesenkt)
+    if (outDir) this._boneDir('head', outDir.set(0, -0.25, -1));
     return outPos;
   }
 
@@ -334,14 +338,15 @@ export class Dragon {
     this.model.position.y = -amp * Math.sin(ph) * 0.25;
     this._pose('chest', -amp * Math.sin(ph) * 0.03, 0, 0);
 
-    // --- Hals: gleicht das Wippen aus, schaut in die Kurve ---
+    // --- Hals: im Flug gestreckt, am Boden in S-Form; gleicht das Wippen aus, schaut in die Kurve ---
     const neckBob = amp * Math.sin(ph) * 0.04;
+    const stretch = 1 - s.legs; // 1 = fliegt, 0 = steht, beim Schweben halb
     for (let i = 0; i < NECK.length; i++) {
-      const x = neckBob * (i < 2 ? 1 : -1) + s.neckPitch * 0.2 + s.hover * (i === 0 ? 0.12 : -0.04) + Math.sin(t * 0.9 + i) * 0.012;
+      const x = NECK_FLIGHT[i] * stretch + neckBob * (i < 2 ? 1 : -1) + s.neckPitch * 0.2 + s.hover * (i === 0 ? 0.12 : -0.04) + Math.sin(t * 0.9 + i) * 0.012;
       const y = s.neckYaw * 0.2 + Math.sin(t * 0.6 + i * 0.5) * 0.016;
       this._pose(NECK[i], x, y, 0);
     }
-    this._pose('head', -neckBob * 0.5 - s.jaw * 0.15, 0, 0);
+    this._pose('head', HEAD_FLIGHT * stretch - neckBob * 0.5 - s.jaw * 0.15, 0, 0);
     this._pose('jaw', -s.jaw * 0.5 - Math.max(0, Math.sin(t * 0.4)) * 0.015, 0, 0);
     if (this.mouthGlow) this.mouthGlow.visible = (a.fire || 0) > 0.05;
 

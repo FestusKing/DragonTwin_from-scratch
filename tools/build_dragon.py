@@ -380,21 +380,23 @@ def tube(part, curve, radius, R, uref, weights, mat, flat=(1.0, 1.0), step=0.05,
 # =====================================================================
 # 4. Form des Drachen (alle Masse in Metern)
 # =====================================================================
-# Mittellinie von der Schwanzspitze (hinten) bis zur Schnauze: (y, z)
-BODY_CTRL = [(-13.0, -0.12), (-10.0, -0.22), (-7.0, -0.16), (-4.6, -0.04), (-2.1, 0.0), (0.0, 0.0),
-             (1.4, 0.0), (2.5, 0.08), (3.4, 0.32), (4.4, 0.8), (5.5, 1.25), (6.6, 1.48), (7.4, 1.5),
-             (8.4, 1.36), (9.9, 1.08)]
-# Querschnitte: y, Breite (rx), Höhe oben (rt), Höhe unten (rb), Kantigkeit n
+# Mittellinie von der Schwanzspitze (hinten) bis zur Schnauze: (y, z).
+# Der Hals steigt von den Schultern steil an (S-Form), der Kopf schaut nach vorne-unten.
+TAIL_END = -11.0
+BODY_CTRL = [(TAIL_END, -0.30), (-8.5, -0.32), (-6.0, -0.18), (-4.0, -0.05), (-2.1, 0.0), (0.0, 0.0),
+             (1.4, 0.0), (2.4, 0.12), (3.2, 0.5), (3.9, 1.1), (4.6, 1.75), (5.4, 2.3), (6.2, 2.62),
+             (7.0, 2.72), (7.8, 2.6), (8.7, 2.3), (9.9, 1.9)]
+# Querschnitte: y, Breite (rx), Höhe oben (rt), Höhe unten (rb), Kantigkeit n (2 = rund, 3 = kantig)
 BODY_ST = [
-    (-13.0, .05, .055, .05, 2.0), (-12.0, .17, .18, .16, 2.0), (-10.5, .32, .33, .30, 2.0),
-    (-8.5, .48, .49, .45, 2.0), (-6.5, .65, .65, .60, 2.0), (-4.8, .84, .83, .78, 2.05),
-    (-3.5, 1.0, .98, .94, 2.1), (-2.3, 1.12, 1.08, 1.08, 2.2), (-1.2, 1.2, 1.14, 1.18, 2.2),   # Hüfte
+    (TAIL_END, .05, .055, .05, 2.0), (-10.3, .16, .17, .15, 2.0), (-9.2, .30, .31, .28, 2.0),
+    (-7.8, .46, .47, .43, 2.0), (-6.3, .63, .63, .58, 2.0), (-4.9, .82, .81, .76, 2.05),
+    (-3.7, .99, .97, .93, 2.1), (-2.3, 1.12, 1.08, 1.08, 2.2), (-1.2, 1.2, 1.14, 1.18, 2.2),   # Hüfte
     (0.0, 1.28, 1.2, 1.36, 2.2), (1.2, 1.38, 1.28, 1.62, 2.2), (2.2, 1.3, 1.24, 1.48, 2.2),    # Brust (Kiel)
-    (2.9, 1.1, 1.08, 1.2, 2.1), (3.5, .94, .92, .98, 2.0), (4.3, .80, .80, .80, 2.0),          # Halsansatz
-    (5.2, .68, .69, .66, 2.0), (6.0, .60, .62, .56, 2.0), (6.6, .59, .59, .49, 2.2),
-    (7.0, .61, .57, .37, 2.4), (7.5, .63, .58, .31, 2.5), (8.0, .56, .52, .26, 2.6),          # Schädel, Augen
-    (8.5, .46, .44, .22, 2.6), (9.1, .38, .38, .18, 2.6), (9.55, .33, .33, .16, 2.5),         # Schnauze
-    (9.8, .26, .25, .13, 2.3), (9.9, .13, .12, .08, 2.0),
+    (2.9, 1.12, 1.1, 1.2, 2.1), (3.5, .98, .96, 1.0, 2.0), (4.3, .84, .84, .82, 2.0),          # Halsansatz
+    (5.2, .72, .73, .68, 2.0), (6.0, .64, .66, .58, 2.1), (6.6, .64, .64, .52, 2.3),
+    (7.0, .72, .66, .42, 2.8), (7.5, .74, .66, .36, 3.0), (8.0, .64, .58, .30, 3.0),          # Schädel, Augen
+    (8.5, .52, .50, .25, 3.0), (9.1, .42, .43, .20, 2.9), (9.55, .36, .37, .17, 2.7),         # Schnauze
+    (9.8, .28, .28, .14, 2.4), (9.9, .14, .13, .08, 2.0),
 ]
 R_BODY = 48
 # Kopf kürzen: Alles ab y = 6.8 (Richtung Schnauze) wird in Längsrichtung zusammengeschoben
@@ -402,23 +404,24 @@ R_BODY = 48
 HEAD_SQUASH = (6.8, 7.6, 0.82)
 BELLY_COLS = 6            # Spalten links und rechts der Bauchnaht = Bauch (bzw. Gaumen am Kopf)
 HEAD_Y = 6.95             # ab hier ist der Körper-Schlauch der Oberkopf
-EYE_Y, EYE_PHI = 7.95, math.pi / 2 + 0.55
-SADDLE = (1.0, 3.9)       # hier keine Rückenstacheln (Platz für Sattel und Reiter im Spiel)
+EYE_Y, EYE_PHI = 7.95, math.pi / 2 + 0.45
+SADDLE = (0.9, 3.3)       # hier keine Rückenstacheln (Platz für Sattel und Reiter im Spiel)
+SADDLE_Y = 2.3            # Sitzplatz des Reiters (vor dem steilen Hals)
 
 # Knochen entlang der Körperlinie: Name, y Anfang, y Ende, Eltern
 SPINE = [
     ("root", 0.0, 1.0, None), ("chest", 1.0, 3.5, "root"),
     ("neck_01", 3.5, 4.2, "chest"), ("neck_02", 4.2, 4.9, "neck_01"), ("neck_03", 4.9, 5.6, "neck_02"),
     ("neck_04", 5.6, 6.3, "neck_03"), ("neck_05", 6.3, 7.0, "neck_04"), ("head", 7.0, 9.9, "neck_05"),
-    ("hips", 0.0, -3.4, "root"), ("tail_01", -3.4, -4.4, "hips"), ("tail_02", -4.4, -5.4, "tail_01"),
-    ("tail_03", -5.4, -6.4, "tail_02"), ("tail_04", -6.4, -7.4, "tail_03"), ("tail_05", -7.4, -8.4, "tail_04"),
-    ("tail_06", -8.4, -9.5, "tail_05"), ("tail_07", -9.5, -10.7, "tail_06"), ("tail_08", -10.7, -13.0, "tail_07"),
+    ("hips", 0.0, -3.4, "root"), ("tail_01", -3.4, -4.2, "hips"), ("tail_02", -4.2, -5.0, "tail_01"),
+    ("tail_03", -5.0, -5.8, "tail_02"), ("tail_04", -5.8, -6.6, "tail_03"), ("tail_05", -6.6, -7.4, "tail_04"),
+    ("tail_06", -7.4, -8.3, "tail_05"), ("tail_07", -8.3, -9.3, "tail_06"), ("tail_08", -9.3, TAIL_END, "tail_07"),
 ]
 
 # Unterkiefer: y, Höhe oben, Höhe unten, Breite (Anteil der Kopfbreite)
-JAW_ST = [(6.95, .02, .03, .30), (7.08, .035, .15, .74), (7.3, .045, .24, .88), (7.8, .05, .24, .92),
-          (8.4, .05, .20, .92), (9.0, .045, .15, .90), (9.5, .04, .11, .88), (9.72, .035, .08, .80),
-          (9.82, .02, .035, .40)]
+JAW_ST = [(6.95, .02, .03, .30), (7.08, .035, .18, .76), (7.3, .045, .28, .90), (7.8, .05, .27, .93),
+          (8.4, .05, .22, .92), (9.0, .045, .16, .90), (9.5, .04, .12, .88), (9.72, .035, .09, .80),
+          (9.82, .02, .04, .40)]
 R_JAW = 32
 JAW_BELLY_COLS = 5        # Kehle (unten)
 JAW_MOUTH_COL = 11        # ab hier (bis zur Mitte oben) ist Maul-Innenseite
@@ -429,13 +432,13 @@ LEG_H, LEG_K = vec3(0.70, -2.0, -0.2), vec3(0.84, -1.35, -1.25)
 LEG_A, LEG_B = vec3(0.86, -2.15, -1.95), vec3(0.86, -1.80, -2.50)
 GROUND_Z = -2.66          # Boden unter den Füssen (Stand)
 
-# Flügel (rechte Seite), wie im Spiel: Oberarm 2.94 m, Unterarm 3.64 m, 4 lange Finger
+# Flügel (rechte Seite): Oberarm 3.3 m, Unterarm 4.2 m, 4 lange Finger (Spannweite ca. 29 m)
 WING_S = vec3(0.95, 2.05, 0.66)
+ARM_LEN = (3.3, 4.2)
 DIHEDRAL = 0.07           # Flügel leicht nach oben (V-Form)
 FINGER_ANG = (-0.22, 0.38, 0.98, 1.58)
-FINGER_LEN = (5.32, 4.9, 4.13, 3.22)
-MEMBRANE_Y_BODY = -1.9    # hier endet die Flughaut hinten am Körper
-MEM_UV = (0.4, -2.4, 12.6, 6.3)  # Flughaut-Textur: x0, y0, Breite, Höhe (Meter)
+FINGER_LEN = (6.3, 5.8, 4.9, 3.8)
+MEMBRANE_Y_BODY = -2.7    # hier endet die Flughaut hinten am Körper (bei der Hüfte)
 
 
 class BodyShape:
@@ -633,19 +636,19 @@ def build_toes_R():
     base = LEG_B + vec3(0.0, 0.02, -0.03)
     for i, a in enumerate((-0.42, 0.0, 0.42)):
         d = nrm(rotz(vec3(0.05, 1.0, 0.0), a))
-        L = 0.62 if i == 1 else 0.52
-        pts = [base, base + d * L * 0.45 + vec3(0, 0, -0.07), base + d * L + vec3(0, 0, -0.10)]
+        L = 0.82 if i == 1 else 0.7
+        pts = [base, base + d * L * 0.45 + vec3(0, 0, -0.06), base + d * L + vec3(0, 0, -0.08)]
         cv = Curve(pts)
-        tube(toes, cv, Pchip([0, cv.length * 0.5, cv.length], [0.085, 0.062, 0.045]), 12, vec3(0, 0, 1),
+        tube(toes, cv, Pchip([0, cv.length * 0.5, cv.length], [0.1, 0.075, 0.055]), 12, vec3(0, 0, 1),
              lambda s, t: wmix((smooth(0, 0.15, s), {"toes_R": 1.0}), (1 - smooth(0, 0.15, s), {"foot_R": 1.0})),
              "Haut", flat=(1.0, 0.8), step=0.05, cap1=True)
-        claw(claws, pts[-1], d, 0.28, 0.045, {"toes_R": 1.0})
+        claw(claws, pts[-1], d, 0.42, 0.065, {"toes_R": 1.0})       # grosse Krallen wie bei Greifvögeln
     dh = nrm(vec3(-0.3, -1.0, 0.0))        # hintere Zehe (Afterkralle)
     pts = [base + vec3(0, -0.05, 0.05), base + dh * 0.2 + vec3(0, 0, -0.08), base + dh * 0.32 + vec3(0, 0, -0.12)]
     cv = Curve(pts)
     tube(toes, cv, Pchip([0, cv.length], [0.07, 0.045]), 12, vec3(0, 0, 1), lambda s, t: {"foot_R": 1.0},
          "Haut", step=0.05, cap1=True)
-    claw(claws, pts[-1], dh, 0.22, 0.04, {"foot_R": 1.0})
+    claw(claws, pts[-1], dh, 0.3, 0.05, {"foot_R": 1.0})
     return toes, claws
 
 
@@ -654,8 +657,8 @@ def wing_points():
     S = WING_S
     a1 = -0.22
     a2 = a1 + 0.38
-    E2 = S[:2] + 2.94 * np.array([math.cos(a1), -math.sin(a1)])
-    W2 = E2 + 3.64 * np.array([math.cos(a2), -math.sin(a2)])
+    E2 = S[:2] + ARM_LEN[0] * np.array([math.cos(a1), -math.sin(a1)])
+    W2 = E2 + ARM_LEN[1] * np.array([math.cos(a2), -math.sin(a2)])
     F2 = [W2 + L * np.array([math.cos(a2 + da), -math.sin(a2 + da)]) for da, L in zip(FINGER_ANG, FINGER_LEN)]
 
     def lift(p2):
@@ -787,8 +790,7 @@ def build_membrane_R(B, chain, wp):
         n = np.cross(pts[1] - pts[0], pts[-1] - pts[0])
         if n[2] < 0:
             vs = vs[::-1]
-        uvs = [((part.v[x[0]][0] - MEM_UV[0]) / MEM_UV[2], (part.v[x[0]][1] - MEM_UV[1]) / MEM_UV[3]) for x in vs]
-        part.face([x[0] for x in vs], "Flughaut", [x[1] for x in vs], [x[2] for x in vs], uvs)
+        part.face([x[0] for x in vs], "Flughaut", [x[1] for x in vs], [x[2] for x in vs], [(0.0, 0.0)] * len(vs))
 
     # --- innere Fläche (Coons-Patch) ---
     grid = {}
@@ -874,11 +876,23 @@ def build_membrane_R(B, chain, wp):
         for i in range(1, NT):
             for j in range(NW):
                 add_face([gw[i, j], gw[i, j + 1], gw[i + 1, j + 1], gw[i + 1, j]])
+    # Textur-Koordinaten = Draufsicht, passend in ein Bild im Format 2:1 (gleich scharf in x und y)
+    xy = np.array([v[:2] for v in part.v])
+    lo, hi = xy.min(axis=0) - 0.1, xy.max(axis=0) + 0.1
+    w, h = hi - lo
+    if w < 2 * h:
+        lo[0] -= (2 * h - w) / 2
+        w = 2 * h
+    else:
+        lo[1] -= (w / 2 - h) / 2
+        h = w / 2
+    part.fuv = [[((part.v[i][0] - lo[0]) / w, (part.v[i][1] - lo[1]) / h) for i in f] for f in part.f]
     return part
 
 
 def build_horns(B, J, chain):
-    """Hörner, Stacheln am Kiefer, Rückenstacheln und die Stacheln an der Schwanzspitze."""
+    """Hörner-Krone am Hinterkopf, Stacheln an Brauen, Wangen, Kinn und Nase,
+    grosse Rückenstacheln und eine Stachel-Spitze (wie eine Pfeilspitze) am Schwanz."""
     part = Part("Hoerner", "horn")
     X = vec3(1, 0, 0)
 
@@ -887,6 +901,12 @@ def build_horns(B, J, chain):
         tube(part, cv, lambda s: r0 * (1 - s / cv.length) ** 1.1 + 0.004, R, uref, lambda s, t: weights,
              "Horn", flat=flat, n_rings=n, cap0=True)
 
+    def spike(base, d, L, r0, weights, bend=None, R=8, n=7):
+        """Gerader, leicht gebogener Stachel von base in Richtung d."""
+        bend = np.zeros(3) if bend is None else bend
+        horn(base - d * 0.05, base + d * L * 0.5, base + d * L + bend * L, r0, weights, R=R, n=n)
+
+    head = {"head": 1.0}
     for side in (1, -1):
         def ph(p):
             return p if side > 0 else TAU - p
@@ -895,77 +915,103 @@ def build_horns(B, J, chain):
         def at(y, p):
             s = B.s_of_y(y)
             T, Sd, U = B.frame(s)
-            return B.point(s, ph(p)), T, U
-        # grosse Hörner am Hinterkopf, weit nach hinten geschwungen
-        base, T, U = at(7.15, math.pi - 0.42)
-        horn(base - U * 0.2 + T * 0.08, base - T * 0.9 + U * 0.55 + out * 0.22, base - T * 2.4 + U * 0.42 + out * 0.5,
-             0.18, {"head": 1.0}, R=12, n=16)
-        # zweites Paar, seitlich nach hinten
-        base, T, U = at(7.3, math.pi / 2 + 0.75)
-        horn(base - out * 0.12 + T * 0.05, base - T * 0.6 + out * 0.34 + U * 0.12, base - T * 1.5 + out * 0.62 - U * 0.05,
-             0.12, {"head": 1.0})
-        # Wangenstacheln
-        base, T, U = at(7.35, math.pi / 2 + 0.05)
-        horn(base - out * 0.04, base - T * 0.3 + out * 0.15, base - T * 0.6 + out * 0.25 - U * 0.12,
-             0.055, {"head": 1.0}, R=8, n=7)
-        # kleine Stacheln über den Augen (flach nach hinten)
-        for y, L in ((7.75, 0.14), (8.05, 0.1)):
-            base, T, U = at(y, math.pi - 0.95)
-            horn(base - U * 0.03, base - T * L * 0.6 + U * L * 0.22 + out * L * 0.1, base - T * L + U * L * 0.2,
-                 0.026, {"head": 1.0}, R=6, n=4)
-        # Stacheln am Unterkiefer
-        for y, L in ((7.35, 0.36), (7.7, 0.32), (8.05, 0.26)):
+            q = B.point(s, ph(p))
+            return q, T, U, nrm(q - B.curve.at(s))
+        # 1) grosse Hörner am Hinterkopf, weit nach hinten und oben geschwungen
+        base, T, U, n_out = at(7.1, math.pi - 0.45)
+        horn(base - U * 0.2 + T * 0.08, base - T * 1.1 + U * 0.7 + out * 0.3, base - T * 3.0 + U * 0.55 + out * 0.65,
+             0.22, head, R=12, n=18)
+        # 2) zweites Paar, seitlich nach hinten und leicht nach unten
+        base, T, U, n_out = at(7.25, math.pi / 2 + 0.8)
+        horn(base - out * 0.12 + T * 0.05, base - T * 0.7 + out * 0.45 + U * 0.1, base - T * 1.9 + out * 0.8 - U * 0.15,
+             0.15, head, R=10, n=14)
+        # 3) Krone: kleinere Hörner am Rand des Hinterkopfs
+        for y, p, L, r in ((6.95, math.pi - 0.15, 0.75, 0.075), (7.0, math.pi / 2 + 1.15, 0.85, 0.08),
+                           (7.1, math.pi / 2 + 0.5, 0.7, 0.07), (6.9, math.pi / 2 + 0.25, 0.5, 0.055)):
+            base, T, U, n_out = at(y, p)
+            spike(base, nrm(-T + n_out * 0.55), L, r, head, bend=-T * 0.15)
+        # 4) Wangen-Stacheln (Kragen hinter dem Maul)
+        for y, dp, L in ((7.15, 0.0, 0.75), (7.4, -0.12, 0.6), (7.65, -0.2, 0.42)):
+            base, T, U, n_out = at(y, math.pi / 2 + dp)
+            spike(base, nrm(-T + out * 0.6 - U * 0.15), L, 0.065, head, bend=-T * 0.1)
+        # 5) Stacheln auf dem Brauenwulst
+        for y, L in ((7.6, 0.38), (7.85, 0.28), (8.1, 0.2)):
+            base, T, U, n_out = at(y, math.pi - 0.95)
+            spike(base, nrm(-T + U * 0.5 + out * 0.3), L, 0.045, head, R=6, n=5)
+        # 6) Stacheln am Unterkiefer (seitlich) und am Kinn (unten)
+        for y, L in ((7.35, 0.42), (7.7, 0.36), (8.05, 0.28)):
             c, T, Sd, U, rx, rt, rb = J.ring(y)
             base = J.point(y, ph(math.pi / 2 - 0.5))
             d = nrm(-T + out * 0.5 - U * 0.35)
-            horn(base - d * 0.04, base + d * L * 0.5, base + d * L - U * 0.04, 0.035, {"jaw": 1.0}, R=6, n=5)
-    # Rückenstacheln (flach wie Flossen), nicht im Sattel-Bereich
-    y = 6.45
-    while y > -12.55:
+            horn(base - d * 0.04, base + d * L * 0.5, base + d * L - U * 0.04, 0.045, {"jaw": 1.0}, R=6, n=5)
+        for y, L in ((8.55, 0.26), (8.95, 0.2)):
+            c, T, Sd, U, rx, rt, rb = J.ring(y)
+            base = J.point(y, ph(0.4))
+            spike(base, nrm(-T * 0.7 - U + out * 0.25), L, 0.045, {"jaw": 1.0}, R=6, n=5)
+    # 7) Horn auf der Nase und zwei kleine Höcker dahinter (Mitte, nicht gespiegelt)
+    for y, L, r in ((9.3, 0.26, 0.1), (8.95, 0.15, 0.07), (8.65, 0.1, 0.055)):
+        s = B.s_of_y(y)
+        T, Sd, U = B.frame(s)
+        base = B.point(s, math.pi)
+        horn(base - U * 0.06, base + U * L * 0.55 - T * L * 0.2, base + U * L * 0.8 - T * L * 0.8, r, head, R=8, n=6)
+    # 8) Rückenstacheln (flach wie Flossen), am Hals und an den Schultern am grössten,
+    #    zum Schwanz hin kleiner; nicht im Sattel-Bereich
+    y = 6.55
+    while y > TAIL_END + 0.5:
         s = B.s_of_y(y)
         rx, rt, rb, _ = B.params(y)
-        h = 0.08 + 0.5 * rt
+        h = 0.15 + 0.7 * rt
         if not (SADDLE[0] < y < SADDLE[1]):
             T, Sd, U = B.frame(s)
             top = B.point(s, math.pi)
-            d = nrm(U * math.cos(0.85) - T * math.sin(0.85))
-            horn(top - U * 0.3 * h, top + d * h * 0.5, top + d * h - T * 0.12 * h, 0.34 * h,
-                 chain.weights(s), R=8, n=6, flat=(1.0, 0.28), uref=X)
-        y -= max(0.3, 0.85 * h + 0.12)
-    # Büschel an der Schwanzspitze
-    for (ax, az, L) in ((0.0, 0.5, 0.5), (0.55, 0.15, 0.45), (-0.55, 0.15, 0.45), (0.3, -0.35, 0.38), (-0.3, -0.35, 0.38)):
-        s = B.s_of_y(-12.7)
-        T, Sd, U = B.frame(s)
-        base = B.curve.at(s)
-        d = nrm(-T + Sd * ax + U * az)
-        horn(base, base + d * L * 0.5, base + d * L - T * 0.08, 0.05, {"tail_08": 1.0}, R=6, n=5)
+            d = nrm(U * math.cos(0.95) - T * math.sin(0.95))
+            horn(top - U * 0.3 * h, top + d * h * 0.5, top + d * h - T * 0.2 * h, 0.38 * h,
+                 chain.weights(s), R=8, n=6, flat=(1.0, 0.25), uref=X)
+        y -= max(0.35, 0.75 * h + 0.12)
+    # 9) Schwanzspitze wie eine Pfeilspitze: zwei flache Klingen schräg nach hinten, eine in der Mitte,
+    #    dazu ein aufrechter Stachel
+    s = B.s_of_y(TAIL_END + 0.55)
+    T, Sd, U = B.frame(s)
+    base = B.curve.at(s)
+    tw = {"tail_08": 1.0}
+    for ax, L, r in ((1.0, 1.0, 0.24), (-1.0, 1.0, 0.24), (0.0, 0.95, 0.2)):
+        d = nrm(-T * (0.65 if ax else 1.0) + Sd * ax + U * 0.05)
+        horn(base - d * 0.05, base + d * L * 0.45, base + d * L - T * 0.25 * L, r, tw, R=10, n=8,
+             flat=(1.0, 0.22), uref=U)
+    d = nrm(-T + U * 0.9)
+    horn(base - d * 0.05, base + d * 0.25, base + d * 0.5 - T * 0.15, 0.1, tw, R=8, n=6, flat=(0.3, 1.0), uref=U)
     return part
 
 
 def build_teeth(B, J):
+    """Wenige, grosse Zähne. Die Reisszähne vorne ragen auch bei geschlossenem Maul heraus."""
     part = Part("Zaehne", "tooth")
 
     def tooth(p0, d, L, r0, weights, bend):
         cv = Curve(bezier(p0 - d * 0.035, p0 + d * L * 0.5, p0 + d * L + bend, 10), smooth=False, n=2)
         tube(part, cv, lambda s: r0 * (1 - s / cv.length) ** 1.2 + 0.003, 6, vec3(0, 1, 0),
-             lambda s, t: weights, "Horn", n_rings=4)
+             lambda s, t: weights, "Horn", n_rings=5)
 
     for side in (1, -1):
         def ph(p):
             return p if side > 0 else TAU - p
-        for i, y in enumerate(np.linspace(8.05, 9.65, 12)):
+        ys = np.linspace(8.2, 9.7, 9)
+        for i, y in enumerate(ys):
             s = B.s_of_y(y)
             T, Sd, U = B.frame(s)
             base = B.point(s, ph(math.pi / 2 - 0.42))
-            d = nrm(-U + vec3(side * 0.12, 0, 0) + T * 0.05)
-            L = 0.17 if i == 9 else 0.10 + 0.02 * (i / 11)
-            tooth(base, d, L, 0.03 if i != 9 else 0.036, {"head": 1.0}, -T * 0.015)
-        for i, y in enumerate(np.linspace(8.12, 9.55, 11)):
+            if i == 6:        # oberer Reisszahn: lang, ragt aussen über den Unterkiefer
+                tooth(base, nrm(-U + vec3(side * 0.28, 0, 0) + T * 0.1), 0.34, 0.055, {"head": 1.0}, -T * 0.03)
+            else:
+                tooth(base, nrm(-U + vec3(side * 0.12, 0, 0) + T * 0.05), 0.12 + 0.05 * (i / 8), 0.036,
+                      {"head": 1.0}, -T * 0.015)
+        for i, y in enumerate(np.linspace(8.25, 9.6, 8)):
             c, T, Sd, U, rx, rt, rb = J.ring(y)
             base = J.point(y, ph(math.pi / 2 + 0.55))
-            d = nrm(U + vec3(side * 0.1, 0, 0))
-            L = 0.14 if i == 9 else 0.08 + 0.015 * (i / 10)
-            tooth(base, d, L, 0.026, {"jaw": 1.0}, -T * 0.012)
+            if i == 6:        # unterer Reisszahn
+                tooth(base, nrm(U + vec3(side * 0.22, 0, 0) - T * 0.05), 0.26, 0.045, {"jaw": 1.0}, -T * 0.02)
+            else:
+                tooth(base, nrm(U + vec3(side * 0.1, 0, 0)), 0.1 + 0.03 * (i / 7), 0.03, {"jaw": 1.0}, -T * 0.012)
     return part
 
 
@@ -978,11 +1024,13 @@ def build_eyes(B):
         phi = EYE_PHI if side > 0 else TAU - EYE_PHI
         surf = B.point(s, phi)
         look = nrm(vec3(side, 0, 0) * 0.85 + T * 0.45 + U * 0.15)
-        center = surf - nrm(surf - C) * 0.05
+        center = surf - nrm(surf - C) * 0.06
         # mandelförmig: länger als hoch, die Haut schneidet den Rand ab (wie Lider)
-        r, r2, r3 = 0.1, 0.13, 0.075
+        r, r2, r3 = 0.1, 0.12, 0.065
         e2 = nrm(np.cross(look, vec3(0, 0, 1)))
         e3 = np.cross(e2, look)
+        tilt = 0.3 * side              # schräg: hinten höher als vorne (böser Blick)
+        e2, e3 = e2 * math.cos(tilt) + e3 * math.sin(tilt), -e2 * math.sin(tilt) + e3 * math.cos(tilt)
         nlat, nlon = 12, 16
         ids = {}
         for i in range(1, nlat):
@@ -1032,7 +1080,7 @@ def bone_list(B, J, wp):
     hinge = B.curve.at(s) - U * (rb - 0.02)
     c, T2, Sd2, U2, rxj, rtj, rbj = J.ring(9.72)
     bones.append(("jaw", hinge, c + U2 * rtj, "head", Z))
-    toe_tip = LEG_B + vec3(0.0, 0.02, -0.03) + nrm(vec3(0.05, 1, 0)) * 0.62 + vec3(0, 0, -0.1)
+    toe_tip = LEG_B + vec3(0.0, 0.02, -0.03) + nrm(vec3(0.05, 1, 0)) * 0.82 + vec3(0, 0, -0.08)
     bones += [("thigh_R", LEG_H, LEG_K, "hips", (0, 1, 0)), ("shin_R", LEG_K, LEG_A, "thigh_R", (0, 1, 0)),
               ("foot_R", LEG_A, LEG_B, "shin_R", (0, 1, 0)), ("toes_R", LEG_B, toe_tip, "foot_R", Z)]
     S, E, W = wp["S"], wp["E"], wp["W"]
@@ -1109,18 +1157,22 @@ def muscle_list(B, wp):
     M.append(("Schulter", S + ad * 0.3, (ad, nrm(np.cross(up, ad)), up), (0.9, 0.48, 0.45)))
     c, ax = on_body(1.6, math.pi - 0.5, 0.22)
     M.append(("Schulterblatt", c, ax, (0.3, 0.75, 0.14)))
+    c, ax = on_body(3.4, math.pi - 0.6, 0.3)
+    M.append(("Nacken", c, ax, (0.4, 0.9, 0.35)))                   # kräftiger Übergang Schulter–Hals
     td = nrm(LEG_K - LEG_H)
     lat = vec3(1, 0, 0)
     M.append(("Keule", LEG_H + (LEG_K - LEG_H) * 0.3 + vec3(-0.02, 0.05, 0.05), (td, lat, nrm(np.cross(td, lat))),
               (1.0, 0.55, 0.7)))                                   # Oberschenkel geht in die Flanke über
-    c, ax = on_body(8.0, math.pi - 0.85, 0.05)
-    M.append(("Braue", c, ax, (0.13, 0.45, 0.1)))
-    c, ax = on_body(7.55, math.pi / 2 - 0.05, 0.1)
-    M.append(("Wange", c, ax, (0.14, 0.5, 0.14)))
+    c, ax = on_body(7.9, math.pi - 0.72, 0.0)
+    M.append(("Braue", c, ax, (0.14, 0.6, 0.12)))                   # Brauenwulst über dem Auge
+    c, ax = on_body(7.45, math.pi / 2 + 0.05, 0.06)
+    M.append(("Jochbein", c, ax, (0.16, 0.65, 0.14)))               # Wangenknochen bis zum Hinterkopf
     c, ax = on_body(7.2, math.pi / 2 - 0.35, 0.14)
-    M.append(("Kaumuskel", c, ax, (0.2, 0.4, 0.22)))
-    c, ax = on_body(9.62, math.pi - 0.5, 0.04)
-    M.append(("Nuester", c, ax, (0.06, 0.14, 0.05)))
+    M.append(("Kaumuskel", c, ax, (0.26, 0.45, 0.28)))
+    c, ax = on_body(9.62, math.pi - 0.5, 0.03)
+    M.append(("Nuester", c, ax, (0.09, 0.18, 0.07)))
+    c, ax = on_body(9.0, math.pi, 0.05)
+    M.append(("Nasenruecken", c, ax, (0.1, 0.8, 0.08)))
     return M
 
 
@@ -1891,7 +1943,7 @@ def build(args):
     T, Sd, U = B.frame(s)
     mouth = squash(B.curve.at(B.s_of_y(9.85)) - U * 0.12 + T * 0.1)
     nostril = squash(probe.point(B.s_of_y(9.55), math.pi) + U * 0.02)
-    saddle = probe.point(B.s_of_y(2.7), math.pi) + vec3(0, 0, 0.05)
+    saddle = probe.point(B.s_of_y(SADDLE_Y), math.pi) + vec3(0, 0, 0.05)
 
     # --- Texturen backen ---
     if not args.no_bake:
@@ -2098,7 +2150,9 @@ def check(args):
         "vorschau_seite": ((34, 0.5, 2), (0, -1.5, 0), 32),
         "vorschau_oben": ((0, -0.5, 42), (0, -0.5, 0), 30),
         "vorschau_vorne": ((0, 32, 4), (0, 0, 0.5), 32),
-        "vorschau_kopf": ((3.8, 12.5, 2.6), (0, 8.4, 1.2), 45),
+        "vorschau_kopf": ((4.6, 11.6, 3.4), (0, 8.0, 2.3), 42),
+        "vorschau_kopf_seite": ((6.5, 8.0, 2.6), (0, 7.9, 2.4), 45),
+        "vorschau_portrait": ((-13, 15, 4.5), (0, 2.0, 1.0), 32),
         "vorschau_hinten": ((-5, -17, 7.5), (0, 0.5, 0.3), 30),
         "vorschau_schulter": ((6.5, 6.5, 4.0), (1.3, 1.2, 0.2), 32),
         "vorschau_unten": ((9, 3, -2.2), (0, -0.8, -0.9), 28),
@@ -2122,7 +2176,7 @@ def check(args):
         rotate_world(pbs["tail_05"], (0, 0, 1), 18)
         bpy.context.view_layer.update()
         shot("vorschau_pose", (-21, 17, 11), (0, 0, 0.5), 30)
-        shot("vorschau_pose_kopf", (4.5, 12.0, 2.2), (0, 8.2, 1.0), 40)
+        shot("vorschau_pose_kopf", (4.5, 11.5, 3.2), (0, 7.8, 2.0), 40)
         shot("vorschau_pose_vorne", (0, 32, 4), (0, 0, 1.0), 32)
 
 

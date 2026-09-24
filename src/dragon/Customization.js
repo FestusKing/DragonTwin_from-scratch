@@ -2,7 +2,7 @@
 // Änderungen wirken sofort (ohne Neuladen) und werden gespeichert.
 import { storage } from '../core/utils.js';
 
-const KEY = 'dragontwin.custom.v2'; // v2: neue Standardfarbe Grau
+const KEY = 'dragontwin.custom.v3'; // v3: neue Standardfarbe Schwarz (wilder Drache); v2 war Grau
 
 // Natürliche, gedämpfte Farben (wie echte Reptilien – nicht knallig)
 export const SKINS = {
@@ -29,7 +29,7 @@ export class Customization {
   constructor() {
     const saved = storage.get(KEY, {});
     this.state = {
-      skin: SKINS[saved.skin] ? saved.skin : 'grey',
+      skin: SKINS[saved.skin] ? saved.skin : 'black',
       fire: FIRE_COLORS[saved.fire] ? saved.fire : 'orange',
       rider: saved.rider !== false,
     };

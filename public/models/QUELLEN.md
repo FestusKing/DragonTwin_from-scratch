@@ -21,8 +21,8 @@ Blender gebaut: `tools/build_dragon.py`.
   (Details: `tools/dragon_scales_report.md`).
 - Der Dateiname `dragon_scales` blieb gleich, damit der Einbau ins Spiel wie
   geplant funktioniert. „Scales“ heisst auf Deutsch einfach „Schuppen“.
-- Die Idee „Wyvern“ (Flügel = Arme, zwei Hinterbeine) und die Masse stammen
-  vom bisherigen Drachen im Spiel-Code (`src/dragon/Dragon.js`, `Wing.js`).
+- Die Idee „Wyvern“ (Flügel = Arme, zwei Hinterbeine) und die ungefähre Grösse
+  stammen vom bisherigen Drachen im Spiel-Code (`src/dragon/Dragon.js`, `Wing.js`).
 
 ### Werkzeuge
 
@@ -33,8 +33,8 @@ Blender gebaut: `tools/build_dragon.py`.
 
 ### Kurz-Steckbrief
 
-- Format: glTF 2.0 binär (GLB), ca. 5,0 MB
-- ca. 70 900 Dreiecke, 1 Mesh mit 6 Materialien, 50 Knochen (Skinning)
+- Format: glTF 2.0 binär (GLB), ca. 5,6 MB
+- ca. 74 200 Dreiecke, 1 Mesh mit 6 Materialien, 50 Knochen (Skinning)
 - Texturen: 2 × 2048 × 2048 (Haut: Farbe + Normal-Map), 2 × 2048 × 1024 (Flughaut)
 - Meter, +Y oben, Kopf zeigt nach −Z (wie im Spiel)
 - Neu bauen: siehe Kopf von `tools/build_dragon.py`
