@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="DragonTwin: Test Flight – Drachen-Flugspiel im Browser" />
+    <title>DragonTwin: Test Flight</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M32 6 L40 24 L60 20 L44 34 L52 58 L32 44 L12 58 L20 34 L4 20 L24 24 Z' fill='%23d8a93a'/%3E%3C/svg%3E"
+    />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="game" tabindex="-1"></canvas>
+
+      <!-- ================= HUD (während des Fliegens) ================= -->
+      <div id="hud" class="hidden">
+        <div id="hud-compass" aria-hidden="true">
+          <div id="compass-strip"></div>
+          <div class="compass-needle"></div>
+        </div>
+
+        <div id="hud-race" class="panel hidden">
+          <div class="race-time" id="race-time">0:00.00</div>
+          <div class="race-row"><span>Ring</span><b id="race-ring">0 / 0</b></div>
+          <div class="race-row"><span>Bestzeit</span><b id="race-best">--:--.--</b></div>
+          <div class="race-delta" id="race-delta"></div>
+        </div>
+
+        <div id="hud-topright">
+          <div id="hud-goats" class="chip" title="Gefundene Ziegen">
+            <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M8 10c-3-1-4-5-3-7 1 3 3 4 5 4M24 10c3-1 4-5 3-7-1 3-3 4-5 4M9 9h14l2 7-3 3v6l-2 3h-8l-2-3v-6l-3-3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="13" cy="15" r="1.5" fill="currentColor"/><circle cx="19" cy="15" r="1.5" fill="currentColor"/><path d="M14 26l2 4 2-4" fill="currentColor"/></svg>
+            <span id="goat-count">0/0</span>
+          </div>
+          <div id="hud-fps" class="chip hidden">60 FPS</div>
+        </div>
+
+        <div id="hud-flight" class="panel">
+          <div class="flight-big"><span id="hud-speed">0</span><small>km/h</small></div>
+          <div class="flight-row">
+            <span class="lbl">Höhe</span><b id="hud-alt">0 m</b>
+            <span id="hud-vs" class="vs">▲</span>
+          </div>
+          <div id="hud-mode" class="flight-mode"></div>
+        </div>
+
+        <div id="hud-bars">
+          <div class="bar-wrap">
+            <div class="bar-label"><span>Ausdauer</span><span id="stamina-key" class="k">E</span></div>
+            <div class="bar"><div id="bar-stamina" class="fill stamina"></div></div>
+          </div>
+          <div class="bar-wrap">
+            <div class="bar-label"><span id="heat-label">Feuer-Hitze</span><span id="fire-key" class="k">F</span></div>
+            <div class="bar"><div id="bar-heat" class="fill heat"></div></div>
+          </div>
+        </div>
+
+        <div id="hud-map">
+          <canvas id="minimap" width="200" height="200"></canvas>
+        </div>
+        <div id="hud-hints">
+          <span><b class="k" id="hint-pause">Esc</b> Pause</span>
+          <span><b class="k" id="hint-cam">C</b> Kamera</span>
+          <span><b class="k" id="hint-help">H</b> Steuerung</span>
+        </div>
+
+        <div id="ring-indicator" class="hidden">
+          <div class="ri-arrow"></div>
+          <div class="ri-dist" id="ring-dist">0 m</div>
+        </div>
+        <div id="hud-center"><div id="center-big"></div><div id="center-small"></div></div>
+        <div id="hud-warning" class="hidden">Du verlässt das Gebiet – kehre um!</div>
+        <div id="toasts" aria-live="polite"></div>
+
+        <div id="tutorial" class="panel hidden" aria-live="polite">
+          <div class="tut-head"><span id="tut-step">Schritt 1 / 10</span><button id="tut-skip" class="btn small ghost">Überspringen</button></div>
+          <div id="tut-text"></div>
+          <div id="tut-keys"></div>
+          <div class="tut-progress"><div id="tut-fill"></div></div>
+        </div>
+      </div>
+
+      <!-- Kurzes weisses Aufblitzen / Schadens-Effekt -->
+      <div id="flash"></div>
+
+      <!-- ================= Bildschirme / Menüs ================= -->
+      <div id="screens">
+        <section id="screen-loading" class="screen active">
+          <div class="loading-box">
+            <div class="logo">
+              <div class="logo-sub">DragonTwin</div>
+              <h1>Test Flight</h1>
+            </div>
+            <div class="load-bar"><div id="load-fill"></div></div>
+            <div id="load-text">Starte …</div>
+            <button id="btn-start" class="btn primary big hidden">Los geht's</button>
+            <p class="load-tip" id="load-tip"></p>
+          </div>
+        </section>
+
+        <section id="screen-menu" class="screen">
+          <div class="menu-left">
+            <div class="logo">
+              <div class="logo-sub">DragonTwin</div>
+              <h1>Test Flight</h1>
+              <div class="logo-line"></div>
+            </div>
+            <nav class="menu-buttons">
+              <button class="btn primary" data-action="play">Freiflug</button>
+              <button class="btn" data-action="race">Ringrennen</button>
+              <button class="btn" data-action="customize">Drache anpassen</button>
+              <button class="btn" data-action="tutorial">Tutorial</button>
+              <button class="btn" data-action="settings">Einstellungen</button>
+              <button class="btn" data-action="help">Steuerung</button>
+            </nav>
+            <div class="menu-stats" id="menu-stats"></div>
+          </div>
+          <div class="menu-footer">Fan-Projekt, inspiriert von DragonTwin · Welt, Modelle und Sounds werden im Code erzeugt · <b class="k">M</b> Ton an/aus</div>
+        </section>
+
+        <section id="screen-race" class="screen">
+          <div class="panel center-panel wide">
+            <h2>Ringrennen</h2>
+            <p class="lead">Fliege so schnell wie möglich in der richtigen Reihenfolge durch alle Ringe. Der goldene Ring ist der nächste.</p>
+            <div id="course-list" class="course-list"></div>
+            <label class="check"><input type="checkbox" id="chk-ghost" checked /> Geist meiner Bestzeit anzeigen</label>
+            <div class="row-buttons"><button class="btn" data-action="back">Zurück</button></div>
+          </div>
+        </section>
+
+        <section id="screen-customize" class="screen">
+          <div class="panel side-panel">
+            <h2>Drache anpassen</h2>
+            <h3>Schuppenfarbe</h3>
+            <div id="skin-swatches" class="swatches"></div>
+            <p class="hint" id="gold-hint"></p>
+            <h3>Feuerfarbe</h3>
+            <div id="fire-swatches" class="swatches"></div>
+            <h3>Reiter</h3>
+            <label class="toggle"><input type="checkbox" id="chk-rider" /> <span>Reiter auf dem Rücken</span></label>
+            <div class="row-buttons"><button class="btn primary" data-action="back">Fertig</button></div>
+          </div>
+        </section>
+
+        <section id="screen-settings" class="screen">
+          <div class="panel center-panel wide">
+            <h2>Einstellungen</h2>
+            <div class="tabs" role="tablist">
+              <button class="tab active" data-tab="graphics">Grafik</button>
+              <button class="tab" data-tab="world">Welt</button>
+              <button class="tab" data-tab="audio">Ton</button>
+              <button class="tab" data-tab="controls">Tasten</button>
+              <button class="tab" data-tab="game">Spiel</button>
+            </div>
+            <div id="settings-body" class="settings-body"></div>
+            <div class="row-buttons"><button class="btn primary" data-action="back">Fertig</button></div>
+          </div>
+        </section>
+
+        <section id="screen-help" class="screen">
+          <div class="panel center-panel wide">
+            <h2>Steuerung</h2>
+            <div id="help-body" class="help-grid"></div>
+            <div class="row-buttons"><button class="btn primary" data-action="back">Verstanden</button></div>
+          </div>
+        </section>
+
+        <section id="screen-pause" class="screen dim">
+          <div class="panel center-panel">
+            <h2>Pause</h2>
+            <nav class="menu-buttons">
+              <button class="btn primary" data-action="resume">Weiterfliegen</button>
+              <button class="btn" data-action="restart">Neustart</button>
+              <button class="btn" data-action="settings">Einstellungen</button>
+              <button class="btn" data-action="help">Steuerung</button>
+              <button class="btn" data-action="menu">Hauptmenü</button>
+            </nav>
+          </div>
+        </section>
+
+        <section id="screen-results" class="screen dim">
+          <div class="panel center-panel">
+            <h2 id="res-title">Ziel!</h2>
+            <div id="res-medal" class="medal"></div>
+            <div id="res-time" class="res-time">0:00.00</div>
+            <div id="res-best" class="res-best"></div>
+            <div id="res-medals" class="res-medals"></div>
+            <nav class="menu-buttons">
+              <button class="btn primary" data-action="retry">Nochmal</button>
+              <button class="btn" data-action="race">Andere Strecke</button>
+              <button class="btn" data-action="play">Freiflug</button>
+              <button class="btn" data-action="menu">Hauptmenü</button>
+            </nav>
+          </div>
+        </section>
+      </div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
