@@ -248,7 +248,7 @@ export class Terrain {
     const S = 2048; // ≈ 2.4 m pro Pixel
     const c = document.createElement('canvas');
     c.width = c.height = S;
-    const g = c.getContext('2d');
+    const g = c.getContext('2d', { willReadFrequently: true });
     g.fillStyle = 'rgb(0,0,0)';
     g.fillRect(0, 0, S, S);
     this.splatCanvas = c;

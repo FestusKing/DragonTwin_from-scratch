@@ -282,8 +282,15 @@ export class Game {
     this.hud.show(false);
   }
 
+  /** Fokus von Menü-Knöpfen nehmen (sonst "drückt" die Leertaste sie im Flug) */
+  _focusGame() {
+    document.activeElement?.blur?.();
+    this.canvas.focus({ preventScroll: true });
+  }
+
   startFreeFlight({ tutorial = false } = {}) {
     this.audio.init();
+    this._focusGame();
     this.race.clear();
     this.hud.showRace(false);
     this.menu.hideAll();
@@ -307,6 +314,7 @@ export class Game {
 
   startRace(courseId, ghost) {
     this.audio.init();
+    this._focusGame();
     this.tutorial.stop();
     this.menu.hideAll();
     this.race.load(courseId, ghost);
@@ -340,6 +348,7 @@ export class Game {
     this.state = this.prevState || 'play';
     this.menu.hideAll();
     this.input.gameActive = true;
+    this._focusGame();
   }
 
   restart() {

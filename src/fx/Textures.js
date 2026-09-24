@@ -210,7 +210,7 @@ export function timberWallTexture() {
   return cached('timber', () => {
     const S = 256;
     const c = canvas(S);
-    const g = c.getContext('2d');
+    const g = c.getContext('2d', { willReadFrequently: true });
     g.fillStyle = '#e6dcc6';
     g.fillRect(0, 0, S, S);
     noiseFill(g, S, 0, 28, 5, 0.06);
@@ -299,7 +299,7 @@ export function stoneTexture() {
   return cached('stone', () => {
     const S = 256;
     const c = canvas(S);
-    const g = c.getContext('2d');
+    const g = c.getContext('2d', { willReadFrequently: true });
     g.fillStyle = '#6d6a63';
     g.fillRect(0, 0, S, S);
     const rnd = mulberry32(31);
@@ -325,7 +325,7 @@ export function woodTexture() {
   return cached('wood', () => {
     const S = 128;
     const c = canvas(S);
-    const g = c.getContext('2d');
+    const g = c.getContext('2d', { willReadFrequently: true });
     const rnd = mulberry32(41);
     const planks = 6;
     for (let i = 0; i < planks; i++) {
