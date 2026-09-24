@@ -62,7 +62,7 @@ export function leafTexture() {
     const light = 0.78 + rnd() * 0.3 + (r / 232) * 0.12 - (y / S) * 0.12;
     const hue = 82 + rnd() * 30;
     const sat = 38 + rnd() * 22;
-    const lum = (17 + rnd() * 11) * light;
+    const lum = (22 + rnd() * 12) * light;
     g.save();
     g.translate(x, y);
     g.rotate(rnd() * TAU);
@@ -103,7 +103,7 @@ export function needleTexture() {
       const len = spread * (1 - t * 0.6) * (0.7 + rnd() * 0.5);
       for (const sd of [-1, 1]) {
         const a = ang + sd * (0.9 + rnd() * 0.35);
-        const lum = 13 + rnd() * 9 + t * 7; // Spitzen = junge, hellere Triebe
+        const lum = 16 + rnd() * 10 + t * 8; // Spitzen = junge, hellere Triebe
         g.strokeStyle = `hsl(${112 + rnd() * 28}, ${28 + rnd() * 16}%, ${lum}%)`;
         g.lineWidth = width * (0.8 + rnd() * 0.5);
         g.beginPath();
@@ -295,7 +295,7 @@ export function makeBroadleafTree(seed = 1) {
     { c: new THREE.Vector3(0.3, 8.9, -0.6), r: 1.9 },
     { c: new THREE.Vector3(-1.2, 5.9, 1.6), r: 1.9 },
   ];
-  crown(B, lumps, new THREE.Vector3(0, 7, 0), 4.2, 10.5, rnd, 14, 1.9, new THREE.Color(0x2e3f1d));
+  crown(B, lumps, new THREE.Vector3(0, 7, 0), 4.2, 10.5, rnd, 14, 1.9, new THREE.Color(0x36491f));
   return B.build();
 }
 
@@ -305,7 +305,7 @@ export function makeConiferTree(seed = 2) {
   const B = new Builder();
   B.addSolid(cyl(0.12, 0.42, 12.5, 6).translate(0, 6.25, 0), new THREE.Color(0x4a3b2c), (x, y) => 0.55 + y * 0.03);
   const tiers = 8;
-  const coreColor = new THREE.Color(0x1d2b1b);
+  const coreColor = new THREE.Color(0x23331f);
   const uv = [0.03, 0.03, 0.985, 0.97];
   let angle = rnd() * TAU;
   for (let i = 0; i < tiers; i++) {

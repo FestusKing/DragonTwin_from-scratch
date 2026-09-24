@@ -9,22 +9,27 @@ const HALF_AREA = AREA / 2;
 
 const vert = /* glsl */ `
 attribute vec3 iOffset;
-attribute vec4 iData;   // x=Grösse, y=Drehung, z=Variante, w=Höhe in der Wolke
+attribute vec4 iData;   // x=Grösse, y=Drehung, z=Variante, w=Höhe in der Wolke (0 unten … 1 oben)
 attribute vec4 iLocal;  // xyz=Richtung vom Wolkenzentrum, w=Schwelle (Bewölkung)
 uniform float uCover;
 uniform vec3 uCamPos;
 uniform vec3 uSunDir;
 varying vec2 vUv;
+varying vec2 vQuad;     // Lage im Bausch (-1 … 1), für die "Kugel"-Beleuchtung
 varying float vAlpha;
-varying float vLight;
+varying float vHeight;
+varying float vSide;    // liegt der Bausch auf der Sonnenseite der Wolke?
+varying vec3 vSunView;  // Sonnenrichtung in Kamera-Koordinaten
 varying float vFogDepth;
 void main() {
   float size = iData.x * (0.75 + uCover * 0.45);
   vec4 mv = viewMatrix * vec4(iOffset, 1.0);
   float c = cos(iData.y), s = sin(iData.y);
   vec2 p = position.xy;
-  mv.xy += vec2(p.x * c - p.y * s, p.x * s + p.y * c) * size;
+  vec2 q = vec2(p.x * c - p.y * s, p.x * s + p.y * c);
+  mv.xy += q * size;
   gl_Position = projectionMatrix * mv;
+  vQuad = q * 2.0;
   float v = iData.z;
   vUv = (uv + vec2(mod(v, 2.0), floor(v / 2.0))) * 0.5;
   float cover = smoothstep(iLocal.w - 0.07, iLocal.w + 0.07, uCover);
@@ -32,8 +37,9 @@ void main() {
   float nearF = smoothstep(size * 0.25, size * 1.1, dist);
   float farF = 1.0 - smoothstep(6000.0, 7200.0, dist);
   vAlpha = cover * nearF * farF;
-  float sunSide = dot(normalize(iLocal.xyz + vec3(0.0, 0.001, 0.0)), uSunDir) * 0.5 + 0.5;
-  vLight = clamp(iData.w * 0.6 + sunSide * 0.55, 0.0, 1.0);
+  vHeight = iData.w;
+  vSide = dot(normalize(iLocal.xyz + vec3(0.0, 0.001, 0.0)), uSunDir) * 0.5 + 0.5;
+  vSunView = normalize(mat3(viewMatrix) * uSunDir);
   vFogDepth = -mv.z;
 }`;
 
@@ -42,20 +48,33 @@ uniform sampler2D uTex;
 uniform vec3 uSunColor, uAmbient, uFogColor;
 uniform float uDark, uFogDensity, uOpacity, uSunI, uNight;
 varying vec2 vUv;
+varying vec2 vQuad;
 varying float vAlpha;
-varying float vLight;
+varying float vHeight;
+varying float vSide;
+varying vec3 vSunView;
 varying float vFogDepth;
 void main() {
   vec4 t = texture2D(uTex, vUv);
   float a = t.a * vAlpha * uOpacity;
   if (a < 0.004) discard;
-  float l = clamp(t.r * 0.55 + vLight * 0.6 - 0.1, 0.0, 1.0);
-  vec3 amb = uAmbient * (0.5 + 0.5 * l);
-  vec3 col = amb + uSunColor * uSunI * pow(l, 1.5) * 0.85;
-  // Silberrand: Kanten leuchten, wenn die Sonne dahinter steht
-  col += uSunColor * uSunI * (1.0 - t.a) * 0.35;
+  // Jeder Bausch wird wie eine Kugel beleuchtet (Normale aus der Lage im Bild),
+  // das Rauschen der Textur macht die Oberfläche unregelmässig (Blumenkohl).
+  vec2 q = vQuad + (t.g - 0.5) * 0.7;
+  vec3 N = normalize(vec3(q, sqrt(max(0.0, 1.0 - dot(q, q))) + 0.25));
+  float sphere = clamp(dot(N, vSunView) * 0.5 + 0.5, 0.0, 1.0);
+  // Licht hauptsächlich nach der Lage in der ganzen Wolke, die Kugel nur als Feinheit
+  float diff = mix(vSide, sphere, 0.35);
+  // unten und auf der Schattenseite der Wolke dunkler (Selbstschatten)
+  float occl = mix(0.5, 1.0, vHeight) * (0.8 + 0.2 * t.r);
+  vec3 amb = uAmbient * mix(0.62, 0.95, vHeight);
+  vec3 col = amb + uSunColor * uSunI * diff * occl * 0.72;
+  // Silberrand: dünne Ränder leuchten, wenn die Sonne hinter der Wolke steht
+  float behind = max(0.0, -vSunView.z);
+  col += uSunColor * uSunI * pow(behind, 3.0) * (1.0 - t.a) * 0.55;
   col *= 1.0 - uDark * 0.6;
   col *= mix(1.0, 0.3, uNight);
+  col = min(col, vec3(1.05));
   float f = 1.0 - exp(-uFogDensity * uFogDensity * vFogDepth * vFogDepth);
   col = mix(col, uFogColor, clamp(f, 0.0, 1.0) * 0.9);
   gl_FragColor = vec4(col, a);
@@ -81,22 +100,24 @@ export class Clouds {
         wz: 0,
       };
       this.clusters.push(cl);
-      const n = 14 + Math.floor(rnd() * 10);
+      // Haufenwolke: flacher Boden, in der Mitte höher (Türme), oben kleinere Bäusche
+      const n = 18 + Math.floor(rnd() * 12);
       for (let i = 0; i < n; i++) {
         const a = rnd() * Math.PI * 2;
         const r = Math.sqrt(rnd());
         const lx = Math.cos(a) * r * cl.rx * 0.8;
         const lz = Math.sin(a) * r * cl.rz * 0.8;
-        const ly = (rnd() * 0.9 - 0.25) * cl.ry * (1 - r * 0.5);
+        const h = Math.pow(rnd(), 1.4) * (1 - r * 0.65);
+        const ly = -cl.ry * 0.35 + h * cl.ry * 1.5;
         this.puffs.push({
           cl,
           lx,
           ly,
           lz,
-          size: 180 + rnd() * 200,
-          rot: rnd() * Math.PI * 2,
+          size: (200 + rnd() * 220) * (1 - h * 0.2),
+          rot: (rnd() - 0.5) * 0.5, // kaum gedreht → flache Unterseite bleibt unten
           variant: Math.floor(rnd() * 4),
-          shade: (ly / cl.ry) * 0.5 + 0.5,
+          shade: Math.min(1, h * 1.2 + 0.05),
           dist: 0,
         });
       }
@@ -128,7 +149,7 @@ export class Clouds {
       uFogColor: { value: new THREE.Color() },
       uDark: { value: 0 },
       uFogDensity: { value: 0.0001 },
-      uOpacity: { value: 0.62 },
+      uOpacity: { value: 0.7 },
       uSunI: { value: 1 },
       uNight: { value: 0 },
     };
@@ -192,7 +213,7 @@ export class Clouds {
       if (vis <= 0) continue;
       const s = 0.75 + cover * 0.45;
       const dx = (cam.x - cl.wx) / (cl.rx * s);
-      const dy = (cam.y - cl.y) / (cl.ry * s * 1.2);
+      const dy = (cam.y - (cl.y + cl.ry * 0.3)) / (cl.ry * s * 1.2); // Wolkenmitte liegt über dem flachen Boden
       const dz = (cam.z - cl.wz) / (cl.rz * s);
       const d = dx * dx + dy * dy + dz * dz;
       if (d < 1) inside = Math.max(inside, (1 - d) * vis);
