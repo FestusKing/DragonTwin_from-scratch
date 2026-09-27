@@ -45,7 +45,27 @@
           <div id="hud-mode" class="flight-mode"></div>
         </div>
 
+        <div id="hud-quests" class="panel hidden">
+          <div class="q-rank"><span class="q-badge" id="q-rank-no">1</span><b id="q-rank-name">Jungdrache</b><span id="q-xp">0 XP</span></div>
+          <div class="q-bar"><div id="q-rank-fill"></div></div>
+          <div class="q-title">Aufträge</div>
+          <ul id="q-list"></ul>
+        </div>
+        <div id="hud-score" class="hidden">
+          <div class="score-row"><span id="score-pts">0</span><span id="score-combo"></span></div>
+          <div class="combo-bar"><div id="combo-fill"></div></div>
+        </div>
+        <div id="score-pops" aria-hidden="true"></div>
+        <div id="quest-indicator" class="hidden">
+          <div class="qi-arrow"></div>
+          <div class="qi-label" id="quest-label"></div>
+        </div>
+
         <div id="hud-bars">
+          <div class="bar-wrap hidden" id="health-wrap">
+            <div class="bar-label"><span>Leben</span><span id="health-val">100</span></div>
+            <div class="bar"><div id="bar-health" class="fill health"></div></div>
+          </div>
           <div class="bar-wrap">
             <div class="bar-label"><span>Ausdauer</span><span id="stamina-key" class="k">E</span></div>
             <div class="bar"><div id="bar-stamina" class="fill stamina"></div></div>

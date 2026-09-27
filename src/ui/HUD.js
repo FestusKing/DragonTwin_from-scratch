@@ -34,6 +34,20 @@ export class HUD {
     this.toasts = $('toasts');
     this.flash = $('flash');
     this.strip = $('compass-strip');
+    // Abenteuer: Leben, Punkte, Aufträge, Wegweiser
+    this.quests = $('hud-quests');
+    this.scoreEl = $('hud-score');
+    this.scorePts = $('score-pts');
+    this.scoreCombo = $('score-combo');
+    this.comboFill = $('combo-fill');
+    this.pops = $('score-pops');
+    this.healthWrap = $('health-wrap');
+    this.healthBar = $('bar-health');
+    this.healthVal = $('health-val');
+    this.qInd = $('quest-indicator');
+    this.qLabel = $('quest-label');
+    this.adventure = null;
+    this.popCount = 0;
     this._buildCompass();
     this.flashValue = 0;
     this.centerTimer = 0;
@@ -182,6 +196,117 @@ export class HUD {
     this.ringInd.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
     this.ringInd.firstElementChild.style.transform = onScreen ? '' : `rotate(${angle.toFixed(3)}rad)`;
     this._text(this.ringDist, `${Math.round(playerPos.distanceTo(ring.pos))} m`);
+  }
+
+  // ---------------- Abenteuer ----------------
+  /** Leben, Punkte und Aufträge nur im freien Flug zeigen */
+  showAdventure(v) {
+    if (this.adventure === v) return;
+    this.adventure = v;
+    for (const el of [this.quests, this.scoreEl, this.healthWrap]) el.classList.toggle('hidden', !v);
+    if (!v) this.qInd.classList.add('hidden');
+  }
+
+  updateAdventure(s) {
+    this.healthBar.style.transform = `scaleX(${s.health.toFixed(3)})`;
+    this._text(this.healthVal, String(Math.ceil(s.health * 100)));
+    this.healthWrap.classList.toggle('warn', s.lowHealth);
+    this._text(this.scorePts, s.points.toLocaleString('de-CH'));
+    this._text(this.scoreCombo, s.combo > 1 ? `×${s.combo}` : '');
+    this.comboFill.style.transform = `scaleX(${s.comboLeft.toFixed(3)})`;
+  }
+
+  /** "+60 Dach in Brand" steigt kurz auf und verschwindet */
+  scorePop(pts, label, combo) {
+    const d = document.createElement('div');
+    d.className = 'score-pop' + (pts >= 200 ? ' big' : '') + (label === 'Tiefflug' || label === 'Schluchtflug' || label === 'Baum' ? ' small' : '');
+    d.textContent = `+${pts} ${label}`;
+    d.style.setProperty('--x', `${((this.popCount++ % 5) - 2) * 26}px`);
+    this.pops.appendChild(d);
+    setTimeout(() => d.remove(), 1600);
+    while (this.pops.children.length > 6) this.pops.firstChild.remove();
+    if (combo > 1) {
+      this.scoreEl.classList.remove('pop');
+      void this.scoreEl.offsetWidth;
+      this.scoreEl.classList.add('pop');
+    }
+  }
+
+  comboPop(c) {
+    const d = document.createElement('div');
+    d.className = 'score-pop combo';
+    d.textContent = `KOMBO ×${c}!`;
+    this.pops.appendChild(d);
+    setTimeout(() => d.remove(), 1600);
+  }
+
+  /** q = { rank, rankNo, xp, k, list: [{ text, progress }], done } */
+  setQuests(q) {
+    this._text($('q-rank-name'), q.rank);
+    this._text($('q-rank-no'), String(q.rankNo));
+    this._text($('q-xp'), q.xp);
+    $('q-rank-fill').style.transform = `scaleX(${q.k.toFixed(3)})`;
+    const ul = $('q-list');
+    ul.innerHTML = '';
+    if (!q.list.length) {
+      const li = document.createElement('li');
+      li.textContent = 'Alle Aufträge erfüllt – du bist eine Legende! 👑';
+      ul.appendChild(li);
+    }
+    for (const m of q.list) {
+      const li = document.createElement('li');
+      li.textContent = m.text;
+      if (m.progress) {
+        const b = document.createElement('b');
+        b.textContent = ` ${m.progress}`;
+        li.appendChild(b);
+      }
+      ul.appendChild(li);
+    }
+    // nur aufleuchten, wenn ein anderer Auftrag dazukommt (nicht bei jedem Fortschritt)
+    const key = q.list.map((m) => m.text).join('|');
+    if (key !== this._questKey) {
+      this._questKey = key;
+      this.quests.classList.remove('pop');
+      void this.quests.offsetWidth;
+      this.quests.classList.add('pop');
+    }
+  }
+
+  /** Wegweiser zum Ort des aktuellen Auftrags (am Bildschirmrand, wenn ausserhalb) */
+  questIndicator(pos, camera, playerPos, label) {
+    if (!pos) {
+      this.qInd.classList.add('hidden');
+      return;
+    }
+    this.qInd.classList.remove('hidden');
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    _v.copy(pos).project(camera);
+    const behind = _v.z > 1;
+    let x = (_v.x * 0.5 + 0.5) * w;
+    let y = (-_v.y * 0.5 + 0.5) * h;
+    const margin = 70;
+    const onScreen = !behind && x > margin && x < w - margin && y > margin && y < h - margin;
+    let angle = 0;
+    if (!onScreen) {
+      let dx = x - w / 2;
+      let dy = y - h / 2;
+      if (behind) {
+        dx = -dx;
+        dy = -dy;
+        if (Math.abs(dx) < 1 && Math.abs(dy) < 1) dy = 1;
+      }
+      const s = Math.min((w / 2 - margin) / Math.abs(dx || 1e-6), (h / 2 - margin) / Math.abs(dy || 1e-6));
+      x = w / 2 + dx * s;
+      y = h / 2 + dy * s;
+      angle = Math.atan2(dy, dx) + Math.PI / 2;
+    }
+    this.qInd.classList.toggle('off', !onScreen);
+    this.qInd.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
+    this.qInd.firstElementChild.style.transform = onScreen ? '' : `rotate(${angle.toFixed(3)}rad)`;
+    const d = playerPos.distanceTo(pos);
+    this._text(this.qLabel, `${label} · ${d > 1000 ? (d / 1000).toFixed(1) + ' km' : Math.round(d) + ' m'}`);
   }
 
   // ---------------- Meldungen ----------------

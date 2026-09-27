@@ -3,16 +3,16 @@
 import { WORLD_SIZE, HALF } from '../world/Terrain.js';
 
 export class Minimap {
-  constructor(canvas, terrain, settlement) {
+  constructor(canvas, terrain, settlement, world = null) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
     this.terrain = terrain;
-    this.map = this._render(terrain, settlement);
+    this.map = this._render(terrain, settlement, world);
     this.range = 1400; // sichtbarer Durchmesser in Metern
     this.timer = 0;
   }
 
-  _render(terrain, settlement) {
+  _render(terrain, settlement, world) {
     const S = 512;
     const c = document.createElement('canvas');
     c.width = c.height = S;
@@ -41,9 +41,22 @@ export class Minimap {
           const hx = terrain.heightAt(x + cell, z) - terrain.heightAt(x - cell, z);
           const hz = terrain.heightAt(x, z + cell) - terrain.heightAt(x, z - cell);
           const shade = Math.max(0.55, Math.min(1.35, 1 - (hx + hz) * 0.035));
+          // Vulkan (Asche, Lava) und Schlucht (rötlicher Fels)
+          const [ash, can, lava] = terrain.regionAt(x, z);
+          if (ash > 0 || can > 0) {
+            const steep = Math.min(1, Math.hypot(terrain.heightAt(x + cell, z) - terrain.heightAt(x - cell, z), terrain.heightAt(x, z + cell) - terrain.heightAt(x, z - cell)) / 40);
+            r = r * (1 - ash) + 70 * ash;
+            gg = gg * (1 - ash) + 64 * ash;
+            b = b * (1 - ash) + 62 * ash;
+            const c = can * steep;
+            r = r * (1 - c) + 150 * c;
+            gg = gg * (1 - c) + 92 * c;
+            b = b * (1 - c) + 66 * c;
+          }
           r *= shade;
           gg *= shade;
           b *= shade;
+          if (lava > 0.3) [r, gg, b] = [255, 110 + 60 * lava, 30];
           // Wege und Felder
           if (sp) {
             const si = Math.floor(((z + HALF) / WORLD_SIZE) * spS) * spS + Math.floor(((x + HALF) / WORLD_SIZE) * spS);
@@ -75,6 +88,25 @@ export class Minimap {
     for (const e of settlement.exclusions) {
       const [px, pz] = toPx(e.x, e.z);
       g.fillRect(px - 1.5, pz - 1.5, 3, 3);
+    }
+    if (world) {
+      // Schafweiden (weisse Punkte) und der Hort im Vulkan (goldener Ring)
+      g.fillStyle = '#f4f0e6';
+      for (const p of world.herds?.pastures || []) {
+        const [px, pz] = toPx(p.x, p.z);
+        for (let k = 0; k < 4; k++) g.fillRect(px - 3 + (k % 2) * 4, pz - 3 + Math.floor(k / 2) * 4, 2, 2);
+      }
+      const h = world.volcano?.hoard;
+      if (h) {
+        const [px, pz] = toPx(h.x, h.z);
+        g.strokeStyle = '#ffd35a';
+        g.lineWidth = 2;
+        g.beginPath();
+        g.arc(px, pz, 5, 0, Math.PI * 2);
+        g.stroke();
+        g.fillStyle = '#ffd35a';
+        g.fillRect(px - 1.5, pz - 1.5, 3, 3);
+      }
     }
     this.scale = S / WORLD_SIZE;
     return c;

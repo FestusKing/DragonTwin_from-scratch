@@ -12,6 +12,7 @@
   --line: rgba(224, 180, 84, 0.35);
   --stamina: linear-gradient(90deg, #c98a22, #f2cf6a);
   --heat: linear-gradient(90deg, #ff9a2a, #ff3a1a);
+  --health: linear-gradient(90deg, #b3122a, #ff4d5e);
   --radius: 10px;
   --font-title: 'Cinzel', 'Palatino Linotype', 'Book Antiqua', Georgia, serif;
   --font: 'Inter', system-ui, 'Segoe UI', Roboto, Arial, sans-serif;
@@ -782,6 +783,220 @@ input[type='range'] {
 .fill.heat {
   background: var(--heat);
 }
+.fill.health {
+  background: var(--health);
+}
+
+/* ---------------- Abenteuer: Aufträge, Punkte, Wegweiser ---------------- */
+#hud-quests {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  width: min(300px, 42vw);
+  padding: 10px 14px 12px;
+  font-size: 0.86rem;
+}
+#hud-quests.pop {
+  animation: tutok 0.6s ease;
+}
+.q-rank {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.q-rank b {
+  color: var(--gold-2);
+  font-family: var(--font-title);
+  font-size: 1rem;
+}
+.q-rank #q-xp {
+  margin-left: auto;
+  color: var(--ink-dim);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+.q-badge {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--gold);
+  color: #1a1308;
+  font-weight: 900;
+  font-size: 0.8rem;
+  text-shadow: none;
+}
+.q-bar {
+  height: 5px;
+  margin: 6px 0 8px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+#q-rank-fill {
+  height: 100%;
+  background: var(--stamina);
+  transform-origin: left;
+  transform: scaleX(0);
+  transition: transform 0.4s;
+}
+.q-title {
+  color: var(--gold);
+  font-weight: 700;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 4px;
+}
+#q-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 5px;
+}
+#q-list li {
+  position: relative;
+  padding-left: 16px;
+  line-height: 1.3;
+}
+#q-list li::before {
+  content: '◆';
+  position: absolute;
+  left: 0;
+  color: var(--gold);
+  font-size: 0.7rem;
+  top: 2px;
+}
+#q-list li b {
+  color: var(--gold-2);
+  white-space: nowrap;
+}
+#hud-score {
+  position: absolute;
+  top: 54px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  min-width: 120px;
+}
+#hud-score.pop {
+  animation: pop 0.45s ease;
+}
+.score-row {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  align-items: baseline;
+  font: 800 1.35rem var(--font);
+  font-variant-numeric: tabular-nums;
+  color: #fff6e0;
+}
+#score-combo {
+  color: #ffb13a;
+  font-size: 1.15rem;
+  text-shadow: 0 0 12px rgba(255, 140, 30, 0.8);
+}
+.combo-bar {
+  height: 3px;
+  margin: 3px auto 0;
+  width: 80px;
+  border-radius: 2px;
+  overflow: hidden;
+}
+#combo-fill {
+  height: 100%;
+  background: #ffb13a;
+  transform-origin: center;
+  transform: scaleX(0);
+}
+#score-pops {
+  position: absolute;
+  left: 50%;
+  top: 58%;
+  width: 0;
+  height: 0;
+}
+.score-pop {
+  position: absolute;
+  left: var(--x, 0);
+  top: 0;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-weight: 800;
+  font-size: 1.05rem;
+  color: #fff3c0;
+  animation: scoreUp 1.6s ease-out forwards;
+}
+.score-pop.small {
+  font-size: 0.85rem;
+  color: var(--ink-dim);
+}
+.score-pop.big {
+  font-size: 1.4rem;
+  color: #ffd35a;
+  text-shadow: 0 0 16px rgba(255, 180, 40, 0.8), 0 2px 6px rgba(0, 0, 0, 0.8);
+}
+.score-pop.combo {
+  left: 0;
+  font: 900 1.9rem var(--font-title);
+  color: #ffb13a;
+  text-shadow: 0 0 24px rgba(255, 120, 20, 0.9), 0 2px 8px rgba(0, 0, 0, 0.8);
+}
+@keyframes scoreUp {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 10px) scale(0.8);
+  }
+  12% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1.1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -90px) scale(1);
+  }
+}
+#quest-indicator {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+}
+.qi-arrow {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  left: -10px;
+  top: -10px;
+  transform: rotate(45deg);
+  border: 3px solid #7fe0ff;
+  box-shadow: 0 0 14px rgba(127, 224, 255, 0.8);
+}
+#quest-indicator.off .qi-arrow {
+  border: none;
+  box-shadow: none;
+  width: 0;
+  height: 0;
+  left: -12px;
+  top: -12px;
+  border-left: 12px solid transparent;
+  border-right: 12px solid transparent;
+  border-bottom: 22px solid #7fe0ff;
+  filter: drop-shadow(0 0 6px rgba(127, 224, 255, 0.9));
+}
+.qi-label {
+  position: absolute;
+  top: 18px;
+  left: -70px;
+  width: 140px;
+  text-align: center;
+  font-weight: 800;
+  font-size: 0.8rem;
+  color: #bff0ff;
+}
 .bar-wrap.warn .bar {
   animation: warnbar 0.35s infinite alternate;
 }
@@ -1015,6 +1230,10 @@ input[type='range'] {
   }
   #hud-hints {
     display: none;
+  }
+  #hud-quests {
+    font-size: 0.75rem;
+    width: 46vw;
   }
   .setting {
     grid-template-columns: 1fr;

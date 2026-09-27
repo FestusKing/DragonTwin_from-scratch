@@ -23,7 +23,75 @@ export const PLACES = {
   river: [
     [880, -120], [1060, 150], [1180, 550], [1300, 950], [1400, 1350], [1500, 1850], [1580, 2400],
   ],
+  // Vulkan "Drachenhort" im Nordosten: Kegel (Radius R), Kraterrand (rimR, Höhe rimH),
+  // flacher Kraterboden (floorH) mit Lava-See (lavaR). Die Ostflanke fällt ins Meer.
+  volcano: { x: 1600, z: -1150, R: 850, rimR: 130, rimH: 640, floorH: 540, lavaR: 34 },
+  // Lavaströme: Richtung (Winkel, 0 = Osten, + = Süden) und Länge ab dem Kraterrand
+  lavaFlows: [
+    [0.35, 520], [1.3, 420], [2.35, 330],
+  ],
+  // Drachenschlucht im Westen: Mittellinie von der Mündung im Meer (Süden) bis zur
+  // Felswand mit dem Wasserfall (Norden). Rundherum ein Hochplateau.
+  canyon: [
+    [-1480, 1560], [-1520, 1160], [-1660, 840], [-1560, 480], [-1720, 130], [-1600, -220], [-1720, -560],
+  ],
 };
+
+// Länge der Schlucht (bis zur Felswand am oberen Ende)
+let _canyonLen = 0;
+for (let i = 1; i < PLACES.canyon.length; i++) {
+  const [ax, az] = PLACES.canyon[i - 1];
+  const [bx, bz] = PLACES.canyon[i];
+  _canyonLen += Math.hypot(bx - ax, bz - az);
+}
+export const CANYON_LEN = _canyonLen;
+
+/**
+ * Abstand zur Linie (out.d) und Lage des nächsten Punktes entlang der Linie
+ * (out.s, Meter ab dem ersten Punkt).
+ */
+export function polylineInfo(x, z, pts, out) {
+  let best = Infinity;
+  let bestS = 0;
+  let acc = 0;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const ax = pts[i][0];
+    const az = pts[i][1];
+    const dx = pts[i + 1][0] - ax;
+    const dz = pts[i + 1][1] - az;
+    const len2 = dx * dx + dz * dz;
+    const t = clamp(((x - ax) * dx + (z - az) * dz) / len2, 0, 1);
+    const d = Math.hypot(x - (ax + dx * t), z - (az + dz * t));
+    const len = Math.sqrt(len2);
+    if (d < best) {
+      best = d;
+      bestS = acc + t * len;
+    }
+    acc += len;
+  }
+  out.d = best;
+  out.s = bestS;
+  return out;
+}
+
+/** Lavastrom-Anteil (0..1) an einer Stelle des Vulkans (d = Abstand zur Mitte, ang = Winkel) */
+export function lavaFlowAt(d, ang) {
+  const V = PLACES.volcano;
+  let m = 0;
+  PLACES.lavaFlows.forEach(([a0, len], i) => {
+    if (d < V.rimR - 5 || d > V.rimR + len) return;
+    const a = a0 + 0.2 * Math.sin(d * 0.011 + i * 2.1) + 0.08 * Math.sin(d * 0.037 + i);
+    let da = ang - a;
+    da = Math.atan2(Math.sin(da), Math.cos(da));
+    const w = 7 + (d - V.rimR) * 0.02; // halbe Breite (m), wird unten breiter
+    const across = Math.abs(da) * d;
+    const along = smoothstep(V.rimR - 5, V.rimR + 15, d) * smoothstep(V.rimR + len, V.rimR + len * 0.7, d);
+    m = Math.max(m, smoothstep(w, w * 0.35, across) * along);
+  });
+  return m;
+}
+
+const _pi = { d: 0, s: 0 };
 
 function distToSegment(px, pz, ax, az, bx, bz) {
   const dx = bx - ax;
@@ -76,6 +144,17 @@ export class Terrain {
     const dp2 = Math.hypot(x - P.peak2.x, z - P.peak2.z);
     h += 280 * Math.exp(-(dp2 * dp2) / (380 * 380)) * (0.7 + 0.5 * ridge);
 
+    // 2b) Vulkan "Drachenhort": Kegel mit Rinnen, Kraterrand, flacher Kraterboden
+    const VO = P.volcano;
+    const dvx = x - VO.x;
+    const dvz = z - VO.z;
+    const dvo = Math.hypot(dvx, dvz);
+    if (dvo < VO.R) {
+      const hv = this.volcanoHeight(dvo, dvx, dvz);
+      h = lerp(h, Math.max(h, hv), smoothstep(VO.R, VO.R * 0.75, dvo));
+      h = lerp(h, hv, smoothstep(VO.rimR + 70, VO.rimR + 15, dvo)); // Krater genau so, wie geplant
+    }
+
     // 3) Flusstal und Flussbett (liegt unter dem Meeresspiegel → Wasser)
     const dr = distToPolyline(x, z, P.river) + n.noise(x * 0.006, z * 0.006) * 14;
     h = lerp(h, Math.min(h, 9), smoothstep(230, 70, dr));
@@ -92,6 +171,20 @@ export class Terrain {
     const dv = Math.hypot(x - P.village.x, z - P.village.z);
     h = lerp(h, P.village.h + n.fbm(x * 0.004, z * 0.004, 2) * 2.5, smoothstep(P.village.r + 160, P.village.r - 30, dv));
 
+    // 5b) Hochplateau mit der Drachenschlucht im Westen
+    polylineInfo(x, z, P.canyon, _pi);
+    const plat = 128 + n.fbm(x * 0.002 + 7, z * 0.002, 3) * 14;
+    const edge = _pi.d + n.noise(x * 0.004, z * 0.004) * 45 + n.fbm(x * 0.0017 + 3, z * 0.0017, 2) * 110;
+    h = lerp(h, Math.max(h, plat), smoothstep(430, 350, edge));
+    // Schlucht: steile, leicht gestufte Felswände, sandiger Grund, Fluss in der Mitte.
+    // Am oberen Ende (Norden) eine Felswand, dort stürzt der Wasserfall herunter.
+    const dcan = _pi.d + n.noise(x * 0.012, z * 0.012) * 9;
+    const head = smoothstep(CANYON_LEN, CANYON_LEN - 35, _pi.s);
+    let tc = smoothstep(80, 27, dcan);
+    tc = clamp(tc + Math.sin(tc * Math.PI * 6) * 0.035, 0, 1) * head;
+    const bed = lerp(1.8, -3.5, smoothstep(20, 9, dcan));
+    h = lerp(h, Math.min(h, bed), tc);
+
     // 6) Küste im Süden + Inselrand
     const coastLine = 1450 + n.fbm(x * 0.0009 + 3, 0.5, 4) * 380;
     const coastT = smoothstep(coastLine - 260, coastLine + 160, z);
@@ -99,6 +192,29 @@ export class Terrain {
     const edgeT = smoothstep(0.8, 0.985, r);
     const seaT = Math.max(coastT, edgeT);
     h = lerp(h, -42 + n.fbm(x * 0.003, z * 0.003, 2) * 10, seaT);
+    return h;
+  }
+
+  /** Höhe des Vulkans bei Abstand d zur Mitte (dx, dz = Richtung von der Mitte). */
+  volcanoHeight(d, dx, dz) {
+    const V = PLACES.volcano;
+    const n = this.noise;
+    const ca = dx / (d + 1e-6);
+    const sa = dz / (d + 1e-6);
+    // Kegel: oben steil, unten flach auslaufend
+    const k = clamp((V.R - d) / (V.R - V.rimR), 0, 1);
+    let h = 15 + (V.rimH - 15) * Math.pow(k, 1.75);
+    // Rinnen (Erosion) den Hang hinunter
+    const gully = Math.max(0, n.noise(ca * 5 + d * 0.0015 + 31, sa * 5 - d * 0.001));
+    h -= gully * 34 * k * (1 - k) * 4;
+    // Lavaströme fliessen in flachen Rinnen
+    h -= lavaFlowAt(d, Math.atan2(dz, dx)) * 2.5;
+    // Kraterrand mit Wulst, innen steile Wände und ein flacher Boden
+    const lip = 12 * Math.exp(-(((d - V.rimR) / 24) ** 2));
+    if (d < V.rimR + 70) {
+      const bowl = V.floorH + (V.rimH + 12 - V.floorH) * smoothstep(V.rimR * 0.64, V.rimR, d);
+      h = lerp(h + lip, bowl, smoothstep(V.rimR + 8, V.rimR - 8, d));
+    } else h += lip;
     return h;
   }
 
@@ -133,7 +249,58 @@ export class Terrain {
       }
     }
     this._findLandmarks();
+    this._createRegionTexture();
     onProgress(1);
+  }
+
+  /**
+   * Regionen-Karte für den Boden-Shader (1024², ca. 5 m pro Pixel):
+   * R = Vulkan-Asche, G = Schlucht (Gesteinsschichten), B = Lava (leuchtet).
+   */
+  _createRegionTexture() {
+    const S = 1024;
+    const data = new Uint8Array(S * S * 4);
+    const V = PLACES.volcano;
+    const px = WORLD_SIZE / S;
+    const info = { d: 0, s: 0 };
+    for (let j = 0; j < S; j++) {
+      const z = -HALF + (j + 0.5) * px;
+      for (let i = 0; i < S; i++) {
+        const x = -HALF + (i + 0.5) * px;
+        const k = (j * S + i) * 4;
+        const dx = x - V.x;
+        const dz = z - V.z;
+        const d = Math.hypot(dx, dz);
+        if (d < V.R) {
+          data[k] = 255 * smoothstep(V.R * 0.95, V.R * 0.62, d + this.noise.noise(x * 0.01, z * 0.01) * 60);
+          let lava = lavaFlowAt(d, Math.atan2(dz, dx));
+          if (d < V.lavaR + 6) lava = Math.max(lava, smoothstep(V.lavaR + 6, V.lavaR - 4, d)); // Lava-See
+          data[k + 2] = 255 * lava;
+        }
+        if (x < -900 && x > -2400 && z > -1100 && z < 2100) {
+          polylineInfo(x, z, PLACES.canyon, info);
+          data[k + 1] = 255 * smoothstep(470, 380, info.d);
+        }
+        data[k + 3] = 255;
+      }
+    }
+    const t = new THREE.DataTexture(data, S, S, THREE.RGBAFormat, THREE.UnsignedByteType);
+    t.magFilter = THREE.LinearFilter;
+    t.minFilter = THREE.LinearFilter;
+    t.needsUpdate = true;
+    this.regionData = data;
+    this.regionSize = S;
+    this.regionTexture = t;
+  }
+
+  /** Regionen an einer Stelle: [Asche, Schlucht, Lava] je 0..1 */
+  regionAt(x, z) {
+    if (!this.regionData) return [0, 0, 0];
+    const S = this.regionSize;
+    const i = clamp(Math.floor(((x + HALF) / WORLD_SIZE) * S), 0, S - 1);
+    const j = clamp(Math.floor(((z + HALF) / WORLD_SIZE) * S), 0, S - 1);
+    const k = (j * S + i) * 4;
+    return [this.regionData[k] / 255, this.regionData[k + 1] / 255, this.regionData[k + 2] / 255];
   }
 
   /** Höhe an beliebiger Stelle (bilinear zwischen Gitterpunkten). */
@@ -336,7 +503,10 @@ export class Terrain {
       this.scorchDirty = false;
       this.scorchTimer = 0.2;
     }
-    if (this.uniforms) this.uniforms.uWet.value = wetness;
+    if (this.uniforms) {
+      this.uniforms.uWet.value = wetness;
+      this.uniforms.uTime.value += dt;
+    }
   }
 
   // ---------- Höhen-Textur für das Wasser (Ufer-Schaum, Tiefe) ----------
@@ -398,6 +568,8 @@ export class Terrain {
       uForest: { value: new THREE.DataTexture(new Uint8Array(4), 1, 1) }, // Wald-Karte (kommt später)
       uSnow: { value: 390 },
       uWet: { value: 0 },
+      uTime: { value: 0 },
+      uRegion: { value: this.regionTexture },
       // gedämpfte, natürliche Farben (wie Alpenwiesen im Spätsommer)
       cGrassA: { value: col(0x4f5c33) },
       cGrassB: { value: col(0x6e6b44) },
@@ -438,6 +610,11 @@ roughnessFactor = mix(roughnessFactor, 0.55, gSnowT * 0.5);
 roughnessFactor *= 1.0 - uWet * 0.45;`
         )
         .replace(
+          '#include <emissivemap_fragment>',
+          `#include <emissivemap_fragment>
+totalEmissiveRadiance += vec3(1.0, 0.3, 0.05) * gLava * 2.6;`
+        )
+        .replace(
           '#include <normal_fragment_maps>',
           `#ifdef PHOTO_TEX
 normal = normalize((viewMatrix * vec4(gTerrN, 0.0)).xyz);
@@ -457,10 +634,34 @@ normal = normalize((viewMatrix * vec4(gTerrN, 0.0)).xyz);
 const TERRAIN_COMMON = /* glsl */ `
 varying vec3 vWPos;
 varying vec3 vWNrm;
-uniform sampler2D uSplat, uScorch, uDetail, uForest;
-uniform float uSize, uSnow, uWet;
+uniform sampler2D uSplat, uScorch, uDetail, uForest, uRegion;
+uniform float uSize, uSnow, uWet, uTime;
 uniform vec3 cGrassA, cGrassB, cForest, cSand, cRock, cRock2, cSnow, cDirt, cWheat, cCrop;
 float gSnowT;
+float gLava;
+
+// Regionen: Asche am Vulkan (r), Schlucht (g), Lava (b)
+vec4 terrRegion(vec3 wp) {
+  return texture2D(uRegion, vec2(wp.x / uSize + 0.5, wp.z / uSize + 0.5));
+}
+// Gesteinsschichten der Schlucht (rot-beige Bänder, leicht schräg und gewellt)
+vec3 strataColor(vec3 wp, float n1) {
+  float b = wp.y * 0.21 + wp.x * 0.004 + n1 * 1.4;
+  float s1 = 0.5 + 0.5 * sin(b);
+  float s2 = 0.5 + 0.5 * sin(b * 2.7 + 1.3);
+  vec3 red = vec3(0.52, 0.29, 0.19);
+  vec3 sand = vec3(0.64, 0.49, 0.36);
+  vec3 dark = vec3(0.36, 0.24, 0.18);
+  return mix(mix(red, sand, smoothstep(0.35, 0.8, s1)), dark, smoothstep(0.75, 1.0, s2) * 0.6);
+}
+// Lava: fliessende, pulsierende Glut mit dunkler Kruste
+float lavaGlow(vec3 wp, float m) {
+  if (m < 0.01) return 0.0;
+  float a = texture2D(uDetail, wp.xz * 0.018 + vec2(uTime * 0.011, uTime * 0.017)).r;
+  float b = texture2D(uDetail, wp.xz * 0.05 - vec2(uTime * 0.02, uTime * 0.006)).r;
+  float crust = smoothstep(0.35, 0.65, a * 0.6 + b * 0.6);
+  return m * (0.25 + 1.1 * crust * crust) * (0.85 + 0.15 * sin(uTime * 2.3 + wp.x * 0.05));
+}
 #ifdef PHOTO_TEX
 uniform sampler2DArray uCol, uNor; // Foto-Schichten: Farbe+Höhe, Normale+Rauheit
 uniform vec3 uAvg[5];              // mittlere Farbe jeder Schicht
@@ -559,6 +760,9 @@ float tSand = 1.0 - smoothstep(1.5, 4.5 + n1 * 2.0, wp.y);
 float tRock = smoothstep(0.17, 0.33, slope + n1 * 0.06);
 tRock = max(tRock, smoothstep(200.0, 380.0, wp.y + n1 * 70.0) * 0.75);
 gSnowT = smoothstep(uSnow - 40.0, uSnow + 30.0, wp.y + n1 * 60.0) * (1.0 - smoothstep(0.38, 0.6, slope));
+vec4 region = terrRegion(wp);
+gSnowT *= 1.0 - region.r;
+tRock = max(tRock, region.r * smoothstep(0.08, 0.2, slope + n1 * 0.05)); // Vulkan: Fels schon an flachen Hängen
 
 // 2) Grundschicht Gras (Kachel 4 m), auf Feldern umgefärbt
 vec3 grassTint = mix(cGrassA, cGrassB, smoothstep(-0.25, 0.55, n1 + n2 * 0.6));
@@ -600,6 +804,8 @@ if (tRock > 0.004) {
   rockL.h = (rockL.h + bigL.h) * 0.5;
 #endif
   vec3 rockTint = mix(cRock2, cRock, clamp(0.6 + n1 * 0.8, 0.0, 1.0));
+  rockTint = mix(rockTint, strataColor(wp, n1) * 1.1, region.g);
+  rockTint = mix(rockTint, vec3(0.07, 0.065, 0.065), region.r);           // dunkler Basalt
   addLayer(col, nrm, rough, hgt, rockL, rockTint / uAvg[1], tRock);
 }
 if (gSnowT > 0.004) {
@@ -611,6 +817,11 @@ if (gSnowT > 0.004) {
 float forest = min(1.0, texture2D(uForest, suv).r) * (1.0 - gSnowT);
 col *= 1.0 - forest * 0.5;
 col = mix(col, col * vec3(0.8, 0.9, 0.75), forest * 0.6);
+col = mix(col, col * vec3(1.12, 0.95, 0.72), region.g * (1.0 - tRock) * 0.6); // trockenes Plateau
+float lum = dot(col, vec3(0.3, 0.59, 0.11));
+col = mix(col, vec3(lum) * vec3(0.16, 0.15, 0.145), region.r * 0.95);        // Asche und Basalt
+gLava = lavaGlow(wp, region.b);
+col *= 1.0 - region.b * 0.85;
 col *= mix(1.0, 0.45, smoothstep(0.0, -8.0, wp.y));
 float sc = texture2D(uScorch, vec2(wp.x / uSize + 0.5, wp.z / uSize + 0.5)).r;
 col = mix(col, vec3(0.025, 0.02, 0.018), sc);
@@ -646,7 +857,16 @@ rockT = max(rockT, smoothstep(200.0, 380.0, wp.y + n1 * 70.0) * 0.75);
 // dunkle Rinnen in steilen Felsen
 rock *= 0.8 + 0.35 * smoothstep(0.2, 0.8, det2 + det * 0.3);
 col = mix(col, rock, rockT);
-gSnowT = smoothstep(uSnow - 40.0, uSnow + 30.0, wp.y + n1 * 60.0) * (1.0 - smoothstep(0.38, 0.6, slope));
+vec4 region = terrRegion(wp);
+rock = mix(rock, strataColor(wp, n1), region.g);
+rock = mix(rock, vec3(0.07, 0.065, 0.065) * (0.8 + 0.4 * det), region.r);
+rockT = max(rockT, region.r * smoothstep(0.08, 0.2, slope));
+col = mix(col, rock, rockT * max(region.r, region.g));
+float lum = dot(col, vec3(0.3, 0.59, 0.11));
+col = mix(col, vec3(lum) * vec3(0.16, 0.15, 0.145), region.r * 0.95);
+gLava = lavaGlow(wp, region.b);
+col *= 1.0 - region.b * 0.85;
+gSnowT = smoothstep(uSnow - 40.0, uSnow + 30.0, wp.y + n1 * 60.0) * (1.0 - smoothstep(0.38, 0.6, slope)) * (1.0 - region.r);
 col = mix(col, cSnow, gSnowT);
 col *= 1.0 - min(1.0, texture2D(uForest, suv).r) * (1.0 - gSnowT) * 0.5;
 col *= mix(1.0, 0.45, smoothstep(0.0, -8.0, wp.y));

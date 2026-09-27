@@ -17,6 +17,7 @@ import { Customization } from '../dragon/Customization.js';
 import { RingRace } from '../gameplay/RingRace.js';
 import { Tutorial } from '../gameplay/Tutorial.js';
 import { Ballistae } from '../gameplay/Ballistae.js';
+import { Adventure } from '../gameplay/Adventure.js';
 import { PostProcessing } from '../fx/PostProcessing.js';
 import { SpeedFx } from '../fx/SpeedFx.js';
 import { PARTICLE_SCALE } from '../fx/Particles.js';
@@ -107,6 +108,7 @@ export class Game {
       this.rig.addShake(1.1);
       this.rig.kick(14);
       this.hud.doFlash(0.18);
+      this.adv?.onSonic();
     };
     this.wasBoosting = false;
     this.ballistae = new Ballistae(this.scene, this.world);
@@ -115,7 +117,8 @@ export class Game {
       ...this.hud.tutorialUI(),
       finished: () => this.hud.toast('Tutorial abgeschlossen!', 'Viel Spass beim Fliegen 🐉', 4),
     });
-    this.minimap = new Minimap(document.getElementById('minimap'), this.world.terrain, this.world.settlement);
+    this.adv = new Adventure(this);
+    this.minimap = new Minimap(document.getElementById('minimap'), this.world.terrain, this.world.settlement, this.world);
     this.menu = new Menu(this);
 
     this._applyCustomization();
@@ -186,6 +189,7 @@ export class Game {
       }
       this.rig.addShake(s * 0.9);
       this.damage = Math.min(1, this.damage + s * 0.6);
+      this.adv.damage(s * 0.25);
     };
     p.events.splash = (s) => this._splash(s);
     p.events.land = (water, into = 3) => {
@@ -213,6 +217,7 @@ export class Game {
       w.particles.confetti(goat.pos);
       this.audio.playSuccess();
       this.hud.setGoats(found, total, true);
+      this.adv.onGoat();
       this.hud.toast(`🐐 Ziege gefunden! ${found}/${total}`, goat.name, 4);
       if (found === total) {
         setTimeout(() => this.hud.toast('✦ Alle Ziegen gefunden!', 'Der goldene Drache ist jetzt freigeschaltet (Drache anpassen).', 7), 1500);
@@ -222,6 +227,7 @@ export class Game {
       const d = e ? Math.hypot(e.x - this.physics.position.x, e.z - this.physics.position.z) : 50;
       if (d < 400) this.audio.playIgnite(clamp(1 - d / 400, 0.2, 1) * (e.kind === 'tree' ? 0.5 : 1));
       if (e) this._ignitionBurst(e, d);
+      this.adv.onIgnite(e);
       if (e.kind === 'hut') this._hintOnce('hut', '🔥 Das Dach brennt!', 'Regen löscht Feuer. Neustart (Pause-Menü) baut alles wieder auf.');
     };
     this.fire.onOverheat = () => {
@@ -239,6 +245,7 @@ export class Game {
       p.velocity.addScaledVector(dir, 7);
       p.stamina = Math.max(0, p.stamina - 0.12);
       this.damage = Math.min(1, this.damage + 0.55);
+      this.adv.damage(0.2);
       this.rig.addShake(0.7);
       this.audio.playBoltHit();
       for (let i = 0; i < 25 * w.q.particles; i++) {
@@ -246,10 +253,18 @@ export class Game {
       }
       this._hintOnce('bolt', '🏹 Getroffen!', `Zerstöre die Armbrust-Türme mit Feuer (${this._key('fire')}). Enge Kurven helfen beim Ausweichen.`);
     };
-    bl.onAim = () => this._hintOnce('aim', '⚠ Armbrust-Turm!', 'Ein Wachturm zielt auf dich. Weiche aus oder brenne ihn nieder!');
+    bl.onAim = () => this._hintOnce('aim', '⚠ Armbrust!', 'Eine Armbrust zielt auf dich. Weiche in Kurven aus oder brenne sie nieder!');
+    bl.onNearMiss = () => this.adv.onNearMiss();
     bl.onDestroyed = (n, total) => {
-      this.hud.toast(`🏹 Turm zerstört! ${n}/${total}`, n === total ? 'Alle Armbrust-Türme sind still.' : '', 3.5);
+      this.hud.toast(`🏹 Armbrust zerstört! ${n}/${total}`, n === total ? 'Alle Armbrüste sind still.' : '', 3.5);
       this.audio.playSuccess();
+      this.adv.onTowerDestroyed(n, total);
+    };
+
+    // Schafe
+    w.herds.onCatch = (sheep, pos) => this.adv.onSheep(pos);
+    w.herds.onPanic = () => {
+      if (this.state === 'play') this._hintOnce('sheep', '🐑 Schafe!', 'Fliege ganz tief über die Herde, um ein Schaf zu packen – das gibt Leben und Ausdauer.');
     };
 
     // Rennen
@@ -261,6 +276,7 @@ export class Game {
       if (i < n - 1) this.hud.center('', `Ring ${i + 1} / ${n}`, 0.8);
     };
     r.events.finish = (res) => {
+      this.adv.onRaceFinish(res);
       this.hud.center('ZIEL!', formatTime(res.time), 2.5);
       this.audio.setMusicIntensity(0);
       setTimeout(() => {
@@ -367,6 +383,7 @@ export class Game {
     this.input.gameActive = true;
     this.hud.show(true);
     this.audio.setMusicIntensity(0);
+    this.adv.startRun();
     if (tutorial) this.tutorial.start();
     else {
       this.tutorial.stop();
@@ -563,8 +580,19 @@ export class Game {
       paused,
       fireColor: this.fireColor,
     });
-    // Ziegen
+    // Ziegen und Schafe
     this.world.goats.update(paused ? 0 : dt, this.physics.position, this.audio, playing);
+    this.world.herds.update(paused ? 0 : dt, {
+      dragonPos: this.physics.position,
+      agl: playing ? this.physics.agl : 999,
+      canCatch: playing && this.physics.speed < 85,
+      audio: playing ? this.audio : null,
+      roar: this.roarPulse,
+    });
+    this.roarPulse = false;
+    // Leben, Punkte, Aufträge
+    this.adv.update(paused ? 0 : dt);
+    if (this.adv.active && this.adv.health < 0.3) this.damage = Math.max(this.damage, (0.3 - this.adv.health) * 1.6 * (0.75 + 0.25 * Math.sin(this.time * 6)));
 
     // Kamera
     if (playing) {
@@ -670,6 +698,7 @@ export class Game {
     if (input.pressed('roar') && this.roarTimer <= 0) {
       this.roarTimer = 2.5;
       this.roarAnim = 1.6;
+      this.roarPulse = true;
       this.audio.playRoar();
       this.rig.addShake(0.7);
       this.rig.kick(4);

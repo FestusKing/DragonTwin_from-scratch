@@ -1,11 +1,13 @@
 // Die Ring-Strecken. Die Ringe werden aus markanten Orten der Welt
 // berechnet (Burg, Felsbogen, Fluss, Gipfel …), damit sie immer passen.
 import * as THREE from 'three';
-import { PLACES } from '../world/Terrain.js';
+import { PLACES, CANYON_LEN } from '../world/Terrain.js';
+import { canyonPoint } from '../world/Canyon.js';
 
 export const COURSES = [
   { id: 'valley', name: 'Talrunde', difficulty: 'Leicht', desc: 'Über das Dorf, durch den Felsbogen im Meer, den Fluss hinauf und zurück.' },
   { id: 'summit', name: 'Gipfelsturm', difficulty: 'Schwer', desc: 'Hoch in die Berge: enge Pässe, eisige Gipfel und ein steiler Sturzflug.' },
+  { id: 'canyon', name: 'Schluchtflug', difficulty: 'Mittel', desc: 'Vom Meer tief in die Drachenschlucht, unter der Hängebrücke durch und am Wasserfall steil hinauf.' },
 ];
 
 /**
@@ -20,7 +22,19 @@ export function buildCourse(id, world) {
   const P = [];
   const add = (x, z, opts = {}) => P.push({ x, z, ...opts });
 
-  if (id === 'valley') {
+  if (id === 'canyon') {
+    // Ringe folgen der Mittellinie der Schlucht, tief zwischen den Felswänden
+    const c = { x: 0, z: 0, dx: 0, dz: 1 };
+    const L = CANYON_LEN;
+    const list = [
+      [40, 34], [260, 30], [470, 26], [680, 30], [860, 34], [L * 0.42, 48, 12], [1120, 30], [1330, 26],
+      [1530, 32], [1730, 28], [1930, 30], [L - 150, 34], [L - 75, 55, 13], [L + 170, 45],
+    ];
+    for (const [s, above, r] of list) {
+      canyonPoint(s, c);
+      add(c.x, c.z, { above, r: r ?? 14 });
+    }
+  } else if (id === 'valley') {
     add(V.x + 20, V.z + 40, { above: 38 });
     add(S.gate.x, S.gate.z + 25, { y: S.gate.y + 9 });
     const tt = S.towerTops;

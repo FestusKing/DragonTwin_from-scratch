@@ -5,6 +5,7 @@ import { ACTIONS, keyLabel } from '../core/Input.js';
 import { formatTime } from '../core/utils.js';
 import { SKINS, FIRE_COLORS } from '../dragon/Customization.js';
 import { COURSES } from '../gameplay/Courses.js';
+import { RANKS } from '../gameplay/Missions.js';
 import { loadRecord, clearRecords } from '../gameplay/GhostReplay.js';
 
 const $ = (id) => document.getElementById(id);
@@ -198,15 +199,19 @@ export class Menu {
   _buildCustomize() {
     const custom = this.game.custom;
     const allGoats = this.game.world.goats.foundCount >= this.game.world.goats.total;
+    const rankNo = (this.game.adv?.missions.rankIndex ?? 0) + 1;
+    const rankName = (r) => RANKS[r - 1]?.name ?? '';
     const skinBox = $('skin-swatches');
     skinBox.innerHTML = '';
     for (const [id, s] of Object.entries(SKINS)) {
-      const locked = s.locked && !allGoats;
+      const rankLocked = s.rank && rankNo < s.rank;
+      const locked = (s.locked && !allGoats) || rankLocked;
       const b = document.createElement('button');
       b.className = 'swatch' + (custom.state.skin === id ? ' selected' : '') + (locked ? ' locked' : '');
       // Punkt: Bauch (Glanz) → Körper → Flughaut am Rand
       b.innerHTML = `<span class="dot" style="background: radial-gradient(circle at 35% 30%, ${hex(s.belly)}, ${hex(s.body)} 55%, ${hex(s.membrane)})"></span>${locked ? '🔒' : s.label}`;
-      b.title = locked ? 'Finde alle Ziegen, um den goldenen Drachen freizuschalten!' : s.label;
+      b.title = rankLocked ? `Erreiche Rang ${s.rank} (${rankName(s.rank)}) – erfülle Aufträge!` : locked ? 'Finde alle Ziegen, um den goldenen Drachen freizuschalten!' : s.label;
+      if (rankLocked) b.innerHTML = b.innerHTML.replace('🔒', `🔒 Rang ${s.rank}`);
       b.addEventListener('click', () => {
         if (locked) {
           this.game.audio.playError();
@@ -218,14 +223,22 @@ export class Menu {
       });
       skinBox.appendChild(b);
     }
-    $('gold-hint').textContent = allGoats ? '✦ Goldener Drache freigeschaltet!' : `Tipp: Finde alle ${this.game.world.goats.total} Ziegen, um eine geheime Farbe freizuschalten.`;
+    $('gold-hint').textContent =
+      (allGoats ? '✦ Goldener Drache freigeschaltet! ' : `Tipp: Finde alle ${this.game.world.goats.total} Ziegen, um eine geheime Farbe freizuschalten. `) +
+      `Dein Rang: ${rankNo} (${rankName(rankNo)}). Höhere Ränge schalten neue Farben frei.`;
     const fireBox = $('fire-swatches');
     fireBox.innerHTML = '';
     for (const [id, f] of Object.entries(FIRE_COLORS)) {
+      const fLocked = f.rank && rankNo < f.rank;
       const b = document.createElement('button');
-      b.className = 'swatch' + (custom.state.fire === id ? ' selected' : '');
-      b.innerHTML = `<span class="dot" style="background: radial-gradient(circle, ${hex(f.c[0])} 10%, ${hex(f.c[1])} 45%, ${hex(f.c[2])})"></span>${f.label}`;
+      b.className = 'swatch' + (custom.state.fire === id ? ' selected' : '') + (fLocked ? ' locked' : '');
+      b.innerHTML = `<span class="dot" style="background: radial-gradient(circle, ${hex(f.c[0])} 10%, ${hex(f.c[1])} 45%, ${hex(f.c[2])})"></span>${fLocked ? `🔒 Rang ${f.rank}` : f.label}`;
+      if (fLocked) b.title = `Erreiche Rang ${f.rank} (${rankName(f.rank)}) – erfülle Aufträge!`;
       b.addEventListener('click', () => {
+        if (fLocked) {
+          this.game.audio.playError();
+          return;
+        }
         this.game.audio.playClick();
         custom.set('fire', id);
         this._buildCustomize();
@@ -365,13 +378,16 @@ export class Menu {
     } else if (this.settingsTab === 'game') {
       row('Flughilfe', 'Richtet den Drachen automatisch gerade aus und hilft bei langsamen Kurven', check('flightAssist'));
       row('Kamera-Wackeln', 'Bei Aufprall, Boost und Donner', check('cameraShake'));
-      row('Armbrust-Türme', 'Die Wachtürme schiessen auf den Drachen (mit Feuer zerstören)', check('enemies'));
+      row('Armbrüste', 'Wachtürme und Burg schiessen auf den Drachen (mit Feuer zerstören)', check('enemies'));
       row('Minikarte', '', check('showMinimap', (v) => document.getElementById('hud-map').classList.toggle('hidden', !v)));
       row('Ziegen-Fortschritt', 'Alle gefundenen Ziegen wieder verstecken', button('Zurücksetzen', () => {
         if (confirm('Wirklich alle Ziegen wieder verstecken?')) {
           g.world.goats.resetProgress();
           g.hud.setGoats(0, g.world.goats.total);
         }
+      }));
+      row('Aufträge und Rang', 'Alle Aufträge, Erfahrung und Rang von vorne', button('Zurücksetzen', () => {
+        if (confirm('Wirklich alle Aufträge und den Rang zurücksetzen?')) g.adv.missions.resetAll();
       }));
       row('Bestzeiten', 'Alle Rennzeiten und Geister löschen', button('Löschen', () => {
         if (confirm('Wirklich alle Bestzeiten löschen?')) clearRecords(COURSES.map((c) => c.id));
@@ -397,7 +413,12 @@ export class Menu {
       <div class="help-row" style="grid-column:1/-1"><span>Tempo = Auftrieb. Zu langsam? Nase runter oder Flügel schlagen. Im Sturzflug wirst du richtig schnell.</span></div>
       <div class="help-row" style="grid-column:1/-1"><span>Gelandet? Mit ${keyLabel(b.pitchDown[0])} läuft der Drache, mit ${keyLabel(b.flap[0])} hebst du wieder ab.</span></div>
       <div class="help-row" style="grid-column:1/-1"><span>Hütten, Bäume und Heuballen fangen Feuer. Regen löscht Brände.</span></div>
-      <div class="help-row" style="grid-column:1/-1"><span>Maus gedrückt halten = umsehen, Mausrad = Zoom. ${keyLabel(b.roar[0])} = Brüllen (Ziegen antworten …)</span></div>`;
+      <div class="help-row" style="grid-column:1/-1"><span>Maus gedrückt halten = umsehen, Mausrad = Zoom. ${keyLabel(b.roar[0])} = Brüllen (Ziegen antworten …)</span></div>
+      <div class="help-sec">Abenteuer (freier Flug)</div>
+      <div class="help-row" style="grid-column:1/-1"><span>🎯 Oben links stehen deine <b>Aufträge</b>. Der blaue Pfeil zeigt dir den Weg. Aufträge und Punkte geben Erfahrung → höherer <b>Drachen-Rang</b> → neue Farben.</span></div>
+      <div class="help-row" style="grid-column:1/-1"><span>⭐ Jede Tat gibt Punkte. Mehrere Taten schnell hintereinander = <b>Kombo</b> (bis ×5). Tiefflug, Schluchtflug und knapp ausgewichene Bolzen zählen auch.</span></div>
+      <div class="help-row" style="grid-column:1/-1"><span>❤ <b>Leben:</b> Bolzen und harte Aufpralle kosten Leben. Fliege ganz tief über eine Schafherde, um ein Schaf zu packen (+Leben). Im <b>Hort</b> im Vulkan (Nordosten) erholst du dich ganz. Bei 0 Leben erwachst du dort.</span></div>
+      <div class="help-row" style="grid-column:1/-1"><span>🗺 Neue Orte: Vulkan mit Hort (Nordosten), Drachenschlucht mit Wasserfall und Hängebrücke (Westen), Schafweiden überall.</span></div>`;
     body.innerHTML = html;
   }
 

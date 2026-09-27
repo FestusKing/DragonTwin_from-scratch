@@ -100,6 +100,11 @@ Für eine fertige Version zum Hochladen gibt es `npm run build`. Das Ergebnis li
   - See, Fluss und Küste
   - Felsbogen im Meer
   - Schiffswrack und Steinkreis
+  - **Vulkan „Drachenhort“** im Nordosten: Krater mit Lava-See, leuchtende Lavaströme, Rauchsäule, Funken.
+    Im Krater liegt dein **Hort** (Goldhaufen, Edelsteine, drei Dracheneier).
+  - **Drachenschlucht** im Westen: tiefe, kurvige Schlucht mit roten Gesteinsschichten, Fluss,
+    **Wasserfall** am oberen Ende und einer **Hängebrücke** (man kann drunter durchfliegen).
+  - **Schafherden** auf 6 Weiden: Sie fliehen in Panik vor dem Drachen.
 - Dorf mit Burg, Kirche, Windmühle, ca. 28 Fachwerkhütten, Feldern und einem Fischerdorf.
 - **Foto-Texturen** für Gras, Fels, Sand, Schnee, Wege, Holz, Stroh, Stein, Putz und Schiefer.
 - Leuchtturm mit drehendem Lichtstrahl in der Nacht.
@@ -109,16 +114,30 @@ Für eine fertige Version zum Hochladen gibt es `npm run build`. Das Ergebnis li
 - Vogelschwärme, die vor dem Drachen fliehen.
 
 ### Gegner
-- **Armbrust-Türme:** Auf den Wachtürmen rund ums Dorf stehen grosse Armbrüste.
-  Kommt der Drache näher als ca. 300 m, zielen sie (mit Vorhalt) und schiessen **Brandbolzen**.
-  - Treffer: Rückstoss, rotes Aufblitzen, weniger Ausdauer (man stirbt nicht).
-  - Ausweichen: Die Bolzen streuen etwas – enge Kurven helfen.
-  - Zerstören: Turm mit Feuer anzünden.
+- **Armbrüste:** auf den Wachtürmen rund ums Dorf **und auf der Burg** (Bergfried und Mauern, 6 insgesamt).
+  Kommt der Drache nahe genug, zielen sie (mit Vorhalt) und schiessen **Brandbolzen**.
+  - Treffer: Rückstoss, rotes Aufblitzen, weniger Ausdauer und **Leben**.
+  - Ausweichen: Die Bolzen streuen etwas – enge Kurven helfen. Knapp vorbei = Punkte.
+  - Zerstören: mit Feuer anzünden.
   - Im Ringrennen und im Tutorial schiessen sie nicht. Abschaltbar in *Einstellungen → Spiel*.
+
+### Abenteuer (im Freiflug)
+- **Aufträge:** Oben links stehen immer 3 Aufträge (z. B. „Fange 3 Schafe“, „Fliege durch die ganze
+  Schlucht“, „Fliege unter der Hängebrücke durch“, „Durchbrich die Schallmauer“ – 15 insgesamt).
+  Ein **blauer Pfeil** zeigt den Weg zum Ziel.
+- **Drachen-Rang:** Punkte und Aufträge geben Erfahrung (XP). 5 Ränge: Jungdrache → Feuerspeier →
+  Himmelsjäger → Schrecken des Tals → Drachenkönig. Jeder neue Rang schaltet eine **Drachenfarbe** frei
+  (Glut, Frost, Schatten, König) und Rang 4 die Feuerfarbe **Weissglut**.
+- **Punkte und Kombos:** Jede Tat gibt Punkte („+60 Dach in Brand“). Schnell hintereinander = Kombo bis ×5.
+  Auch Tiefflug, Schluchtflug, Felsbogen, Schallmauer und knapp ausgewichene Bolzen zählen.
+- **Leben:** Bolzen und harte Aufpralle kosten Leben. Heilen: langsam von selbst, schnell durch
+  **Schafe fangen** (ganz tief über eine Herde fliegen) oder im **Hort** landen.
+  Bei 0 Leben stürzt der Drache ab und erwacht im Hort.
 
 ### Spielmodi
 - **Freiflug:** freies Erkunden.
-- **Ringrennen:** 2 Strecken mit Countdown, Zwischenzeiten, Medaillen und Bestzeit.
+- **Ringrennen:** 3 Strecken (Talrunde, Gipfelsturm und neu **Schluchtflug** – durch die Schlucht, unter
+  der Brücke durch und am Wasserfall hinauf) mit Countdown, Zwischenzeiten, Medaillen und Bestzeit.
   Dazu ein **Geist** deiner besten Runde.
 - **Tutorial:** erklärt jede Steuerung Schritt für Schritt. Kann übersprungen werden.
 - **12 versteckte Ziegen** 🐐
@@ -127,8 +146,8 @@ Für eine fertige Version zum Hochladen gibt es `npm run build`. Das Ergebnis li
   - Wer alle findet, schaltet eine geheime Drachenfarbe frei.
 
 ### Anpassen
-- **Schuppenfarben:** Schwarz-Rot (Standard), Smaragdgrün, Grau (wie im DragonTwin-Bild), Schwarz, Stahlblau, Moosgrün, Rostrot, Knochenweiss (+ 1 geheime).
-- **Feuerfarben:** Orange, Rot, Blau, Grün, Violett, Pink, Dunkelrot.
+- **Schuppenfarben:** Schwarz-Rot (Standard), Smaragdgrün, Grau (wie im DragonTwin-Bild), Schwarz, Stahlblau, Moosgrün, Rostrot, Knochenweiss (+ 1 geheime für alle Ziegen, + 4 für die Ränge 2–5).
+- **Feuerfarben:** Orange, Rot, Blau, Grün, Violett, Pink, Dunkelrot (+ Weissglut ab Rang 4).
 - **Reiter** an oder aus.
 - Alles wirkt **sofort** und wird gespeichert.
 
@@ -187,6 +206,9 @@ src/
     TreeModels.js       Baum-Modelle + im Code gemalte Blätter-/Nadel-Texturen
     Settlement.js       Dorf, Burg, Kirche, Windmühle, Leuchtturm …
     Landmarks.js        Felsbogen, Wrack, Steinkreis, ferne Berge
+    Volcano.js          Vulkan: Lava-See, Glühen, Rauchsäule, der Hort mit Gold und Eiern
+    Canyon.js           Drachenschlucht: Wasserfall, Gischt, Hängebrücke
+    Herds.js            Schafherden (grasen, fliehen, können gefangen werden)
     Goats.js            Die versteckten Ziegen
     Birds.js            Vogelschwärme
     Colliders.js        Kollision mit Gebäuden
@@ -199,8 +221,11 @@ src/
     Customization.js    Farben und Reiter
   gameplay/
     RingRace.js         Ringrennen
-    Ballistae.js        Armbrust-Türme (Gegner) und Brandbolzen
-    Courses.js          Die zwei Strecken
+    Ballistae.js        Armbrüste (Wachtürme und Burg) und Brandbolzen
+    Adventure.js        Freiflug-Abenteuer: Leben, Absturz/Hort, Wegweiser, Schlucht/Brücke/Felsbogen
+    Score.js            Punkte und Kombos
+    Missions.js         Aufträge und Drachen-Rang (gespeichert)
+    Courses.js          Die drei Strecken
     GhostReplay.js      Geist aufnehmen / abspielen
     Tutorial.js         Tutorial-Schritte
     BurnSystem.js       Was brennt wie lange, Ausbreitung
@@ -278,11 +303,11 @@ Die „Stretch Goals“ aus der Vorgabe gehören **nicht** zum Test Flight. Sie 
 
 - Drachen-Editor (Körperform, Hörner …)
 - Rüstung für den Reiter
-- Weltkarte mit mehreren Regionen
-- Quests
+- Weltkarte mit mehreren Regionen (es gibt jetzt aber Vulkan, Schlucht und Weiden auf der Insel)
+- Grosse Quests mit Geschichte (es gibt aber kleine Aufträge mit Rang)
 - Zerstörbare Gebäude (Hütten brennen ab, stürzen aber nicht ein)
 - Armeen und feindliche Drachen
-- Die Höhle (Lair)
+- Eine begehbare Höhle (der Hort liegt offen im Vulkankrater)
 - Strategie-Modus
 - Mehrspieler
 

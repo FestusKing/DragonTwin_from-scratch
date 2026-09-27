@@ -438,6 +438,21 @@ export class AudioManager {
     this._tone(this.sfxBus, { freq: 95, freqEnd: 45, dur: 0.35, gain: 0.45, attack: 0.003 });
   }
 
+  /** Zuschnappen (Schaf gepackt): kurzes, dumpfes "Hamm" */
+  playChomp() {
+    if (!this.ready) return;
+    this._noiseBurst(this.sfxBus, { dur: 0.22, type: 'bandpass', freq: 520, freqEnd: 160, q: 1.2, gain: 0.5, attack: 0.005 });
+    this._tone(this.sfxBus, { freq: 110, freqEnd: 55, dur: 0.25, gain: 0.45, attack: 0.005 });
+  }
+
+  /** Punkte / Auftrag geschafft: helles "Pling-Pling" (höher bei grösserer Kombo) */
+  playPoints(level = 0) {
+    if (!this.ready) return;
+    const f = 660 * Math.pow(1.122, Math.min(level, 8));
+    this._tone(this.sfxBus, { freq: f, dur: 0.12, gain: 0.12, attack: 0.005, type: 'triangle' });
+    this._tone(this.sfxBus, { freq: f * 1.5, dur: 0.16, gain: 0.1, attack: 0.005, type: 'triangle', when: 0.07 });
+  }
+
   /** Boost: anschwellendes "Wuuusch" */
   playWhoosh() {
     if (!this.ready) return;
@@ -446,12 +461,12 @@ export class AudioManager {
   }
 
   /** Ziegen-Meckern: "Määäh". pos = Weltposition (für räumlichen Klang) */
-  playBleat(pos = null, volume = 1) {
+  playBleat(pos = null, volume = 1, pitch = 1) {
     if (!this.ready || this.goatVoices > 4) return;
     const ctx = this.ctx;
     const t = ctx.currentTime;
     const dur = 0.75 + Math.random() * 0.35;
-    const f0 = 330 + Math.random() * 120;
+    const f0 = (330 + Math.random() * 120) * pitch; // pitch < 1: tiefer (Schafe)
 
     const osc = ctx.createOscillator();
     osc.type = 'sawtooth';

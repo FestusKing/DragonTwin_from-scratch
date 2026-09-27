@@ -52,6 +52,12 @@ export class BurnSystem {
     this.stats = { nearby: 0, nearest: 9999, count: 0 };
   }
 
+  /** Neues brennbares Ding anmelden (z. B. Armbrüste auf der Burg). Gibt das Objekt zurück. */
+  addEntity(e) {
+    this._add(e);
+    return e;
+  }
+
   _add(e) {
     e.heat = 0;
     e.state = 0; // 0 = intakt, 1 = brennt, 2 = abgebrannt
@@ -166,7 +172,7 @@ export class BurnSystem {
       if (d < nearest) nearest = d;
       if (d < 350) nearby += (1 - d / 350) * I * (e.kind === 'tree' ? 0.4 : 1);
       const lod = d < 700 ? 1 : d < 1500 ? 0.35 : 0.1;
-      const size = e.kind === 'hut' || e.kind === 'windmill' ? 1.6 : e.kind === 'tower' ? 1.3 : e.kind === 'tree' ? 1 : 0.8;
+      const size = e.kind === 'hut' || e.kind === 'windmill' ? 1.6 : e.kind === 'tower' ? 1.3 : e.kind === 'tree' || e.kind === 'ballista' ? 1 : 0.8;
       // Flammen
       e.acc += 58 * size * I * lod * this.q * dt;
       while (e.acc >= 1) {

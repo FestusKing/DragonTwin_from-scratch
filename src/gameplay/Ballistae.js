@@ -2,6 +2,8 @@
 // Kommt der Drache näher als RANGE und ist nichts dazwischen, zielen sie (mit Vorhalt)
 // und schiessen Brandbolzen. Die Bolzen streuen etwas → mit Kurven kann man ausweichen.
 // Brennt ein Turm, ist seine Armbrust zerstört. "Neustart" baut alles wieder auf.
+// Auch die Burg wehrt sich: Armbrüste auf dem Bergfried und auf den Mauern (Holz, brennbar).
+// Fliegt ein Bolzen knapp vorbei, gibt es Punkte ("Knapp vorbei!").
 import * as THREE from 'three';
 import { clamp } from '../core/utils.js';
 
@@ -14,6 +16,7 @@ const RELOAD_MAX = 3.8;
 const SPREAD = 0.02; // Streuung in Radiant
 const HIT_RADIUS = 4.4; // etwas grösser als die Kollisions-Kugel des Drachen
 const TURN_RATE = 2.2; // wie schnell sich die Armbrust dreht (rad/s)
+const NEAR_MISS = 15; // so knapp muss ein Bolzen vorbeifliegen (Meter)
 
 const _to = new THREE.Vector3();
 const _aim = new THREE.Vector3();
@@ -74,7 +77,26 @@ export class Ballistae {
       const b = makeBallista();
       b.root.position.set(top.x, top.y - 0.05, top.z);
       scene.add(b.root);
-      this.towers.push({ top, burn, ...b, timer: AIM_TIME, destroyed: false, yawA: 0, pitchA: 0, seen: false });
+      this.towers.push({ top, burn, ...b, timer: AIM_TIME, destroyed: false, yawA: 0, pitchA: 0, seen: false, range: RANGE, spread: SPREAD });
+    }
+    // Burg: auf dem Bergfried und in der Mitte der Nord-, West- und Ostmauer
+    const P = world.settlement.poi;
+    if (P.castle && P.keepTop) {
+      const C = P.castle;
+      const spots = [
+        [P.keepTop.x + 6, P.keepTop.y, P.keepTop.z - 6],
+        [C.x, C.y + 13, C.z - 40],
+        [C.x - 40, C.y + 13, C.z],
+        [C.x + 40, C.y + 13, C.z],
+      ];
+      for (const [x, y, z] of spots) {
+        const top = new THREE.Vector3(x, y, z);
+        const burn = world.burn.addEntity({ kind: 'ballista', x, y: y + 1.5, z, r: 3.5, h: 3, w: 3.6, d: 3.6, fuel: 10 });
+        const b = makeBallista();
+        b.root.position.set(x, y - 0.05, z);
+        scene.add(b.root);
+        this.towers.push({ top, burn, ...b, timer: AIM_TIME, destroyed: false, yawA: 0, pitchA: 0, seen: false, range: 270, spread: SPREAD * 1.5, castle: true });
+      }
     }
     this.destroyedCount = 0;
 
@@ -103,6 +125,7 @@ export class Ballistae {
     this.onHit = null; // (Richtung, Punkt) → Rückstoss, Schaden …
     this.onDestroyed = null; // (Anzahl, Gesamt)
     this.onAim = null; // erster Turm zielt auf den Drachen → Hinweis
+    this.onNearMiss = null; // Bolzen knapp vorbei
   }
 
   get total() {
@@ -130,14 +153,17 @@ export class Ballistae {
     _aim.y += 0.5 * GRAVITY * t * t;
     _dir.subVectors(_aim, _a).normalize();
     // Streuung
-    _dir.x += (Math.random() - 0.5) * 2 * SPREAD;
-    _dir.y += (Math.random() - 0.5) * 2 * SPREAD;
-    _dir.z += (Math.random() - 0.5) * 2 * SPREAD;
+    const sp = tw.spread ?? SPREAD;
+    _dir.x += (Math.random() - 0.5) * 2 * sp;
+    _dir.y += (Math.random() - 0.5) * 2 * sp;
+    _dir.z += (Math.random() - 0.5) * 2 * sp;
     _dir.normalize();
     bolt.pos.copy(_a).addScaledVector(_dir, 2);
     bolt.vel.copy(_dir).multiplyScalar(BOLT_SPEED);
     bolt.age = 0;
     bolt.state = 1;
+    bolt.minD = Infinity;
+    bolt.nearDone = false;
     bolt.mesh.visible = true;
     bolt.tracer.visible = true;
     this.onShot?.(_a);
@@ -166,7 +192,7 @@ export class Ballistae {
       }
       _to.subVectors(s.dragonPos, tw.top);
       const d = _to.length();
-      if (d > RANGE || !this._lineOfSight(_eye.copy(tw.top).setY(tw.top.y + 1.5), s.dragonPos)) {
+      if (d > (tw.range ?? RANGE) || !this._lineOfSight(_eye.copy(tw.top).setY(tw.top.y + 1.5), s.dragonPos)) {
         tw.timer = Math.max(tw.timer, AIM_TIME);
         continue;
       }
@@ -214,6 +240,14 @@ export class Ballistae {
         b.mesh.visible = false;
         this.onHit?.(_dir.copy(b.vel).normalize(), b.pos);
         continue;
+      }
+      // knapp vorbei? (war nah, entfernt sich jetzt wieder)
+      if (s.active && !b.nearDone) {
+        if (hit < b.minD) b.minD = hit;
+        else if (b.minD < NEAR_MISS && hit > b.minD + 3) {
+          b.nearDone = true;
+          this.onNearMiss?.();
+        }
       }
       const gh = this.world.terrain.heightAt(b.pos.x, b.pos.z);
       if (b.pos.y < gh) {

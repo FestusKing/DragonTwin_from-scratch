@@ -11,6 +11,9 @@ import { Water } from './Water.js';
 import { Vegetation } from './Vegetation.js';
 import { Settlement } from './Settlement.js';
 import { Landmarks } from './Landmarks.js';
+import { Volcano } from './Volcano.js';
+import { Canyon } from './Canyon.js';
+import { Herds, planPastures } from './Herds.js';
 import { Colliders } from './Colliders.js';
 import { Goats } from './Goats.js';
 import { Birds } from './Birds.js';
@@ -53,6 +56,8 @@ export class World {
     this.terrain.buildMesh();
     scene.add(this.terrain.group);
     this.landmarks.build();
+    this.volcano = new Volcano(scene, this.terrain);
+    this.canyon = new Canyon(scene, this.terrain, this.colliders);
 
     progress(0.55, 'Himmel und Wasser …');
     await tick();
@@ -67,6 +72,9 @@ export class World {
     const excl = [...this.settlement.exclusions];
     if (this.landmarks.stoneCircle) excl.push({ x: this.landmarks.stoneCircle.x, z: this.landmarks.stoneCircle.z, r: 26 });
     excl.push({ x: PLACES.island.x, z: PLACES.island.z, r: 12 });
+    excl.push({ x: PLACES.volcano.x, z: PLACES.volcano.z, r: PLACES.volcano.R * 0.62 }); // kahler Vulkan
+    const pastures = planPastures(this.terrain);
+    for (const p of pastures) excl.push({ x: p.x, z: p.z, r: 55 }); // Weiden ohne Bäume
     this.vegetation = new Vegetation(scene, this.terrain, excl, q.trees);
     this.terrain.setForestMap(this.vegetation.forestTexture);
 
@@ -78,8 +86,9 @@ export class World {
     this.lightning = new Lightning(scene);
     this.burn = new BurnSystem(scene, this.particles, this.terrain, this.vegetation, this.settlement, q.particles);
 
-    progress(0.86, 'Ziegen verstecken …');
+    progress(0.86, 'Ziegen verstecken, Schafe austreiben …');
     await tick();
+    this.herds = new Herds(scene, this.terrain, pastures);
     this.goats = new Goats(scene, this._goatSpots());
     this.birds = new Birds(scene, [
       { x: PLACES.village.x + 150, y: 90, z: PLACES.village.z - 50, count: 18, range: 350 },
@@ -139,6 +148,7 @@ export class World {
   /** Neustart: Brände löschen, Wetter bleibt */
   reset() {
     this.burn.reset();
+    this.herds.reset();
     this.particles.fire.clear();
     this.particles.smoke.clear();
     this.particles.sparks.clear();
@@ -183,6 +193,9 @@ export class World {
     if (!ctx.paused) {
       this.burn.update(worldDt, ctx.camera.position, w.rain, w.wind, ctx.fireColor);
       this._chimneys(worldDt, ctx.camera.position);
+      const fx = { camPos: ctx.camera.position, particles: this.particles, day: this.sky.day, wind: w.windVec };
+      this.volcano.update(worldDt, fx);
+      this.canyon.update(worldDt, fx);
     }
     this.particles.update(worldDt, w.windVec, this.sky, this.fogDensity);
   }
