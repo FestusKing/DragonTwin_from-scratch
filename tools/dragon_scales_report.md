@@ -43,7 +43,26 @@ Datum: 24.09.2026
 Ein **Wyvern** wie Scales: Die Flügel sind die Arme, dazu zwei Hinterbeine.
 Grösse: ca. 21 m lang, 35,5 m Spannweite.
 
-**Version 5** (aktuell) – im Stil der Drachen aus *Game of Thrones* (nach Bildern von
+**Version 6** (aktuell) – Feinschliff an Kopf, Flügeln, Körper und Schwanz
+(Wunsch des Benutzers: „Kopf, Flügel, Körper und Schwanz, wie er fliegt“).
+Skelett, Gelenke, Anker und Füsse (y = −2,66) sind gleich geblieben.
+
+- **Kopf:** hinten breitere Wangen, die Schnauze läuft schmaler und spitzer zu (Keilform
+  von oben). Stärkerer Brauenwulst, tiefere Augenhöhle, eine Kante vom Auge zur Nase.
+- **Hörner:** dicke Basis, laufen spitz zu (`taper`). Farbe: unten dunkel wie die Haut,
+  zur Spitze hell; die Rillen werden zur Spitze hin glatt. Vorher sahen sie aus wie helle,
+  gleich dicke Stöcke.
+- **Wangen- und Kieferstacheln** zeigen nach hinten statt zur Seite (vorher wie Schnurrhaare).
+  Auf der Nase nur noch **ein** gebogenes Horn (die zwei kleinen Höcker sahen wie Pickel aus).
+- **Flügel:** Die Flughaut ist stärker gewölbt (wie ein Segel im Wind) statt fast flach,
+  feine Falten etwas deutlicher. Die Fingerknochen haben 10 statt 12 Kanten rundherum
+  (spart Dreiecke, man sieht es nicht).
+- **Rückenstacheln** im Rhythmus gross – klein – gross, dazu zwei Reihen kleiner Stacheln
+  links und rechts der Mitte (Rücken und Schwanzansatz).
+- **Bauchplatten** wie beim Krokodil: quer liegende Reihen, jede in Spalten geteilt,
+  mit dunklen Fugen (vorher fast glatt).
+
+**Version 5** – im Stil der Drachen aus *Game of Thrones* (nach Bildern von
 Sammelfiguren, die der Benutzer geschickt hat). Es ist ein eigenes Modell, nichts wurde
 kopiert; nur der Stil (schwarz-rot, riesige Fledermaus-Flügel) ist ähnlich.
 
@@ -95,12 +114,12 @@ Schon seit Version 3:
 | Haut: Rumpf, Hals, Oberkopf, Schwanz, Beine, Arme, Muskeln (verschmolzen) | 42 000 |
 | Unterkiefer (klappbar) | 3 776 |
 | Zehen + Fusskrallen (beide Seiten) | 3 904 |
-| Finger + Daumen + Daumenkrallen (beide Seiten) | 12 232 |
+| Finger + Daumen + Daumenkrallen (beide Seiten) | 10 304 |
 | 2 Flughäute | 3 990 |
-| Hörner und Stacheln (Kopf, Rücken, Schwanz-Seiten, Schwanzspitze) | 10 772 |
+| Hörner und Stacheln (Kopf, Rücken, Schwanz-Seiten, Schwanzspitze) | 12 500 |
 | Zähne (oben und unten) | 2 244 |
 | Augen (mit Schlitz-Pupille) | 704 |
-| **Summe (Version 5.2)** | **79 622** |
+| **Summe (Version 6)** | **79 422** |
 
 Alles wird im Skript aus Formeln berechnet: Querschnitte entlang einer Mittellinie,
 Röhren für Beine, Finger und Hörner, Ellipsoide für Muskeln, eine gewölbte
@@ -129,24 +148,24 @@ Flughaut mit gewellter Hinterkante.
 | Punkt | Wert |
 |---|---|
 | Datei | `public/models/dragon_scales.glb` |
-| Grösse | 5 662 852 Bytes (ca. 5,7 MB) |
-| SHA256 | `c11859b5b667135c2eea1fdd1713a077cdb43f484e778a585e647dd15a2c54d4` |
+| Grösse | 5 831 060 Bytes (ca. 5,8 MB) |
+| SHA256 | `06b3c27974eea2d9a621406a48c695c2f9e4567b2f7a42b1564edb962af25904` |
 | Meshes | 1 (`Drache`), 7 Materialien → 7 Draw-Calls |
-| Dreiecke / Punkte | 79 622 / 46 208 |
+| Dreiecke / Punkte | 79 422 / 46 408 |
 | Knochen | 50, alle verformend, max. 4 Knochen pro Punkt |
 | Texturen (JPEG in der GLB) | Haut: Farbe + Normal-Map je 2048 × 2048; Flughaut: Farbe + Normal-Map je 2048 × 1024 |
 | Extras | Tangenten (für die Normal-Maps), 3 Ankerpunkte, Erweiterung `KHR_materials_emissive_strength` (leuchtende Augen) |
 | Animationen | keine |
-| Masse | Länge 21,09 m, Spannweite 35,48 m, Höhe 6,88 m (mit Hörnern) |
+| Masse | Länge 21,08 m, Spannweite 35,48 m, Höhe 7,01 m (mit Hörnern) |
 
 ### Prüfungen
 
 - **Khronos glTF-Validator:** **0 Fehler, 0 Warnungen**, 3 Infos.
   Die 3 Infos heissen „leerer Knoten“. Das sind die gewollten Ankerpunkte.
-- **Wieder eingelesen mit Blender (bpy):** 1 Mesh, 79 622 Dreiecke, 50 Knochen,
+- **Wieder eingelesen mit Blender (bpy):** 1 Mesh, 79 422 Dreiecke, 50 Knochen,
   7 Materialien, 4 Bilder, 3 Anker. Das passt zum Export.
 - **Vorschaubilder mit Cycles** (schräg, Seite, oben, vorne, hinten, Kopf, Kopf von der
-  Seite, Porträt, Schulter, von unten): Form, Texturen und Farben stimmen, keine Löcher in der Haut.
+  Seite, oben, vorne und schräg, Porträt, Schulter, von unten): Form, Texturen und Farben stimmen, keine Löcher in der Haut.
 - **Test-Pose:** Flügel hoch, Maul auf, Hals und Schwanz zur Seite, Beine angezogen.
   Die Haut verformt sich sauber, und die Flughaut bleibt am Körper.
 - Die Vorschaubilder sind **nicht** im Repo (sie gehören nicht zur Liste der Dateien).
@@ -194,6 +213,27 @@ Flughaut mit gewellter Hinterkante.
   absichtlich dick; mit den grossen Flügeln wirkte er wie ein Fass. Jetzt schlanker:
   Bauch zur Hüfte hochgezogen (Taille), Brust etwas schmaler (bleibt tief für die
   Flugmuskeln), schlankere Oberschenkel, dünnerer Hals- und Schwanzansatz.
+- Version 6 – **Flug-Animation** (`src/dragon/Dragon.js`):
+  - **Fehler behoben:** Der Kopf schaute in Kurven nach aussen statt in die Kurve, und der
+    Schwanz schwang falsch herum. Grund: falsches Vorzeichen bei der Drehrate. Jetzt rechnet
+    der Drache seine Drehraten selbst aus der Drehung seit dem letzten Bild (im Körper-System).
+    Das stimmt in jeder Lage, auch in der Schräglage und im Menü.
+  - **Beine:** Im Flug nach hinten gestreckt, Zehen zeigen nach hinten (wie ein Adler).
+    Vorher hingen die Füsse wie Fäuste unter dem Bauch. Im Landeanflug (tief und langsam)
+    kommen die Beine nach vorne (`agl` aus der Physik).
+  - **Flügelschlag:** oben weit ausholen, unten weniger tief; die Hand verdreht sich
+    (Abschlag: Vorderkante runter = Vortrieb, Aufschlag: Vorderkante hoch), die Finger
+    fächern im Abschlag auf. Körper steigt beim Abschlag, der Hals gleicht aus.
+  - **Gleitflug:** leichte V-Form, Spitzen biegen sich hoch, kleine Korrekturen (lebendig).
+  - **Kurven:** Kopf bleibt in der Schräglage waagrecht (wie bei Greifvögeln) und schaut in
+    die Kurve, der Schwanz folgt der Flugbahn wie ein Ruder.
+  - Bei hohem Tempo flattert die Hinterkante der Flughaut leicht.
+  - Geprüft mit Bildern aller Flügelschlag-Phasen, Kurve von oben, Stehen, Laufen, Schweben,
+    Sturzflug, einem Testflug mit Tasten (keine Fehler, keine ungültigen Werte) und
+    Bildschirmfotos im Spiel (Fliegen, Gegenlicht, Reiter-Sicht, Feuer).
+  - Das neue Modell lag zum Testen zuerst als `dragon_scales_neu.glb` neben dem alten
+    (Regel in `CLAUDE.md`). Nach den Tests hat es das alte ersetzt; die alte Version ist in
+    der Git-Geschichte (Commit `e9b2758`).
 - Getestet mit Bildschirmfotos im echten Spiel (Chromium ohne Grafikkarte).
   Dafür wurden die Projekt-Pakete mit `npm ci --ignore-scripts` installiert
   (Prüfsummen aus `package-lock.json`, keine Installations-Skripte).
@@ -236,9 +276,9 @@ Flughaut mit gewellter Hinterkante.
   Details (Hautfalten, einzeln geformte Schuppen). Das Maul-Innere ist schlicht,
   die Flughaut ist eine dünne Fläche.
 - Die Bildrate auf einem echten Computer mit Grafikkarte konnte hier nicht
-  gemessen werden (Test lief mit Software-Grafik). Das Modell hat etwa 26 % mehr
-  Dreiecke als Version 2 (79 622 statt 63 374, Ziel war 30 000–80 000), die Datei ist
-  5,7 MB gross (Ziel unter 15 MB). 7 statt 6 Draw-Calls.
+  gemessen werden (Test lief mit Software-Grafik). Das Modell hat etwa 25 % mehr
+  Dreiecke als Version 2 (79 422 statt 63 374, Ziel war 30 000–80 000), die Datei ist
+  5,8 MB gross (Ziel unter 15 MB). 7 statt 6 Draw-Calls.
 - Die grossen Flügel (35,5 m) passen in der normalen Verfolger-Kamera gut ins Bild
   (geprüft beim Geradeausflug); enge Kurven wurden nicht einzeln getestet.
 - In der Reiter-Sicht sieht man jetzt mehr vom Hals und die grossen Hörner vor sich.

@@ -135,6 +135,9 @@ Für eine fertige Version zum Hochladen gibt es `npm run build`. Das Ergebnis li
 ### Technik
 - **Drache als 3D-Modell (GLB)** mit Skelett: 50 Knochen bewegen Flügel, Hals, Kiefer, Schwanz und Beine.
   Im Gegenlicht scheint die Flughaut rötlich durch.
+- **Flug-Animation wie bei grossen Vögeln:** Beine im Flug nach hinten angelegt (beim Landeanflug nach vorne),
+  kräftiger Flügelschlag mit Verdrehen der Hand, Gleitflug in leichter V-Form. In Kurven schaut der Kopf
+  in die Kurve und bleibt waagrecht, der Schwanz folgt der Flugbahn.
 - **Bäume aus „Karten“:** kleine Flächen mit Blätter- bzw. Nadel-Textur, deren Ränder ausgestanzt werden → blättrige Umrisse.
 - **Luft-Perspektive:** Dunst ist unten dichter als oben, in Richtung Sonne leuchtet er warm. Nebel-Wetter liegt am Boden.
 - **Berge mit Erosion:** scharfe Hauptgrate, glatte Flanken statt „Haifischzähne“.
@@ -286,7 +289,7 @@ Die „Stretch Goals“ aus der Vorgabe gehören **nicht** zum Test Flight. Sie 
 **Vereinfacht wurde:**
 
 - **Wasser-Spiegelung:** Das Wasser spiegelt den Himmel, aber nicht die Berge. Das ist viel schneller.
-- **Drachen-Modell:** Der Drache ist ein **Wyvern** wie in DragonTwin: Die Flügel sind die Arme, es gibt nur zwei Hinterbeine. Ein Skript baut ihn in Blender aus Formeln (ca. 79 000 Dreiecke, gebackene Schuppen-Texturen). Rumpf, Kopf, Beine, Arme und Muskeln sind zu einer einzigen Haut verschmolzen. Er hat einen Hals in S-Form, eine Krone aus Hörnern, Reisszähne, riesige Fledermaus-Flügel mit tiefen Bögen (ca. 35 m Spannweite) und Stacheln bis zur Schwanzspitze – im Stil der Drachen aus *Game of Thrones*. Im Flug streckt er den Hals nach vorne. Ein von Hand modellierter Drache (z. B. „Scales“ aus dem Film *Sintel*) wäre noch detailreicher – der ist aber nur mit Abo herunterladbar.
+- **Drachen-Modell:** Der Drache ist ein **Wyvern** wie in DragonTwin: Die Flügel sind die Arme, es gibt nur zwei Hinterbeine. Ein Skript baut ihn in Blender aus Formeln (ca. 79 000 Dreiecke, gebackene Schuppen-Texturen). Rumpf, Kopf, Beine, Arme und Muskeln sind zu einer einzigen Haut verschmolzen. Er hat einen Hals in S-Form, einen keilförmigen Kopf mit einer Krone aus Hörnern, Reisszähne, Bauchplatten wie ein Krokodil, riesige Fledermaus-Flügel mit tiefen Bögen (ca. 35 m Spannweite) und Stacheln bis zur Schwanzspitze – im Stil der Drachen aus *Game of Thrones*. Im Flug streckt er den Hals nach vorne. Ein von Hand modellierter Drache (z. B. „Scales“ aus dem Film *Sintel*) wäre noch detailreicher – der ist aber nur mit Abo herunterladbar.
 - **Keine Umgebungsverdeckung am Bildschirm (SSAO):** Dafür müsste die ganze Szene mit allen Bäumen ein zweites Mal gezeichnet werden. Stattdessen: dunklerer Waldboden (Wald-Karte) und dunklere Innenseiten der Baumkronen.
 - **Der Test lief ohne Grafikkarte:**
   - Getestet wurde automatisch in einem Browser ohne GPU.

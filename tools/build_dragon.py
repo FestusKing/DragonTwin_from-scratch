@@ -395,9 +395,9 @@ BODY_ST = [
     (1.2, 1.12, 1.1, 1.22, 2.2), (2.2, 1.08, 1.06, 1.14, 2.2),                                   # Brust (Kiel, Flugmuskeln)
     (2.9, 1.0, .98, 1.02, 2.1), (3.5, .86, .84, .86, 2.0), (4.3, .74, .74, .72, 2.0),          # Halsansatz
     (5.2, .64, .65, .60, 2.0), (6.0, .58, .60, .53, 2.1), (6.6, .60, .60, .50, 2.3),
-    (7.0, .72, .66, .42, 2.8), (7.5, .74, .66, .36, 3.0), (8.0, .64, .58, .30, 3.0),          # Schädel, Augen
-    (8.5, .52, .50, .25, 3.0), (9.1, .42, .43, .20, 2.9), (9.55, .36, .37, .17, 2.7),         # Schnauze
-    (9.8, .28, .28, .14, 2.4), (9.9, .14, .13, .08, 2.0),
+    (7.0, .76, .66, .42, 2.8), (7.5, .79, .65, .36, 3.0), (8.0, .65, .57, .30, 3.0),          # Schädel, Augen
+    (8.5, .49, .47, .25, 2.9), (9.1, .35, .38, .20, 2.8), (9.55, .25, .31, .16, 2.6),         # Schnauze (Keil)
+    (9.8, .16, .22, .12, 2.3), (9.9, .07, .09, .06, 2.0),
 ]
 R_BODY = 48
 # Kopf kürzen: Alles ab y = 6.8 (Richtung Schnauze) wird in Längsrichtung zusammengeschoben
@@ -489,8 +489,9 @@ def surface_detail(y, phi, rt):
         for side in (1, -1):
             def dp(p0):
                 return wrap(phi - (p0 if side > 0 else TAU - p0))
-            d += 0.075 * gauss(y - 8.05, 0.28) * gauss(dp(math.pi - 0.9), 0.2)        # Brauenwulst
-            d -= 0.045 * gauss(y - EYE_Y, 0.12) * gauss(dp(EYE_PHI), 0.16)             # Augenhöhle
+            d += 0.10 * gauss(y - 8.0, 0.26) * gauss(dp(math.pi - 0.9), 0.2)          # Brauenwulst
+            d -= 0.06 * gauss(y - EYE_Y, 0.12) * gauss(dp(EYE_PHI), 0.16)              # Augenhöhle
+            d += 0.05 * smooth(8.15, 8.5, y) * (1 - smooth(9.3, 9.65, y)) * gauss(dp(math.pi - 0.72), 0.09)   # Schnauzenkante
             d += 0.03 * gauss(y - 9.55, 0.08) * gauss(dp(math.pi - 0.55), 0.18)       # Nüstern-Wulst
             d -= 0.028 * gauss(y - 9.6, 0.035) * gauss(dp(math.pi - 0.55), 0.07)      # Nasenloch
             d += 0.05 * gauss(y - 7.45, 0.25) * gauss(dp(math.pi / 2 - 0.1), 0.3)     # Wangenknochen
@@ -710,7 +711,7 @@ def build_arm_R(wp):
         L = fc.length
         # dick am Ansatz, Knöchel in der Mitte, dünne Spitze
         prof_f = Pchip([0, 0.12 * L, 0.44 * L, 0.5 * L, 0.56 * L, 0.95 * L, L], [0.15, 0.11, 0.07, 0.085, 0.062, 0.028, 0.014])
-        tube(fingers, fc, prof_f, 12, vec3(0, 0, 1),
+        tube(fingers, fc, prof_f, 10, vec3(0, 0, 1),
              lambda s, t, k=k, L=L: finger_weights(k, (s - 0.08) / (L - 0.14)), "Haut", step=0.12, cap1=True)
     # Daumen mit Kralle (zeigt nach vorne)
     td = wp["thumb"]
@@ -814,7 +815,7 @@ def build_membrane_R(B, chain, wp):
             else:
                 p = ((1 - v) * c0(u) + v * c1(u) + (1 - u) * d0(v) + u * d1(v)
                      - ((1 - u) * (1 - v) * c0(0) + u * (1 - v) * c0(1) + (1 - u) * v * c1(0) + u * v * c1(1)))
-                p = p + vec3(0, 0, 0.16 * math.sin(math.pi * u) * math.sin(math.pi * v))   # leicht gewölbt
+                p = p + vec3(0, 0, 0.3 * math.sin(math.pi * u) * math.sin(math.pi * v))    # gewölbt wie ein Segel
             w = wmix((1 - v, wa(u)), (v, wmix((1 - u, body_w(1.0)), (u, finger_weights(4, 1.0)))),
                      (1 - u, body_w(v)), (u, finger_weights(4, v)),
                      (-(1 - u) * (1 - v), wa(0.0)), (-u * (1 - v), wa(1.0)),
@@ -872,7 +873,7 @@ def build_membrane_R(B, chain, wp):
                     e = Fa + (Fb - Fa) * w_
                     p = (1 - w_) * (W + (Fa - W) * t) + w_ * (W + (Fb - W) * t)
                     p = p + t * SCALLOP * chord * math.sin(math.pi * w_) * nrm(W - e)               # tiefe Bögen hinten
-                    p = p + vec3(0, 0, 0.05 * chord * math.sin(math.pi * w_) * t ** 0.7 * (1 - 0.3 * t))
+                    p = p + vec3(0, 0, 0.085 * chord * math.sin(math.pi * w_) * t ** 0.7 * (1 - 0.3 * t))
                 wgt = wmix((1 - w_, finger_weights(k + 1, t)), (w_, finger_weights(k + 2, t)))
                 gw[i, j] = V(p, wgt, (p[0], p[1]), (k + 1.0, t))
         cw = V(W, {"hand_R": 1.0}, (W[0], W[1]), (k + 1.0, 0.0))
@@ -901,9 +902,10 @@ def build_horns(B, J, chain):
     part = Part("Hoerner", "horn")
     X = vec3(1, 0, 0)
 
-    def horn(p0, p1, p2, r0, weights, R=10, n=10, flat=(1.0, 1.0), uref=vec3(0, 0, 1), mat="Horn"):
+    def horn(p0, p1, p2, r0, weights, R=10, n=10, flat=(1.0, 1.0), uref=vec3(0, 0, 1), mat="Horn", taper=1.1):
+        # taper > 1: dicke Basis, schnell dünner, spitze Spitze (wie echte Hörner)
         cv = Curve(bezier(p0, p1, p2, 20), smooth=False, n=2)
-        tube(part, cv, lambda s: r0 * (1 - s / cv.length) ** 1.1 + 0.004, R, uref, lambda s, t: weights,
+        tube(part, cv, lambda s: r0 * (1 - s / cv.length) ** taper + 0.004, R, uref, lambda s, t: weights,
              mat, flat=flat, n_rings=n, cap0=True)
 
     def spike(base, d, L, r0, weights, bend=None, R=8, n=7):
@@ -924,21 +926,21 @@ def build_horns(B, J, chain):
             return q, T, U, nrm(q - B.curve.at(s))
         # 1) grosse Hörner am Hinterkopf, weit nach hinten und oben geschwungen
         base, T, U, n_out = at(7.1, math.pi - 0.45)
-        horn(base - U * 0.2 + T * 0.08, base - T * 1.1 + U * 0.7 + out * 0.3, base - T * 3.0 + U * 0.55 + out * 0.65,
-             0.22, head, R=12, n=18)
+        horn(base - U * 0.2 + T * 0.08, base - T * 1.1 + U * 0.75 + out * 0.3, base - T * 3.0 + U * 0.7 + out * 0.55,
+             0.27, head, R=12, n=20, taper=1.6)
         # 2) zweites Paar, seitlich nach hinten und leicht nach unten
         base, T, U, n_out = at(7.25, math.pi / 2 + 0.8)
-        horn(base - out * 0.12 + T * 0.05, base - T * 0.7 + out * 0.45 + U * 0.1, base - T * 1.9 + out * 0.8 - U * 0.15,
-             0.15, head, R=10, n=14)
+        horn(base - out * 0.12 + T * 0.05, base - T * 0.8 + out * 0.35 + U * 0.1, base - T * 2.0 + out * 0.5 - U * 0.1,
+             0.18, head, R=10, n=16, taper=1.6)
         # 3) Krone: kleinere Hörner am Rand des Hinterkopfs
         for y, p, L, r in ((6.95, math.pi - 0.15, 0.75, 0.075), (7.0, math.pi / 2 + 1.15, 0.85, 0.08),
                            (7.1, math.pi / 2 + 0.5, 0.7, 0.07), (6.9, math.pi / 2 + 0.25, 0.5, 0.055)):
             base, T, U, n_out = at(y, p)
             spike(base, nrm(-T + n_out * 0.55), L, r, head, bend=-T * 0.15)
         # 4) Wangen-Stacheln (Kragen hinter dem Maul)
-        for y, dp, L in ((7.15, 0.0, 0.75), (7.4, -0.12, 0.6), (7.65, -0.2, 0.42)):
+        for y, dp, L in ((7.15, 0.0, 0.8), (7.4, -0.12, 0.6), (7.65, -0.2, 0.4)):
             base, T, U, n_out = at(y, math.pi / 2 + dp)
-            spike(base, nrm(-T + out * 0.6 - U * 0.15), L, 0.065, head, bend=-T * 0.1)
+            spike(base, nrm(-T + out * 0.32 - U * 0.1), L, 0.075, head, bend=out * 0.12 - T * 0.1)
         # 5) Stacheln auf dem Brauenwulst
         for y, L in ((7.6, 0.38), (7.85, 0.28), (8.1, 0.2)):
             base, T, U, n_out = at(y, math.pi - 0.95)
@@ -947,32 +949,48 @@ def build_horns(B, J, chain):
         for y, L in ((7.35, 0.42), (7.7, 0.36), (8.05, 0.28)):
             c, T, Sd, U, rx, rt, rb = J.ring(y)
             base = J.point(y, ph(math.pi / 2 - 0.5))
-            d = nrm(-T + out * 0.5 - U * 0.35)
-            horn(base - d * 0.04, base + d * L * 0.5, base + d * L - U * 0.04, 0.045, {"jaw": 1.0}, R=6, n=5)
+            d = nrm(-T + out * 0.3 - U * 0.3)
+            horn(base - d * 0.04, base + d * L * 0.5, base + d * L - U * 0.04, 0.05, {"jaw": 1.0}, R=6, n=5, taper=1.4)
         for y, L in ((8.55, 0.26), (8.95, 0.2)):
             c, T, Sd, U, rx, rt, rb = J.ring(y)
             base = J.point(y, ph(0.4))
             spike(base, nrm(-T * 0.7 - U + out * 0.25), L, 0.045, {"jaw": 1.0}, R=6, n=5)
-    # 7) Horn auf der Nase und zwei kleine Höcker dahinter (Mitte, nicht gespiegelt)
-    for y, L, r in ((9.3, 0.26, 0.1), (8.95, 0.15, 0.07), (8.65, 0.1, 0.055)):
+    # 7) ein kleines, nach hinten gebogenes Horn auf der Nase (Mitte, nicht gespiegelt)
+    for y, L, r in ((9.28, 0.24, 0.085),):
         s = B.s_of_y(y)
         T, Sd, U = B.frame(s)
         base = B.point(s, math.pi)
-        horn(base - U * 0.06, base + U * L * 0.55 - T * L * 0.2, base + U * L * 0.8 - T * L * 0.8, r, head, R=8, n=6)
+        horn(base - U * 0.06, base + U * L * 0.6 - T * L * 0.1, base + U * L * 0.8 - T * L * 0.7, r, head, R=8, n=7,
+             taper=1.5)
     # 8) Rückenstacheln (flach wie Flossen), am Hals und an den Schultern am grössten,
     #    zum Schwanz hin kleiner; nicht im Sattel-Bereich
-    y = 6.55
+    y, i = 6.55, 0
     while y > TAIL_END + 0.5:
         s = B.s_of_y(y)
         rx, rt, rb, _ = B.params(y)
-        h = 0.15 + 0.7 * rt
+        h0 = 0.15 + 0.72 * rt
+        h = h0 * (1.0 if i % 2 == 0 else 0.7)            # Rhythmus: gross – klein – gross …
         if not (SADDLE[0] < y < SADDLE[1]):
             T, Sd, U = B.frame(s)
             top = B.point(s, math.pi)
             d = nrm(U * math.cos(0.95) - T * math.sin(0.95))
-            horn(top - U * 0.3 * h, top + d * h * 0.5, top + d * h - T * 0.2 * h, 0.38 * h,
-                 chain.weights(s), R=8, n=6, flat=(1.0, 0.25), uref=X, mat="Stachel")
-        y -= max(0.35, 0.75 * h + 0.12)
+            horn(top - U * 0.3 * h, top + d * h * 0.5, top + d * h - T * 0.25 * h, 0.38 * h,
+                 chain.weights(s), R=8, n=6, flat=(1.0, 0.25), uref=X, mat="Stachel", taper=1.3)
+            i += 1
+        y -= max(0.3, 0.6 * h0 + 0.1)
+    # 8a) zwei Reihen kleiner Stacheln links und rechts der Mitte (Rücken und Schwanzansatz)
+    y = SADDLE[0] - 0.2
+    while y > -5.2:
+        s = B.s_of_y(y)
+        rx, rt, rb, _ = B.params(y)
+        T, Sd, U = B.frame(s)
+        L = 0.1 + 0.2 * rt
+        for side in (1, -1):
+            base = B.point(s, math.pi - 0.42 * side)
+            d = nrm(U * 0.75 + Sd * side * 0.45 - T * 0.7)
+            horn(base - d * 0.06, base + d * L * 0.5, base + d * L - T * 0.2 * L, 0.35 * L, chain.weights(s),
+                 R=6, n=4, flat=(1.0, 0.4), uref=X, mat="Stachel", taper=1.3)
+        y -= 0.62
     # 8b) Stacheln an den Seiten des Schwanzes (flach, schräg nach hinten), wie ein gezackter Saum
     y = -4.0
     while y > TAIL_END + 0.9:
@@ -1617,7 +1635,9 @@ def pat_skin(nb, na, belly_edge, mouth="none", plate_k=0.55):
     return r, g, bl, h
 
 
-def pat_horn(nb, base_dark=0.3, tip_dark=0.42, rings=0.06, ring_amp=0.06):
+def pat_horn(nb, base_dark=0.3, tip_dark=0.42, rings=0.06, ring_amp=0.06, grad=0.0):
+    """Horn/Kralle: Rillen (Jahresringe), Längsstreifen. grad > 0: unten dunkel, zur Spitze hell
+    (die Rillen werden zur Spitze hin glatt)."""
     a, b, _ = nb.sep(nb.uv("Pattern"))
     t, L, _ = nb.sep(nb.uv("Info"))
     wob = nb.noise(nb.comb(nb.mul(a, 3.0), nb.mul(t, 3.0)), 1.0, 2.0)
@@ -1626,6 +1646,10 @@ def pat_horn(nb, base_dark=0.3, tip_dark=0.42, rings=0.06, ring_amp=0.06):
     streak = nb.noise(nb.comb(nb.mul(a, 24.0), nb.mul(t, 2.0)), 1.0, 2.0)
     val = nb.sub(0.95, nb.mul(nb.sub(1.0, nb.ss(0.0, 0.15, t)), base_dark))
     val = nb.sub(val, nb.mul(nb.ss(0.55, 1.0, t), tip_dark))
+    if grad > 0:
+        smooth_tip = nb.sub(1.0, nb.mul(nb.ss(0.35, 0.85, t), 0.8))
+        ring = nb.mul(ring, smooth_tip)
+        val = nb.sub(val, nb.mul(nb.sub(1.0, nb.ss(0.05, 1.0, t)), grad))
     val = nb.add(val, nb.add(nb.mul(ring, ring_amp), nb.mul(nb.sub(streak, 0.5), 0.12)))
     h = nb.add(nb.mul(ring, 0.6), nb.mul(streak, 0.4))
     return val, nb.mul(val, 0.97), nb.mul(val, 0.9), h
@@ -1684,7 +1708,7 @@ def pat_membrane(nb):
     val = nb.sub(nb.add(val, nb.mul(nb.sub(n2, 0.5), 0.08)), nb.mul(fib, 0.035))
     val = nb.mul(val, nb.sub(1.0, nb.mul(thick, 0.3)))
     v = nb.add(vb, nb.mul(vs, 0.5))
-    h = nb.add(nb.add(vb, nb.mul(vs, 0.45)), nb.add(nb.mul(fib, 0.12), nb.mul(thick, 0.6)))
+    h = nb.add(nb.add(vb, nb.mul(vs, 0.45)), nb.add(nb.mul(fib, 0.22), nb.mul(thick, 0.6)))
     return nb.add(val, nb.mul(v, 0.04)), nb.sub(val, nb.mul(v, 0.1)), nb.sub(val, nb.mul(v, 0.1)), h
 
 
@@ -1725,11 +1749,15 @@ def pat_body3d(nb, na=40.0):
     edge, rnd, hs = nb.mix(e3, e_row, k), nb.mix(r3, r_row, k), nb.mix(h_3d, h_row, k)
     crev = nb.ss(0.07, 0.0, edge)                         # schmale Fugen zwischen den Schuppen
     sval = nb.add(0.9, nb.add(nb.mul(crev, -0.16), nb.mul(nb.sub(rnd, 0.5), 0.1)))
-    # Bauchplatten
+    # Bauchplatten: quer liegende Reihen, jede in Spalten geteilt (wie beim Krokodil), dunkle Fugen
     pf = nb.m("FRACT", nb.mul(b, na * 0.55))
-    pdome = nb.ss(0.0, 0.07, pf)
-    hp = nb.mul(pdome, nb.add(0.6, nb.mul(pf, 0.4)))
-    pval = nb.add(0.84, nb.mul(pdome, 0.1))
+    ac = nb.sub(around, nb.m("ROUND", around))            # −0.5..0.5, 0 = Bauchmitte
+    cf = nb.m("FRACT", nb.add(nb.mul(ac, 34.0), 0.5))
+    pdome = nb.mul(nb.ss(0.0, 0.08, pf), nb.ss(1.0, 0.9, pf))
+    cdome = nb.mul(nb.ss(0.0, 0.1, cf), nb.ss(1.0, 0.9, cf))
+    plate = nb.mul(pdome, nb.add(0.45, nb.mul(cdome, 0.55)))
+    hp = nb.mul(plate, nb.add(0.65, nb.mul(pf, 0.35)))
+    pval = nb.add(0.66, nb.mul(plate, 0.26))
     val, h = nb.mix(sval, pval, belly), nb.mix(hs, hp, belly)
     groove = nb.ss(0.2, 0.0, nb.m("ABSOLUTE", nb.sub(belly, 0.5)))       # Rille an der Bauchkante
     val = nb.mul(val, nb.sub(1.0, nb.mul(groove, 0.25)))
@@ -1753,7 +1781,7 @@ PATTERNS = {
     "body3d": (lambda nb: pat_body3d(nb), 0.02),
     "jaw": (lambda nb: pat_skin(nb, 30.0, JAW_BELLY_COLS / R_JAW, "jaw"), 0.015),
     "limb": (lambda nb: pat_skin(nb, 26.0, 0.09), 0.015),
-    "horn": (lambda nb: pat_horn(nb), 0.008),
+    "horn": (lambda nb: pat_horn(nb, 0.05, 0.12, 0.07, 0.05, grad=0.7), 0.008),
     "claw": (lambda nb: pat_horn(nb, 0.0, 0.0, 0.03, 0.02), 0.004),
     "tooth": (lambda nb: pat_tooth(nb), 0.002),
     "eye": (lambda nb: pat_eye(nb), 0.002),
@@ -2174,6 +2202,9 @@ def check(args):
         "vorschau_vorne": ((0, 32, 4), (0, 0, 0.5), 32),
         "vorschau_kopf": ((4.6, 11.6, 3.4), (0, 8.0, 2.3), 42),
         "vorschau_kopf_seite": ((6.5, 8.0, 2.6), (0, 7.9, 2.4), 45),
+        "vorschau_kopf_oben": ((0.01, 7.9, 9.5), (0, 7.9, 2.3), 45),
+        "vorschau_kopf_vorne": ((0.6, 16.5, 3.6), (0, 8.0, 2.2), 55),
+        "vorschau_kopf_34": ((5.2, 11.2, 5.2), (0, 7.8, 2.3), 42),
         "vorschau_portrait": ((-13, 15, 4.5), (0, 2.0, 1.0), 32),
         "vorschau_hinten": ((-5, -17, 7.5), (0, 0.5, 0.3), 30),
         "vorschau_schulter": ((6.5, 6.5, 4.0), (1.3, 1.2, 0.2), 32),
