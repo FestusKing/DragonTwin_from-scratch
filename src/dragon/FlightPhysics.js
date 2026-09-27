@@ -556,6 +556,7 @@ export class FlightPhysics {
     out.yawRate = this.yawRate;
     out.roll = this.lastInput.roll || 0;
     out.speed = this.speed;
+    out.agl = this.agl;
     out.hover = this.hovering || this.frozen ? 1 : 0;
     out.grounded = this.grounded ? 1 : 0;
     out.walk = this.grounded ? Math.min(1, Math.abs(this.walkSpeed) / 6) : 0;

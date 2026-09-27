@@ -473,6 +473,7 @@ export class Game {
     this.physics.hovering = false;
     this.physics.grounded = false;
     this.physics.speed = speed;
+    this.physics.agl = 120;
   }
 
   _updateShowcaseDragon(dt) {
@@ -488,6 +489,7 @@ export class Game {
     this.physics.flapPhase = (this.physics.flapPhase + dt * 2.1) % 1;
     this.physics.hovering = true;
     this.physics.speed = 0;
+    this.physics.agl = 55;
   }
 
   _rigTarget() {
