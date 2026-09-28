@@ -1,7 +1,12 @@
-// Vergleicht die Flugbahnen: Browser-Spiel (JS) gegen C++-Version.
+// Vergleicht die Flugbahnen: Browser-Spiel (JS) gegen C++-Version (Unreal) oder C#-Version (s&box).
 // Grenzen: Position 5 cm, Drehung 0.1°, gleiche Ereignisse (Flügelschlag, Landung …).
+// Aufruf: node compare.mjs       → JS gegen C++ (<name>.cpp.txt)
+//         node compare.mjs cs    → JS gegen C#  (<name>.cs.txt, von sbox/Tests/run_all.sh)
 import fs from 'node:fs';
 import { SCENARIOS } from './scenarios.mjs';
+
+const OTHER = process.argv[2] === 'cs' ? 'cs' : 'cpp';
+const LABEL = OTHER === 'cs' ? 'C#-Version (s&box)' : 'C++-Version';
 
 const OUT = new URL('./out/', import.meta.url);
 const read = (f) => fs.readFileSync(new URL(f, OUT), 'utf8').trim().split('\n').map((l) => l.split(' ').map(Number));
@@ -11,7 +16,7 @@ let ok = true;
 console.log('\nFlug             Bilder  max. Abstand   max. Tempo-Diff.  max. Drehung  Ereignisse  Boden/Schweben  Ergebnis');
 for (const sc of SCENARIOS) {
   const A = read(`${sc.name}.js.txt`);
-  const B = read(`${sc.name}.cpp.txt`);
+  const B = read(`${sc.name}.${OTHER}.txt`);
   let dPos = 0;
   let dVel = 0;
   let dAng = 0;
@@ -36,5 +41,5 @@ for (const sc of SCENARIOS) {
     `${sc.name.padEnd(16)} ${String(n).padStart(6)}  ${dPos.toExponential(2).padStart(10)} m  ${dVel.toExponential(2).padStart(10)} m/s  ${dAng.toExponential(2).padStart(9)}°  ${(evA === evB ? evA : evA + '≠' + evB).padEnd(10)}  ${String(flagDiff).padStart(6)}          ${good ? 'gleich ✔' : 'ANDERS ✘'}`
   );
 }
-console.log(ok ? '\nAlle Flüge gleich: Die C++-Version fliegt wie das Browser-Spiel.' : '\nMindestens ein Flug weicht ab!');
+console.log(ok ? `\nAlle Flüge gleich: Die ${LABEL} fliegt wie das Browser-Spiel.` : '\nMindestens ein Flug weicht ab!');
 process.exit(ok ? 0 : 1);

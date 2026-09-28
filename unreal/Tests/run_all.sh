@@ -14,3 +14,9 @@ node --import ./js_stubs/register.mjs run_js.mjs
 NAMES=$(node -e "import('./scenarios.mjs').then((m) => console.log(m.SCENARIOS.map((s) => s.name).join(' ')))")
 ./out/flight_test out/ $NAMES
 node compare.mjs
+# 3) Falls das .NET-SDK da ist: auch die C#-Version für s&box prüfen (sbox/Tests/)
+if command -v dotnet >/dev/null 2>&1; then
+	sh ../../sbox/Tests/run_all.sh --ohne-js
+else
+	echo "(C#-Version für s&box: übersprungen, dotnet fehlt)"
+fi

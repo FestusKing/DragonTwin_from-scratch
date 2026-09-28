@@ -55,7 +55,11 @@ Zuerst auch `CLAUDE.md` (Regeln, Sicherheit) und `docs/UNREAL.md` (Plan) lesen.
   **Nur gegen eine Nachbildung von Unreal geprüft, nie echt kompiliert** → beim ersten Kompilieren
   mit Unreal 5.8 sind kleine Fehler möglich (API-Änderungen, z. B. bei Enhanced Input).
 
-## Nächster Schritt: Meilenstein 1 „Der Drache fliegt“
+## Meilenstein 1 „Der Drache fliegt“ – ERLEDIGT
+
+Der Claude auf Andrejs PC hat das gemacht: kompiliert ohne Fehler, der Drache fliegt in UE 5.8.3.
+Die Schritte bleiben hier zum Nachschauen. **Als Nächstes:** Git mit LFS (Schritt 6, falls noch nicht
+gemacht), dann Meilenstein 1b (unten).
 
 1. Aus `DragonTwin_from-scratch\unreal\Source\DragonTwinUE\` nach `C:\Projekte\DragonTwinUE\Source\DragonTwinUE\` kopieren:
    den Ordner `Flight\` sowie `DragonPawn.h` und `DragonPawn.cpp`.
@@ -76,6 +80,20 @@ Zuerst auch `CLAUDE.md` (Regeln, Sicherheit) und `docs/UNREAL.md` (Plan) lesen.
 6. Danach Git für das Unreal-Projekt einrichten: **eigenes, neues Repository**, `.gitignore` für
    `Binaries/ Intermediate/ Saved/ DerivedDataCache/ .vs/ *.sln`, **Git LFS** für `.uasset`/`.umap`.
    Keine Dateien über 100 MB.
+
+## Nebenprojekt: Flug-Demo für s&box
+
+Andrej will den Drachen schon auf **sbox.game** hochladen. Dafür gibt es `sbox/` (Anleitung `sbox/README.md`):
+- `sbox/Code/Flight/` – Flugphysik in **C#**, 1:1 wie JS und C++. **Getestet** (12 Flüge gleich,
+  `sh sbox/Tests/run_all.sh`, braucht Node + .NET-SDK 8).
+- `sbox/Code/DragonController.cs` – s&box-Komponente (Tasten, Boden per Trace, Kamera, Anzeige).
+  **Nie mit echtem s&box kompiliert** → beim ersten Start kleine Fehler möglich (Namen in s&box prüfen).
+- Einrichten ohne Klick-Anleitung, soweit möglich: Dateien kopieren, `ProjectSettings/Input.config`
+  ergänzen (Format vorher ansehen), Szene/GameObjects per Datei oder Editor-Werkzeug. Nur das Anlegen
+  des s&box-Projekts selbst macht Andrej im Editor.
+- s&box-Projekt z. B. in `C:\Projekte\DragonSbox`. **Eigener Spielname** vor dem ersten Hochladen.
+- Unreal bleibt das Hauptprojekt. Die Flugphysik gibt es jetzt dreimal (JS, C++, C#): Änderungen
+  immer in allen drei, danach `sh unreal/Tests/run_all.sh`.
 
 ## Offen (später)
 

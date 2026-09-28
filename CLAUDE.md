@@ -30,7 +30,8 @@
 - W = Nase hoch, S = runter (seit Sept. 2026; `invertPitch` = Flugzeug-Steuerung). Die Physik bekommt
   `pitch` (Flug) und `move` (Boden/Schweben, nie umgekehrt) getrennt, dazu `land` (Taste L).
 - Landen (L), Rennen (Boost am Boden), schnellere Reaktion: in `FlightPhysics.js` UND in der C++-Kopie
-  `unreal/Source/DragonTwinUE/Flight/` – danach `sh unreal/Tests/run_all.sh` (muss "gleich ✔" zeigen).
+  `unreal/Source/DragonTwinUE/Flight/` UND in der C#-Kopie `sbox/Code/Flight/` – danach
+  `sh unreal/Tests/run_all.sh` (prüft C++ und, falls `dotnet` da ist, auch C#; muss "gleich ✔" zeigen).
 - Tod: `src/gameplay/DeathSequence.js` bewegt den Drachen selbst (nicht die Flugphysik).
 
 ## Grafik-Effekte (Browser-Version)
@@ -58,6 +59,17 @@
   Die C++-Flugphysik `unreal/Source/DragonTwinUE/Flight/` rechnet im Physik-Raum des Browser-Spiels
   (m, Y oben, −Z vorne). Nach jeder Änderung an ihr oder an `FlightPhysics.js`: `sh unreal/Tests/run_all.sh`
   (vergleicht beide Versionen, braucht nur Node + g++).
+
+## s&box (Flug-Demo, Nebenprojekt)
+
+- Andrej will den Drachen früh auf **sbox.game** hochladen. Ordner `sbox/`, Anleitung `sbox/README.md`.
+  Hauptprojekt bleibt Unreal.
+- `sbox/Code/Flight/` = Flugphysik in C# (double, 1:1 aus der C++-Version, ohne s&box testbar).
+  `sbox/Code/DragonController.cs` = s&box-Komponente (Tasten, Boden-Trace, Kamera). Nur gegen eine
+  Nachbildung (`sbox/Tests/ControllerCheck/SboxStub.cs`) kompiliert, nie mit echtem s&box.
+- s&box-Raum: Zoll (1 m = 39,37), X vorne, Y links, Z oben. Umrechnung nur in `DragonSpace.cs`.
+- Test: `sh sbox/Tests/run_all.sh` (Node + .NET-SDK 8). In der Cloud: `apt-get install dotnet-sdk-8.0`
+  (mit Andrejs Erlaubnis installiert). s&box selbst läuft nur auf Andrejs PC.
 
 ## Sicherheit (vom Nutzer so gewollt)
 

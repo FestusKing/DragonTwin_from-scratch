@@ -1,0 +1,19 @@
+<!-- NUR FÜR DEN TEST (nicht nach s&box kopieren!)
+     Kleines Konsolen-Programm: rechnet die C#-Flugphysik ohne s&box, mit den Test-Flügen
+     aus unreal/Tests/. Braucht nur das .NET-SDK (dotnet). Aufruf: sh sbox/Tests/run_all.sh -->
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- genau die Dateien, die auch in s&box laufen (nur der Flight-Ordner, ohne s&box-Teile) -->
+    <Compile Include="../../Code/Flight/*.cs" />
+  </ItemGroup>
+</Project>

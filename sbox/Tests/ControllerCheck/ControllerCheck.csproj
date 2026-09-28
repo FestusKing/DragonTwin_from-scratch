@@ -1,0 +1,17 @@
+<!-- NUR FÜR DEN TEST (nicht nach s&box kopieren!)
+     Kompiliert DragonController.cs gegen eine kleine Nachbildung von s&box (SboxStub.cs).
+     Findet Tipp- und Typ-Fehler. Ob s&box die Namen wirklich so hat, zeigt erst s&box selbst. -->
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../Code/**/*.cs" />
+  </ItemGroup>
+</Project>
