@@ -9,8 +9,19 @@ Zuerst auch `CLAUDE.md` (Regeln, Sicherheit) und `docs/UNREAL.md` (Plan) lesen.
 - **Andrej**, ICT-Fachmann in Ausbildung (1. Lehrjahr). Legasthenie, ADHS, Dyskalkulie.
 - **Antworten auf Deutsch (Schweiz, „ss“ statt „ß“)**: einfach, kurz, Stichpunkte, Schritt für Schritt.
   Kritisch und ehrlich auf Fehler hinweisen, nichts beschönigen.
-- Pro Nachricht **nur wenige Schritte** geben und auf seine Rückmeldung warten.
-  Er schickt gern **Screenshots** – die helfen sehr.
+- **Andrej will, dass Claude ALLES selbst macht** – auch im Unreal-Editor und in Blender.
+  Er selbst gibt nur Erlaubnis, testet (fliegen, anschauen) und sagt, was sich falsch anfühlt.
+  Also keine Klick-Anleitungen, sondern **Skripte**:
+  - **Unreal-Editor:** Python-Editor-Skripte (Plugins „Python Editor Script Plugin“ und
+    „Editor Scripting Utilities“ – offizielle Epic-Plugins; falls aus, in der `.uproject` einschalten und
+    Andrej kurz sagen). Ausführen z. B. mit
+    `UnrealEditor-Cmd.exe <Projekt>.uproject -run=pythonscript -script="<Datei>.py"`
+    oder beim Start mit `-ExecutePythonScript=`. Damit: GLB importieren, Blueprint anlegen,
+    Level bauen, Actor platzieren, Einstellungen setzen.
+  - **Blender:** im Hintergrund per Skript (`blender --background --python <Datei>.py`) oder über
+    Andrejs Blender-MCP-Server.
+  - Nur wenn etwas wirklich nur mit der Maus geht: ganz kurz erklären, welcher Klick.
+- Er schickt gern **Screenshots** – die helfen sehr. Zum Testen ihm genau sagen, was er ausprobieren soll.
 - **Sicherheit** (so gewollt): nichts Ausführbares aus dem Internet ausführen, keine fremden Pakete,
   Plugins oder Add-ons ohne Nachfrage. Vor jedem Befehl kurz sagen, was er tut.
   Nur in `C:\Projekte` lesen und schreiben.
@@ -57,9 +68,11 @@ Zuerst auch `CLAUDE.md` (Regeln, Sicherheit) und `docs/UNREAL.md` (Plan) lesen.
 4. Fehler beheben. Die **Flugphysik** (`Flight\`) nur ändern, wenn sie nicht kompiliert – dann die
    gleiche Änderung auch hier im Repository machen und `sh unreal/Tests/run_all.sh` laufen lassen
    (auf Windows z. B. in Git Bash; braucht Node und g++).
-5. Andrej durch den Editor führen (Klick für Klick, siehe `unreal/README.md`, Abschnitte 3–5):
-   Drachen-GLB importieren, Blueprint `BP_Drache` von `DragonPawn` ableiten, Modell einstellen
-   (Kopf zeigt nach +X), ins Level, Play.
+5. **Per Python-Editor-Skript** (nicht per Klick-Anleitung, siehe oben) das machen, was in
+   `unreal/README.md` (Abschnitte 3–5) als Klicks beschrieben ist: Drachen-GLB importieren
+   (`public/models/dragon_scales.glb`), Blueprint `BP_Drache` von `DragonPawn` ableiten, Modell
+   einstellen (Kopf zeigt nach +X), ein Test-Level mit Boden und `BP_Drache` in ~300 m Höhe,
+   als Start-Level setzen. Danach Andrej nur noch sagen: Editor öffnen, Play, so steuern.
 6. Danach Git für das Unreal-Projekt einrichten: **eigenes, neues Repository**, `.gitignore` für
    `Binaries/ Intermediate/ Saved/ DerivedDataCache/ .vs/ *.sln`, **Git LFS** für `.uasset`/`.umap`.
    Keine Dateien über 100 MB.
