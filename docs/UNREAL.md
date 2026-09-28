@@ -121,6 +121,8 @@ So findest du die Werte:
 Jeder Schritt: bauen → auf deinem PC testen → speichern (Commit).
 
 1. **Drache fliegt:** Drachen-Modell (GLB) importieren, Flugphysik nach C++ übertragen, Kamera, Tastatur und Gamepad
+   – **vorbereitet:** Dateien und Einbau-Anleitung in [unreal/README.md](../unreal/README.md).
+   Die C++-Flugphysik fliegt nachweislich gleich wie das Browser-Spiel (Vergleichstest).
 2. **Feuer und Landschaft:** Feuerstrahl (Niagara), Landschaft, Himmel, Wetter
 3. **Dorf und zerstörbare Gebäude** (Chaos Destruction)
 4. **Schlacht:** Armeen, Ragdolls, Drachenhorn
