@@ -1,6 +1,7 @@
 # 🐉 DragonTwin: Test Flight
 
-Ein Drachen-Flugspiel für den Browser, gebaut mit **Three.js** und **Vite**.
+Ein Drachen-Flugspiel für den Browser – und als eigenes Programm (Windows, Mac, Linux) –,
+gebaut mit **Three.js** und **Vite**.
 Inspiriert vom „Test Flight“ aus DragonTwin.
 
 Fast alles wird **im Code erzeugt**:
@@ -22,7 +23,7 @@ Mehr dazu unten im Abschnitt **Foto-Texturen**.
 
 ## ▶️ Spiel starten
 
-**Voraussetzung:** [Node.js](https://nodejs.org) ab Version 18.
+**Voraussetzung:** [Node.js](https://nodejs.org) ab Version 22.12 (prüfen mit `node -v`).
 
 ```bash
 npm install
@@ -34,6 +35,33 @@ npm run dev
 - Auf **„Los geht's“** klicken. Erst dann darf der Browser Ton abspielen.
 
 Für eine fertige Version zum Hochladen gibt es `npm run build`. Das Ergebnis liegt dann im Ordner `dist/`.
+
+---
+
+## 🖥️ Als Programm spielen (ohne Browser)
+
+Das Spiel läuft auch als eigenes Programm – mit **Electron** (dieselbe Grafik-Technik wie Chrome,
+darum gleich schnell). Kein Browser nötig, läuft offline.
+
+```bash
+npm install            # einmal
+npm run desktop        # Spiel im eigenen Fenster starten
+npm run desktop:exe    # Programm-Ordner mit DragonTwin.exe bauen
+```
+
+- **Beim ersten Start** lädt Electron sein Programm herunter (ungefähr 100 MB, offiziell von GitHub,
+  mit Prüfsumme). Danach geht es offline.
+- `npm run desktop:exe` baut den Ordner **`release/DragonTwin-win32-x64/`** (auf Windows).
+  Darin: **`DragonTwin.exe`** – Doppelklick startet das Spiel.
+  Immer den **ganzen Ordner** behalten oder weitergeben (gut 250 MB), nicht nur die .exe.
+- **F11** = Vollbild. Das X oben schliesst das Spiel sofort (keine Nachfrage wie im Browser).
+- **Strg + W** schliesst das Fenster nicht (im Spiel ist das „Nase runter + Boost“).
+- **Windows-Warnung beim ersten Start:** „Der Computer wurde durch Windows geschützt“.
+  Grund: Das Programm ist nicht digital signiert (eine Signatur kostet Geld).
+  Lösung: **„Weitere Informationen“ → „Trotzdem ausführen“**.
+- **Spielstände** (Rang, Aufträge, Bestzeiten) sind im Programm getrennt vom Browser gespeichert.
+- Technik: `electron/main.cjs` (Fenster), `electron/paths.cjs` (welche Dateien geladen werden dürfen),
+  `electron/paket.mjs` (Programm-Ordner bauen), Test ohne Electron: `node electron/test.mjs`.
 
 ---
 
@@ -295,6 +323,8 @@ src/
   ui/
     HUD.js, Menu.js, Minimap.js, styles.css
 public/textures/        Die Foto-Texturen (JPG) + QUELLEN.md mit Autoren
+electron/               Desktop-Version: Fenster (main.cjs), erlaubte Dateien (paths.cjs), Verpacken (paket.mjs)
+unreal/                 Vorbereitete Dateien für die Unreal-Version (Flugphysik in C++ mit Vergleichstest)
 public/models/          Das Drachen-Modell (GLB) + QUELLEN.md
 tools/
   fetch_textures.py     Lädt die Foto-Texturen von Poly Haven und bereitet sie vor
@@ -387,6 +417,36 @@ Dieses Browser-Spiel bleibt spielbar und dient als **Vorlage** (Flugphysik, Drac
   - Getestet wurde automatisch in einem Browser ohne GPU.
   - Die Logik braucht nur ca. 2 ms pro Bild.
   - Die echten FPS auf deinem Laptop konnte ich nicht messen.
+
+---
+
+## 🚀 Veröffentlichen: zuerst lokal, dann itch.io, dann vielleicht Steam
+
+| Schritt | Stand | Was es braucht |
+| --- | --- | --- |
+| 1. Lokal als Programm | ✅ fertig | `npm run desktop` / `npm run desktop:exe` (siehe oben) |
+| 2. itch.io | ⏳ | gratis Konto; `dist/` als ZIP hochladen (im Browser spielbar) oder den Programm-Ordner als ZIP |
+| 3. Steam | ⏳ später | siehe unten |
+
+**itch.io** ist ideal zum Testen mit Freunden: gratis, keine Prüfung, auch direkt im Browser spielbar.
+
+**Steam – was es braucht:**
+
+- **Eigener Name und eigenes Logo.** „DragonTwin“ ist der Name eines anderen Spiels. Den dürfen wir
+  auf Steam nicht verwenden (auch nicht im Titel oder Bild).
+- **Steamworks-Konto** mit Vertrag, Bank- und Steuerangaben. Wer noch nicht volljährig ist,
+  braucht dafür die Eltern.
+- **100 USD Gebühr** pro Spiel („Steam Direct“). Man bekommt sie zurück, wenn das Spiel mehr als
+  1000 USD einbringt.
+- **Store-Seite:** Bilder in festen Grössen, Screenshots, Trailer, Beschreibung, Fragebogen zur Altersfreigabe.
+- **Spiel hochladen** mit SteamPipe (Werkzeug von Valve). Hochgeladen wird genau der Ordner aus
+  `npm run desktop:exe`.
+- **Prüfung durch Valve.** Die Seite muss mindestens 2 Wochen als „Demnächst“ sichtbar sein.
+  Frühestens 30 Tage nach der Zahlung darf das Spiel erscheinen.
+- **Lizenzen sind in Ordnung:** eigener Code, eigenes Drachen-Modell, Texturen CC0, Schriften OFL,
+  Three.js MIT, Electron MIT. Die Lizenz-Hinweise gehören ins Spiel (z. B. ins Menü „Credits“).
+- **Steam-Erfolge / Overlay** brauchen später ein Zusatzpaket – erst nach Absprache.
+- Die **Unreal-Version** könnte später auf dieselbe Steam-Seite kommen (als neue Version).
 
 ---
 
@@ -488,6 +548,7 @@ python3 tools/fetch_textures.py
   - Lizenz: SIL Open Font License.
   - Sie werden lokal über npm eingebunden.
 - **Three.js:** MIT-Lizenz.
+- **Electron** (nur Desktop-Version): MIT-Lizenz. Die Lizenz-Dateien liegen automatisch im Programm-Ordner.
 - **Foto-Texturen:** [Poly Haven](https://polyhaven.com), Lizenz CC0. Autoren siehe [`public/textures/QUELLEN.md`](public/textures/QUELLEN.md).
 - Alle Modelle, Geräusche und die übrigen Texturen entstehen im Code.
 

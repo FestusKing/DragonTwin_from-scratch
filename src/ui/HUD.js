@@ -374,6 +374,8 @@ export class HUD {
       y = h / 2 + dy * s;
       angle = Math.atan2(dy, dx) + Math.PI / 2;
     }
+    // nicht über die Schlacht-Tafel rechts oben legen
+    if (!onScreen && this.battleShown && x > w - 260 && y < 215) y = 215;
     this.qInd.classList.toggle('off', !onScreen);
     this.qInd.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
     this.qInd.firstElementChild.style.transform = onScreen ? '' : `rotate(${angle.toFixed(3)}rad)`;

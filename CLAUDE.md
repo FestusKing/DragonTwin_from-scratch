@@ -16,6 +16,15 @@
   (Blender als Python-Modul `bpy`). Bericht: `tools/dragon_scales_report.md`,
   Skelett-Daten: `tools/dragon_scales_bones.json`.
 
+## Desktop-Version (Electron)
+
+- `npm run desktop` (Fenster), `npm run desktop:exe` (Programm-Ordner mit .exe in `release/`).
+  Dateien: `electron/main.cjs`, `electron/paths.cjs`, `electron/paket.mjs`. Test: `node electron/test.mjs`.
+- Das Spiel wird über `app://spiel/` geladen (nicht file://), sonst funktioniert fetch() für GLB/Texturen nicht.
+- In der Cloud-Umgebung kann Electron nicht starten: Downloads von GitHub sind gesperrt (403).
+  Dort nur `ELECTRON_SKIP_BINARY_DOWNLOAD=1 npm install`. Echte Tests auf dem PC des Nutzers.
+- Für Steam: eigener Spielname nötig („DragonTwin“ gehört einem anderen Spiel).
+
 ## Unreal Engine (neu)
 
 - Die Pläne (Stretch Goals) werden mit **Unreal Engine 5** gebaut: eigenes Projekt `DragonTwinUE`

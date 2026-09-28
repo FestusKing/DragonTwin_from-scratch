@@ -7,3 +7,6 @@ dist
 tools/arbeit/
 *.blend
 *.blend1
+
+# Desktop-Version (npm run desktop:exe)
+release/
