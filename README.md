@@ -354,23 +354,23 @@ Die Zahlen oben in der Datei (z. B. `K_AIR`, `CL_ALPHA`, `MAX_G`) kannst du änd
 ## 🗺️ Pläne (die „Stretch Goals“)
 
 Die „Stretch Goals“ aus der Vorgabe gehören nicht zum ursprünglichen Test Flight. Jeder Punkt ist
-ein eigenes Projekt. Sie werden **einzeln nacheinander** gebaut und nach jedem Schritt getestet.
+ein eigenes Projekt.
 
-**Der Weg:** beim Browser-Spiel (Three.js) bleiben, dazu **Blender** für grosse Modelle (zum Beispiel
-die Höhle) und später ein **eigener Editor im Spiel**. So kann alles als Code gebaut, im Browser
-getestet und hochgeladen werden. (Eine grosse Engine wie Unreal würde einen kompletten Neubau bedeuten.)
+**Der Weg:** Die Pläne werden mit **Unreal Engine 5** gebaut – als **neues Projekt** auf deinem PC.
+Anleitung, Aufgabenteilung und Reihenfolge: **[docs/UNREAL.md](docs/UNREAL.md)**.
+Dieses Browser-Spiel bleibt spielbar und dient als **Vorlage** (Flugphysik, Drachen-Modell, Ideen, Zahlen).
 
-| # | Plan | Stand | So wird es gebaut | Braucht |
-| --- | --- | --- | --- | --- |
-| 1 | Zerstörbare Gebäude | ✅ fertig (einfache Physik) | Trümmer-System, Einsturz je Gebäudeart | echte Physik (Stapeln, Rollen) nur mit der Bibliothek „Rapier“ → erst nach deinem OK |
-| 2 | Rüstung für den Reiter (und den Drachen) | ⏳ als Nächstes | Helm, Schulterplatten, Umhang am Reiter; Sattel- und Kopfpanzer am Drachen; im Anpassen-Menü wählbar | – |
-| 3 | Drachen-Editor | ⏳ geplant | Hals, Flügel und Schwanz länger/kürzer (Knochen skalieren), Hörner-Sets zum Wählen | neue Hörner-Varianten im Blender-Skript |
-| 4 | Begehbare Höhle (Hort) | ⏳ geplant | Höhle als 3D-Modell aus Blender im Vulkan, Kollision mit Boden und Decke, Kamera stösst nicht durch Wände | Blender (erlaubt) |
-| 5 | Quests mit Geschichte | ⏳ geplant | Kapitel mit Zielen, Dialog-Texten und Belohnungen | keine Stimmen, nur Text |
-| 6 | Weltkarte mit Regionen | ⏳ geplant | mehrere Karten mit Ladebildschirm + Übersichtskarte | – |
-| 7 | Strategie-Modus | ⏳ geplant | Regionen erobern (Schlachten gewinnen), Hort ausbauen, Truppen verbessern | Punkt 6 zuerst |
-| 8 | Armeen und feindliche Drachen | ✅ fertig | Schlacht auf der Ostebene (3 Wellen), Drachenreiter-Boss | – |
-| 9 | Mehrspieler | ⏳ zuletzt | Verbindung der Spieler über einen Server | einen Server im Internet (Kosten, Betrieb) |
+| # | Plan | Im Browser-Spiel | In Unreal mit |
+| --- | --- | --- | --- |
+| 1 | Zerstörbare Gebäude | ✅ einfache Version (Trümmer ohne echte Physik) | Chaos Destruction |
+| 2 | Rüstung für Reiter und Drache | – | Sockets (Teile an Knochen) |
+| 3 | Drachen-Editor | – | Morph Targets + Knochen skalieren |
+| 4 | Begehbare Höhle (Hort) | – (Hort liegt offen im Krater) | Modeling Mode oder Blender-Modell |
+| 5 | Quests mit Geschichte | kleine Aufträge mit Rang | Data Tables + Dialog-Fenster (UMG) |
+| 6 | Weltkarte mit Regionen | eine Insel | World Partition |
+| 7 | Strategie-Modus | – | Karten-Bildschirm (UMG) + SaveGame |
+| 8 | Armeen und feindliche Drachen | ✅ Schlacht + Drachenreiter | Mass (tausende Soldaten) + Ragdolls + Niagara |
+| 9 | Mehrspieler | – | Replication + Epic Online Services |
 
 **Noch vereinfacht (Ideen für später):**
 

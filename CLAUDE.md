@@ -16,6 +16,15 @@
   (Blender als Python-Modul `bpy`). Bericht: `tools/dragon_scales_report.md`,
   Skelett-Daten: `tools/dragon_scales_bones.json`.
 
+## Unreal Engine (neu)
+
+- Die Pläne (Stretch Goals) werden mit **Unreal Engine 5** gebaut: eigenes Projekt `DragonTwinUE`
+  (C++), eigenes Repository, auf dem PC des Nutzers. Anleitung: `docs/UNREAL.md`.
+- Dieses Repo = Browser-Version und Vorlage (z. B. `src/dragon/FlightPhysics.js` → nach C++ übertragen,
+  gleiche Zahlen). Nichts daraus löschen.
+- Unreal läuft nicht in der Cloud-Umgebung. Für Arbeit am Unreal-Projekt braucht es eine Sitzung auf
+  dem PC des Nutzers (Claude Desktop-App oder `claude remote-control` im Projektordner).
+
 ## Sicherheit (vom Nutzer so gewollt)
 
 - Nichts Ausführbares aus dem Internet ausführen. Keine fremden Add-ons oder Pakete installieren,
