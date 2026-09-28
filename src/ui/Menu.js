@@ -324,6 +324,8 @@ export class Menu {
     if (this.settingsTab === 'graphics') {
       row('Grafikqualität', 'Automatisch passt die Auflösung an, damit es flüssig bleibt. Baumdichte ändert sich erst nach dem Neuladen.',
         select('quality', [['auto', 'Automatisch'], ['low', 'Niedrig'], ['medium', 'Mittel'], ['high', 'Hoch']], () => g.applyQuality()));
+      row('Gras', 'Grashalme im Wind rund um den Drachen. Ruckelt das Spiel: hier ausschalten.', check('grass'));
+      row('Sonnenstrahlen', 'Lichtstrahlen und Linsen-Reflexe, wenn man in die Sonne fliegt', check('sunRays'));
       row('FPS anzeigen', 'Bilder pro Sekunde oben rechts', check('showFps'));
     } else if (this.settingsTab === 'world') {
       const hhmm = (v) => {

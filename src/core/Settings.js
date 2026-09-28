@@ -8,6 +8,8 @@ export const DEFAULT_SETTINGS = {
   // Grafik
   quality: 'auto', // 'low' | 'medium' | 'high' | 'auto'
   showFps: false,
+  grass: true, // Grashalme rund um die Kamera (kostet Leistung)
+  sunRays: true, // Sonnenstrahlen und Linsen-Reflexe
   // Welt
   timeOfDay: 16.5, // Startzeit in Stunden (0–24)
   timeRunning: true,

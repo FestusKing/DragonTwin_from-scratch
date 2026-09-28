@@ -237,7 +237,17 @@ Alles hier ist selbst gebaut (eigener Code, eigene Modelle, eigene Töne) – nu
 - **Bäume aus „Karten“:** kleine Flächen mit Blätter- bzw. Nadel-Textur, deren Ränder ausgestanzt werden → blättrige Umrisse.
 - **Luft-Perspektive:** Dunst ist unten dichter als oben, in Richtung Sonne leuchtet er warm. Nebel-Wetter liegt am Boden.
 - **Berge mit Erosion:** scharfe Hauptgrate, glatte Flanken statt „Haifischzähne“.
-- **Post-Processing:** Bloom, Vignette, ACES-Tonemapping, Tempo-Unschärfe beim Boost.
+- **Post-Processing:** Bloom, Vignette, ACES-Tonemapping, Tempo-Unschärfe beim Boost,
+  Kino-Farbstimmung (Schatten leicht bläulich, Licht leicht warm).
+- **Sonnenstrahlen („God Rays“) und Linsen-Reflexe:** Fliegt man in die tiefe Sonne, fallen Lichtbahnen
+  zwischen Bergen, Bäumen und den Drachenflügeln hindurch. Die Strahlen werden in halber Auflösung gerechnet;
+  „freier Himmel“ erkennt der Shader an der Tiefe (dort wurde nichts gezeichnet).
+- **Gras:** Tausende Grasbüschel rund um die Kamera, die sich im Wind wiegen (Böen laufen als Wellen über die Wiese).
+  Der Luftstoss der Flügel drückt das Gras weg (Abheben, Landen, Schweben). Feuer lässt schwarze Stoppeln zurück.
+  Weizenfelder haben goldene, höhere Halme. Das Gras hat dieselbe Farbe wie der Boden darunter.
+- **Tag und Nacht:** Die Nacht läuft 2,5× schneller (sonst wäre fast der halbe Spieltag dunkel).
+  Nachts ist die Welt im Mondlicht blau, aber gut sichtbar; in der Dämmerung warmes Licht.
+- **Lava** glüht wie heisses Eisen: dunkle Kruste, orange Risse, gelbe heisse Stellen.
 - **Boden-Shader:** mischt 5 Foto-Schichten (Gras, Fels, Sand, Schnee, Erde) je nach Höhe und Steilheit.
   Felswände werden von drei Seiten projiziert („triplanar“), damit nichts verzerrt.
 - **Schatten** folgen dem Drachen.
@@ -280,6 +290,7 @@ src/
     Clouds.js           Wolken zum Durchfliegen (Volumen-Licht, flacher Boden)
     Water.js            Wasser mit Wellen, Spiegelung, Ufer-Schaum
     Vegetation.js       Bäume, Büsche, Felsen (Instancing), Wald-Karte für den Boden
+    Grass.js            Grasbüschel rund um die Kamera (Wind, Luftstoss der Flügel, verbranntes Gras)
     TreeModels.js       Baum-Modelle + im Code gemalte Blätter-/Nadel-Texturen
     Settlement.js       Dorf, Burg, Kirche, Windmühle, Leuchtturm …
     Landmarks.js        Felsbogen, Wrack, Steinkreis, ferne Berge
@@ -314,7 +325,7 @@ src/
     Particles.js        Partikel (Feuer, Rauch, Staub, Funken, Gischt)
     Debris.js           Trümmer: fliegen, prallen ab, bleiben liegen (Instancing, einfache Physik)
     SpeedFx.js          Kondensstreifen, Dampfkegel, Schallmauer, Druckwellen
-    PostProcessing.js   Bloom, Farbkorrektur, Vignette
+    PostProcessing.js   Bloom, Sonnenstrahlen, Linsen-Reflexe, Farbkorrektur, Vignette
     Atmosphere.js       Höhen-Dunst und Sonne im Dunst (für alle Materialien)
     Rain.js             Regen + Tempo-Streifen
     Lightning.js        Blitze
@@ -374,8 +385,12 @@ Die Zahlen oben in der Datei (z. B. `K_AIR`, `CL_ALPHA`, `MAX_G`) kannst du änd
 
 - **Einstellungen → Grafik:**
   - **Automatisch** senkt die Auflösung, wenn die FPS unter ca. 48 fallen.
-  - **Niedrig** schaltet Schatten und Bloom aus.
+  - **Niedrig** schaltet Schatten, Bloom, Sonnenstrahlen und Gras aus.
     Der Boden benutzt dann eine einfachere Version der Foto-Texturen (weniger Textur-Zugriffe).
+  - **Gras** und **Sonnenstrahlen** kann man auch einzeln ausschalten. Das Gras kostet am meisten
+    Leistung – ruckelt das Spiel nur im Tiefflug, zuerst das Gras ausschalten.
+  - Gras-Menge: Mittel 9 000 Büschel (40 m weit), Automatisch 16 000 (50 m), Hoch 24 000 (55 m).
+    Über 40–55 m Höhe wird das Gras gar nicht gezeichnet.
 - Die **Baumdichte** ändert sich erst nach dem Neuladen der Seite.
 - **FPS anzeigen** gibt es unter *Einstellungen → Grafik*.
 

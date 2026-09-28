@@ -9,6 +9,7 @@ import { Weather } from './Weather.js';
 import { Clouds } from './Clouds.js';
 import { Water } from './Water.js';
 import { Vegetation } from './Vegetation.js';
+import { Grass } from './Grass.js';
 import { Settlement } from './Settlement.js';
 import { Landmarks } from './Landmarks.js';
 import { Volcano } from './Volcano.js';
@@ -79,6 +80,9 @@ export class World {
     for (const p of pastures) excl.push({ x: p.x, z: p.z, r: 55 }); // Weiden ohne Bäume
     this.vegetation = new Vegetation(scene, this.terrain, excl, q.trees);
     this.terrain.setForestMap(this.vegetation.forestTexture);
+    // Grashalme rund um die Kamera (Menge je nach Qualität, siehe setQuality)
+    this.grass = new Grass(scene, this.terrain);
+    this.grass.setQuality(q.grass?.count ?? 0, q.grass?.radius ?? 60);
 
     progress(0.78, 'Feuer und Effekte …');
     await tick();
@@ -169,7 +173,14 @@ export class World {
     this.cameraRef = ctx.camera;
     // Tageszeit
     if (settings.get('timeRunning') && !ctx.paused) {
-      this.time = (this.time + (worldDt * 24) / (settings.get('dayLengthMin') * 60)) % 24;
+      // Nachts läuft die Zeit 2.5× schneller – sonst wäre fast der halbe Spieltag dunkel.
+      // Die Dämmerung (bis 18:36 und ab 5:24) läuft normal, sie ist am schönsten.
+      // Umgerechnet dauert ein ganzer Tag trotzdem genau dayLengthMin Minuten:
+      // 13.2 h Tag + 10.8 h Nacht / 2.5 = 17.52 "Tag-Stunden".
+      const t = this.time;
+      const fastNight = t > 18.6 || t < 5.4 ? 2.5 : 1;
+      const rate = 17.52 / (settings.get('dayLengthMin') * 60); // Spiel-Stunden pro echte Sekunde am Tag
+      this.time = (t + worldDt * rate * fastNight) % 24;
     }
     this.weather.update(worldDt);
     const w = this.weather;
@@ -190,8 +201,17 @@ export class World {
     fog.color.copy(this.sky.fogColor).lerp(_white.setRGB(0.8, 0.83, 0.87).multiplyScalar(0.25 + this.sky.day * 0.75), this.inCloud * 0.9);
 
     this.water.update(worldDt, this.sky, w, ctx.camera);
-    this.terrain.update(dt, w.wetness);
+    // Lava leuchtet am Tag stärker (sonst geht sie neben der hellen Landschaft unter)
+    this.terrain.update(dt, w.wetness, 1 + this.sky.day * 1.1);
     this.vegetation.update(worldDt, w.wind);
+    this.grass.update(worldDt, {
+      camera: ctx.camera,
+      windDir: w.windVec,
+      wind: w.wind,
+      pushPos: ctx.dragonPos,
+      push: ctx.downwash ?? 0,
+      pushRadius: ctx.downwashRadius ?? 16,
+    });
     this.settlement.update(worldDt, smoothstep(0.35, 0.9, this.sky.night), w.wind);
     this.rain.update(worldDt, ctx.camera, ctx.camVel, w, this.sky);
     this.speedLines.update(ctx.camera, ctx.camVel, ctx.dragonSpeed || 0, 0.4 + this.sky.day * 0.6);

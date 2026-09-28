@@ -7,7 +7,7 @@ import { settings } from './Settings.js';
 import { Input, PAD } from './Input.js';
 import { AudioManager } from './AudioManager.js';
 import { CameraRig } from './CameraRig.js';
-import { clamp, damp, lerp, formatTime } from './utils.js';
+import { clamp, damp, smoothstep, formatTime } from './utils.js';
 import { World } from '../world/World.js';
 import { PLACES } from '../world/Terrain.js';
 import { Dragon, loadDragonModel } from '../dragon/Dragon.js';
@@ -39,11 +39,12 @@ const TIPS = [
 
 // Qualitäts-Stufen
 // detail: Boden mit allen Foto-Details (triplanare Felsen, Anti-Wiederholung)
+// grass: Grasbüschel rund um die Kamera (count = Anzahl, radius = Sichtweite in m)
 const QUALITY = {
-  low: { pr: 0.75, shadows: 0, bloom: false, msaa: 0, detail: false, world: { trees: 0.5, particles: 0.5, clouds: 60, rain: 3000 } },
-  medium: { pr: 1.0, shadows: 1024, bloom: true, msaa: 0, detail: true, world: { trees: 0.8, particles: 0.8, clouds: 85, rain: 5000 } },
-  high: { pr: 1.5, shadows: 2048, bloom: true, msaa: 4, detail: true, world: { trees: 1, particles: 1, clouds: 100, rain: 7000 } },
-  auto: { pr: 1.25, shadows: 2048, bloom: true, msaa: 0, detail: true, world: { trees: 0.9, particles: 0.9, clouds: 95, rain: 6000 } },
+  low: { pr: 0.75, shadows: 0, bloom: false, msaa: 0, detail: false, world: { trees: 0.5, particles: 0.5, clouds: 60, rain: 3000, grass: { count: 0, radius: 40 } } },
+  medium: { pr: 1.0, shadows: 1024, bloom: true, msaa: 0, detail: true, world: { trees: 0.8, particles: 0.8, clouds: 85, rain: 5000, grass: { count: 9000, radius: 40 } } },
+  high: { pr: 1.5, shadows: 2048, bloom: true, msaa: 4, detail: true, world: { trees: 1, particles: 1, clouds: 100, rain: 7000, grass: { count: 24000, radius: 55 } } },
+  auto: { pr: 1.25, shadows: 2048, bloom: true, msaa: 0, detail: true, world: { trees: 0.9, particles: 0.9, clouds: 95, rain: 6000, grass: { count: 16000, radius: 50 } } },
 };
 
 const _v = new THREE.Vector3();
@@ -57,6 +58,7 @@ const _dir = new THREE.Vector3();
 const _up = new THREE.Vector3(0, 1, 0);
 const _aim = new THREE.Vector3();
 const _tipL = new THREE.Vector3();
+const _sun = new THREE.Vector3();
 
 export class Game {
   constructor(renderer) {
@@ -142,7 +144,7 @@ export class Game {
     this._wireEvents();
     this.applyQuality();
     settings.onChange((k) => {
-      if (k === 'quality') this.applyQuality();
+      if (k === 'quality' || k === 'grass') this.applyQuality();
     });
     document.getElementById('hud-map').classList.toggle('hidden', !settings.get('showMinimap'));
     document.getElementById('tut-skip').addEventListener('click', () => {
@@ -518,6 +520,7 @@ export class Game {
     this.renderer.shadowMap.enabled = q.shadows > 0;
     this.post.setQuality({ bloom: q.bloom, msaa: q.msaa });
     this.world.terrain.setDetail(q.detail);
+    this.world.grass.setQuality(settings.get('grass') ? q.world.grass.count : 0, q.world.grass.radius);
     this.resize();
   }
 
@@ -806,14 +809,20 @@ export class Game {
     }
 
     // Welt
+    // Luftstoss der Flügel drückt das Gras weg: stark beim Abheben/Landen/Schweben,
+    // beim Laufen teilt nur der Körper das Gras
+    const pp = this.physics;
+    const nearGround = smoothstep(28, 4, pp.agl ?? 99);
     this.world.update(dt, {
       camera: this.camera,
-      focus: this.physics.position,
+      focus: pp.position,
       camVel: this.rig.camVelocity,
-      dragonPos: this.physics.position,
-      dragonSpeed: this.physics.speed,
+      dragonPos: pp.position,
+      dragonSpeed: pp.speed,
       paused,
       fireColor: this.fireColor,
+      downwash: pp.grounded ? 0.45 : nearGround * (0.25 + 0.75 * pp.flapAmp),
+      downwashRadius: pp.grounded ? 6 : 18,
     });
     // Ziegen und Schafe
     this.world.goats.update(paused ? 0 : dt, this.physics.position, this.audio, playing);
@@ -872,9 +881,39 @@ export class Game {
       damage: this.damage,
       night: w.sky.night,
     });
-    this.renderer.toneMappingExposure = lerp(0.9, 1.7, w.sky.night) * (1 + w.weather.overcast * 0.12);
+    this._updateSunFx(w);
+    // Belichtung: nachts und in der Dämmerung heller (wie ein Auge, das sich anpasst)
+    this.renderer.toneMappingExposure = (0.95 + w.sky.night * 0.9 + w.sky.twilight * 0.45) * (1 + w.weather.overcast * 0.12);
     this.post.render(dt);
     input.endFrame();
+  }
+
+  /**
+   * Sonnenstrahlen und Linsen-Reflexe: Wo steht die Sonne auf dem Bildschirm, wie stark?
+   * Am stärksten bei tiefer Sonne (Abend, Morgen) und klarem Himmel.
+   */
+  _updateSunFx(w) {
+    const sky = w.sky;
+    const cam = this.camera;
+    cam.updateMatrixWorld();
+    const facing = cam.getWorldDirection(_sun).dot(sky.sunDir); // 1 = genau in die Sonne
+    const up = smoothstep(-0.03, 0.04, sky.sunDir.y);
+    if (facing < 0.05 || up <= 0 || !settings.get('sunRays')) {
+      this.post.setSun(0.5, 0.5, sky.sunColor, 0, 0, cam.aspect);
+      return;
+    }
+    _sun.copy(cam.position).addScaledVector(sky.sunDir, 10000).project(cam);
+    const x = _sun.x * 0.5 + 0.5;
+    const y = _sun.y * 0.5 + 0.5;
+    const edge = Math.min(x, 1 - x, y, 1 - y); // < 0: Sonne ausserhalb des Bildes
+    const clear = (1 - w.weather.overcast) ** 2 * (1 - w.inCloud) * (1 - w.weather.darkness);
+    const low = 1 + 0.8 * (1 - smoothstep(0.06, 0.45, sky.sunDir.y));
+    const rays = 0.4 * up * clear * low * smoothstep(-0.25, 0.03, edge) * smoothstep(0.05, 0.35, facing);
+    const flare = up * clear * smoothstep(0.0, 0.05, edge);
+    // so hell ist klarer Himmel neben der Sonne (dunklere Wolken davor halten Licht zurück)
+    const lum = (c) => 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
+    const skyRef = lum(sky.horizon) + 0.5 * lum(sky.sunColor);
+    this.post.setSun(x, y, sky.sunColor, rays, flare, cam.aspect, skyRef);
   }
 
   _globalKeys() {

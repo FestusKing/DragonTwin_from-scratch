@@ -10,9 +10,9 @@ const KEYS = [
   { e: -0.14, zen: 0x0a1230, hor: 0x1e2442 },
   { e: -0.03, zen: 0x1c2a58, hor: 0xb0584a },
   { e: 0.05, zen: 0x35599a, hor: 0xf09a5c },
-  { e: 0.18, zen: 0x46729f, hor: 0xc2cfd8 },
-  { e: 0.5, zen: 0x3a6899, hor: 0xb8c8d4 },
-  { e: 1.0, zen: 0x345f8f, hor: 0xb2c3d0 },
+  { e: 0.18, zen: 0x3f74b0, hor: 0xc6d4e0 },
+  { e: 0.5, zen: 0x326bab, hor: 0xbccfdf },
+  { e: 1.0, zen: 0x2c64a3, hor: 0xb6cadb },
 ].map((k) => ({ e: k.e, zen: new THREE.Color(k.zen), hor: new THREE.Color(k.hor) }));
 
 const _c1 = new THREE.Color();
@@ -118,6 +118,7 @@ export class Sky {
     this.ambient = new THREE.Color();
     this.day = 1;
     this.night = 0;
+    this.twilight = 0; // 1 = genau in der Dämmerung (Sonne knapp unter/über dem Horizont)
     this.flash = 0;
 
     this.uniforms = {
@@ -251,10 +252,11 @@ export class Sky {
     this.zenith.multiplyScalar(1 - w.darkness * 0.75);
     this.horizon.multiplyScalar(1 - w.darkness * 0.7);
 
-    // Sonnenfarbe: orange am Horizont, weiss am Mittag
-    if (e < 0.12) this.sunColor.setRGB(1.0, 0.45 + e * 2.5, 0.2 + e * 1.5);
-    else this.sunColor.setRGB(1.0, 0.93, 0.82);
-    const sunI = smoothstep(-0.03, 0.14, e);
+    // Sonnenfarbe: tief orange am Horizont ("goldene Stunde"), weiss am Mittag – ohne Sprung
+    const warm = smoothstep(0.0, 0.28, e);
+    this.sunColor.setRGB(1.0, 0.42 + 0.52 * warm, 0.16 + 0.68 * warm);
+    // Die tiefe Sonne leuchtet noch kräftig (lange, dramatische Schatten)
+    const sunI = smoothstep(-0.035, 0.07, e);
     const moonI = smoothstep(-0.02, -0.16, e) * smoothstep(-0.05, 0.1, this.moonDir.y);
 
     // Nebelfarbe = Horizont (so verschmilzt die Ferne mit dem Himmel)
@@ -269,18 +271,22 @@ export class Sky {
       this.lightColor.copy(this.sunColor);
       this.light.intensity = sunI * 3.4 * (1 - oc * 0.72) * (1 - w.darkness * 0.5);
     } else {
-      this.lightColor.setRGB(0.62, 0.7, 1.0);
-      this.light.intensity = moonI * 1.1 * (1 - oc * 0.7);
+      // Mondlicht: kühles Blau, hell genug, dass man nachts die Welt sieht
+      this.lightColor.setRGB(0.6, 0.72, 1.0);
+      this.light.intensity = moonI * 2.3 * (1 - oc * 0.7);
     }
     this.light.color.copy(this.lightColor);
 
     // Himmelslicht
-    // nachts bläuliches "Mondlicht"-Ambiente, damit man noch etwas sieht
-    this.hemi.color.copy(this.zenith).lerp(_c1.setRGB(1, 1, 1), 0.4).lerp(_c2.setRGB(0.32, 0.42, 0.75), this.night * 0.7);
-    this.hemi.groundColor.setRGB(0.28, 0.24, 0.17).multiplyScalar(0.35 + this.day * 0.65);
-    // Dämmerung: Himmel ist noch hell → mehr Umgebungslicht
-    const twilight = Math.max(0, 1 - Math.abs(e + 0.02) / 0.12);
-    this.hemi.intensity = (0.6 + this.day * 0.25 + twilight * 0.3 + oc * 0.25 * this.day) * (1 - w.darkness * 0.6) + this.flash * 3;
+    // Dämmerung: Himmel ist noch hell und farbig (rosa/orange am Horizont) → warmes Umgebungslicht.
+    // Nacht: bläuliches "Mondlicht"-Ambiente, damit man die Welt noch gut sieht.
+    const twilight = Math.max(0, 1 - Math.abs(e + 0.02) / 0.14);
+    this.twilight = twilight;
+    this.hemi.color.copy(this.zenith).lerp(_c1.setRGB(1, 1, 1), 0.4);
+    this.hemi.color.lerp(_c2.copy(this.horizon).lerp(_c1.setRGB(0.55, 0.5, 0.75), 0.5), twilight * 0.45);
+    this.hemi.color.lerp(_c2.setRGB(0.36, 0.47, 0.82), this.night * 0.75);
+    this.hemi.groundColor.setRGB(0.28, 0.24, 0.17).multiplyScalar(0.35 + this.day * 0.65).lerp(_c1.setRGB(0.1, 0.12, 0.2), this.night * 0.6);
+    this.hemi.intensity = (0.6 + this.day * 0.25 + twilight * 1.25 + this.night * 1.1 + oc * 0.25 * this.day) * (1 - w.darkness * 0.6) + this.flash * 3;
     this.ambient.copy(this.hemi.color).multiplyScalar(this.hemi.intensity);
 
     // Schatten-Kamera folgt dem Spieler, auf Texel-Raster eingerastet (kein Flimmern)

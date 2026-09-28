@@ -516,7 +516,8 @@ export class Terrain {
     this.scorchTexture.needsUpdate = true;
   }
 
-  update(dt, wetness) {
+  /** lavaGain: Lava heller machen (am Tag, damit man sie auch in der Sonne gut sieht) */
+  update(dt, wetness, lavaGain = 1) {
     this.scorchTimer -= dt;
     if (this.scorchDirty && this.scorchTimer <= 0) {
       this.scorchTexture.needsUpdate = true;
@@ -526,6 +527,7 @@ export class Terrain {
     if (this.uniforms) {
       this.uniforms.uWet.value = wetness;
       this.uniforms.uTime.value += dt;
+      this.uniforms.uLavaGain.value = lavaGain;
     }
   }
 
@@ -589,6 +591,7 @@ export class Terrain {
       uSnow: { value: 390 },
       uWet: { value: 0 },
       uTime: { value: 0 },
+      uLavaGain: { value: 1 },
       uRegion: { value: this.regionTexture },
       // gedämpfte, natürliche Farben (wie Alpenwiesen im Spätsommer)
       cGrassA: { value: col(0x4f5c33) },
@@ -632,7 +635,7 @@ roughnessFactor *= 1.0 - uWet * 0.45;`
         .replace(
           '#include <emissivemap_fragment>',
           `#include <emissivemap_fragment>
-totalEmissiveRadiance += vec3(1.0, 0.3, 0.05) * gLava * 2.6;`
+totalEmissiveRadiance += lavaColor(gLava) * uLavaGain;`
         )
         .replace(
           '#include <normal_fragment_maps>',
@@ -655,7 +658,7 @@ const TERRAIN_COMMON = /* glsl */ `
 varying vec3 vWPos;
 varying vec3 vWNrm;
 uniform sampler2D uSplat, uScorch, uDetail, uForest, uRegion;
-uniform float uSize, uSnow, uWet, uTime;
+uniform float uSize, uSnow, uWet, uTime, uLavaGain;
 uniform vec3 cGrassA, cGrassB, cForest, cSand, cRock, cRock2, cSnow, cDirt, cWheat, cCrop;
 float gSnowT;
 float gLava;
@@ -674,13 +677,21 @@ vec3 strataColor(vec3 wp, float n1) {
   vec3 dark = vec3(0.36, 0.24, 0.18);
   return mix(mix(red, sand, smoothstep(0.35, 0.8, s1)), dark, smoothstep(0.75, 1.0, s2) * 0.6);
 }
-// Lava: fliessende, pulsierende Glut mit dunkler Kruste
+// Lava: fliessende, pulsierende Glut mit dunkler Kruste.
+// Ergebnis = Temperatur: 0 = kalte, dunkle Kruste … 1 = heisser Riss
 float lavaGlow(vec3 wp, float m) {
   if (m < 0.01) return 0.0;
   float a = texture2D(uDetail, wp.xz * 0.018 + vec2(uTime * 0.011, uTime * 0.017)).r;
   float b = texture2D(uDetail, wp.xz * 0.05 - vec2(uTime * 0.02, uTime * 0.006)).r;
-  float crust = smoothstep(0.35, 0.65, a * 0.6 + b * 0.6);
-  return m * (0.25 + 1.1 * crust * crust) * (0.85 + 0.15 * sin(uTime * 2.3 + wp.x * 0.05));
+  float hot = smoothstep(0.38, 0.8, a * 0.6 + b * 0.6);
+  return m * (0.15 + 0.85 * hot) * (0.9 + 0.1 * sin(uTime * 2.3 + wp.x * 0.05));
+}
+// Glühfarbe nach Temperatur (wie heisses Eisen): dunkelrot → orange → gelb.
+// Nicht zu hell, sonst macht das Tone Mapping die Lava weiss.
+vec3 lavaColor(float t) {
+  vec3 c = mix(vec3(0.5, 0.03, 0.004), vec3(1.0, 0.16, 0.012), smoothstep(0.15, 0.6, t));
+  c = mix(c, vec3(1.0, 0.42, 0.08), smoothstep(0.7, 1.0, t));
+  return c * t * t * 1.3;
 }
 #ifdef PHOTO_TEX
 uniform sampler2DArray uCol, uNor; // Foto-Schichten: Farbe+Höhe, Normale+Rauheit

@@ -25,6 +25,18 @@
   Dort nur `ELECTRON_SKIP_BINARY_DOWNLOAD=1 npm install`. Echte Tests auf dem PC des Nutzers.
 - Für Steam: eigener Spielname nötig („DragonTwin“ gehört einem anderen Spiel).
 
+## Grafik-Effekte (Browser-Version)
+
+- Sonnenstrahlen + Linsen-Reflexe: `src/fx/PostProcessing.js` (`SunRaysPass`, halbe Auflösung,
+  freier Himmel = Tiefe 1 → der Composer-Render-Target hat dafür eine `DepthTexture`).
+  Stärke/Position rechnet `Game._updateSunFx()`. Die Strahlen addieren Licht: klein halten,
+  sonst wird das Bild milchig.
+- Gras: `src/world/Grass.js` (Karten mit Halm-Bild, Kachel um die Kamera, alles im Vertex-Shader).
+  Menge je Qualität in `QUALITY` (Game.js), Einstellungen `grass` und `sunRays` (Settings.js).
+- Lava: `lavaColor()` im Boden-Shader (Terrain.js) und `lavaMat` (Volcano.js). Nicht zu hell,
+  sonst macht das ACES-Tone-Mapping sie weiss.
+- Test-Bilder ohne Grafikkarte (SwiftShader): Leistung dort nicht aussagekräftig, nur Verhältnisse.
+
 ## Unreal Engine (neu)
 
 - Die Pläne (Stretch Goals) werden mit **Unreal Engine 5** gebaut: eigenes Projekt `DragonTwinUE`

@@ -37,13 +37,14 @@ function lavaTexture() {
         } else if (d < f2) f2 = d;
       }
       const edge = Math.sqrt(f2) - Math.sqrt(f1); // 0 = Riss
-      const crack = Math.max(0, 1 - edge / 7);
-      const hot = crack * crack;
+      const crack = Math.max(0, 1 - edge / 9);
+      const hot = crack ** 1.6;
       const k = (y * S + x) * 4;
-      const crust = 0.12 + 0.1 * Math.sin(x * 0.3 + y * 0.2);
+      // Schollen: dunkelrot glühend (nicht ganz schwarz), zur Mitte hin kühler
+      const crust = 0.2 + 0.08 * Math.sin(x * 0.3 + y * 0.2) + 0.12 * Math.max(0, 1 - Math.sqrt(f1) / 14);
       img.data[k] = 255 * Math.min(1, crust + hot * 1.0);
-      img.data[k + 1] = 255 * Math.min(1, crust * 0.35 + hot * 0.55);
-      img.data[k + 2] = 255 * Math.min(1, crust * 0.15 + hot * 0.12);
+      img.data[k + 1] = 255 * Math.min(1, crust * 0.22 + hot * 0.55);
+      img.data[k + 2] = 255 * Math.min(1, crust * 0.08 + hot * 0.12);
       img.data[k + 3] = 255;
     }
   }
@@ -67,7 +68,8 @@ export class Volcano {
     // --- Lava-See ---
     this.lavaTex = lavaTexture();
     this.lavaTex.repeat.set(3, 3);
-    this.lavaMat = new THREE.MeshBasicMaterial({ map: this.lavaTex, color: new THREE.Color(2.4, 2.1, 2.0) });
+    // Farbe nicht zu hell: sonst macht das Tone Mapping die Lava weiss statt orange
+    this.lavaMat = new THREE.MeshBasicMaterial({ map: this.lavaTex, color: new THREE.Color(1.0, 0.8, 0.8) });
     const lake = new THREE.Mesh(new THREE.CircleGeometry(V.lavaR + 4, 48).rotateX(-Math.PI / 2), this.lavaMat);
     lake.position.set(V.x, V.floorH + 0.5, V.z);
     this.group.add(lake);
@@ -169,7 +171,9 @@ export class Volcano {
     // Lava bewegt sich langsam, Helligkeit pulsiert
     this.lavaTex.offset.set(t * 0.004, t * 0.0025);
     const pulse = 0.85 + 0.15 * Math.sin(t * 1.7) + 0.06 * Math.sin(t * 5.3);
-    this.lavaMat.color.setRGB(2.4 * pulse, 2.1 * pulse, 2.0 * pulse);
+    // am Tag heller, damit der See neben der hellen Landschaft nicht untergeht
+    const glow = pulse * (1 + ctx.day * 1.1);
+    this.lavaMat.color.setRGB(1.0 * glow, 0.8 * glow, 0.8 * glow);
     this.light.intensity = 14000 * pulse * (0.6 + 0.4 * (1 - ctx.day));
 
     const d = ctx.camPos.distanceTo(this.center);
