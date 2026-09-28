@@ -68,6 +68,7 @@ function makeBallista() {
 
 export class Ballistae {
   constructor(scene, world) {
+    this.scene = scene;
     this.world = world;
     this.towers = [];
     this.bolts = [];
@@ -132,6 +133,36 @@ export class Ballistae {
     return this.towers.length;
   }
 
+  /**
+   * Belagerungs-Armbrust auf einem Karren (für die Schlacht). Brennbar. Schiesst nur, wenn
+   * enabled = true (setzt Battle.js während der Schlacht).
+   */
+  addField(x, y, z) {
+    const b = makeBallista();
+    const wood = new THREE.MeshStandardMaterial({ color: 0x4a3526, roughness: 0.9 });
+    const cart = new THREE.Group();
+    const bed = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.5, 3.6), wood);
+    bed.position.y = 1.0;
+    cart.add(bed);
+    const wheelGeo = new THREE.CylinderGeometry(0.75, 0.75, 0.25, 12).rotateZ(Math.PI / 2);
+    for (const [wx, wz] of [[-1.4, -1.2], [1.4, -1.2], [-1.4, 1.2], [1.4, 1.2]]) {
+      const w = new THREE.Mesh(wheelGeo, wood);
+      w.position.set(wx, 0.75, wz);
+      cart.add(w);
+    }
+    cart.traverse((o) => o.isMesh && (o.castShadow = true));
+    b.root.add(cart);
+    b.root.children[0].position.y += 0.9; // Pfosten auf den Karren stellen
+    b.yaw.position.y += 0.9;
+    b.root.position.set(x, y, z);
+    this.scene.add(b.root);
+    const top = new THREE.Vector3(x, y + 1.0, z);
+    const burn = this.world.burn.addEntity({ kind: 'ballista', x, y: y + 1.5, z, r: 3.5, h: 3, w: 3.6, d: 4, fuel: 10 });
+    const tw = { top, burn, ...b, timer: AIM_TIME, destroyed: false, yawA: -Math.PI / 2, pitchA: 0, seen: false, range: 300, spread: SPREAD * 1.3, field: true, enabled: false };
+    this.towers.push(tw);
+    return tw;
+  }
+
   _lineOfSight(from, to) {
     const t = this.world.terrain;
     for (let i = 1; i < 12; i++) {
@@ -181,12 +212,12 @@ export class Ballistae {
       if (e && e.state !== 0 && !tw.destroyed) {
         tw.destroyed = true;
         this.destroyedCount++;
-        this.onDestroyed?.(this.destroyedCount, this.total);
+        this.onDestroyed?.(this.destroyedCount, this.total, tw);
       } else if (e && e.state === 0 && tw.destroyed) {
         tw.destroyed = false; // Neustart: Turm wieder aufgebaut
         this.destroyedCount = Math.max(0, this.destroyedCount - 1);
       }
-      if (tw.destroyed || !s.active) {
+      if (tw.destroyed || !s.active || tw.enabled === false) {
         tw.timer = AIM_TIME;
         continue;
       }

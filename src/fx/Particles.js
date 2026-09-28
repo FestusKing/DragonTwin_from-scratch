@@ -32,6 +32,7 @@ const frag = /* glsl */ `
 uniform sampler2D uTex;
 uniform vec3 uC0, uC1, uC2, uLight, uFogColor;
 uniform float uIntensity, uAlpha, uAdditive, uFogDensity, uMid;
+uniform vec2 uFade;
 varying float vAge;
 varying float vRot;
 varying vec3 vColor;
@@ -43,7 +44,7 @@ void main() {
   vec4 t = texture2D(uTex, p);
   vec3 col = vAge < uMid ? mix(uC0, uC1, vAge / uMid) : mix(uC1, uC2, (vAge - uMid) / (1.0 - uMid));
   col *= vColor;
-  float a = t.a * smoothstep(0.0, 0.06, vAge) * (1.0 - smoothstep(0.55, 1.0, vAge)) * uAlpha;
+  float a = t.a * smoothstep(0.0, 0.06, vAge) * (1.0 - smoothstep(uFade.x, uFade.y, vAge)) * uAlpha;
   if (a < 0.003) discard;
   float fog = 1.0 - exp(-uFogDensity * uFogDensity * vFogDepth * vFogDepth);
   if (uAdditive > 0.5) {
@@ -102,6 +103,7 @@ export class ParticleSystem {
       uIntensity: { value: opts.intensity ?? 1 },
       uAlpha: { value: opts.alpha ?? 1 },
       uAdditive: { value: additive ? 1 : 0 },
+      uFade: { value: new THREE.Vector2(opts.fade?.[0] ?? 0.55, opts.fade?.[1] ?? 1) }, // ab wann ein Teilchen ausblendet
     };
     this.material = new THREE.ShaderMaterial({
       uniforms: this.uniforms,

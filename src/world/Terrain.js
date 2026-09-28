@@ -30,6 +30,9 @@ export const PLACES = {
   lavaFlows: [
     [0.35, 520], [1.3, 420], [2.35, 330],
   ],
+  // Schlachtfeld: weite, sanfte Ebene südöstlich vom Dorf (Ellipse rx × rz, Höhe h).
+  // Das feindliche Heer kommt von Osten (+x), die eigenen Truppen stehen im Westen.
+  battle: { x: 450, z: 950, rx: 430, rz: 250, h: 20 },
   // Drachenschlucht im Westen: Mittellinie von der Mündung im Meer (Süden) bis zur
   // Felswand mit dem Wasserfall (Norden). Rundherum ein Hochplateau.
   canyon: [
@@ -171,6 +174,11 @@ export class Terrain {
     const dv = Math.hypot(x - P.village.x, z - P.village.z);
     h = lerp(h, P.village.h + n.fbm(x * 0.004, z * 0.004, 2) * 2.5, smoothstep(P.village.r + 160, P.village.r - 30, dv));
 
+    // 5a) Schlachtfeld-Ebene
+    const BF = P.battle;
+    const eb = Math.hypot((x - BF.x) / BF.rx, (z - BF.z) / BF.rz) + n.noise(x * 0.003, z * 0.003) * 0.08;
+    h = lerp(h, BF.h + n.fbm(x * 0.004 + 9, z * 0.004, 2) * 2.5, smoothstep(1.3, 0.9, eb));
+
     // 5b) Hochplateau mit der Drachenschlucht im Westen
     polylineInfo(x, z, P.canyon, _pi);
     const plat = 128 + n.fbm(x * 0.002 + 7, z * 0.002, 3) * 14;
@@ -179,11 +187,23 @@ export class Terrain {
     // Schlucht: steile, leicht gestufte Felswände, sandiger Grund, Fluss in der Mitte.
     // Am oberen Ende (Norden) eine Felswand, dort stürzt der Wasserfall herunter.
     const dcan = _pi.d + n.noise(x * 0.012, z * 0.012) * 9;
-    const head = smoothstep(CANYON_LEN, CANYON_LEN - 35, _pi.s);
+    const head = smoothstep(CANYON_LEN, CANYON_LEN - 14, _pi.s); // steile Felswand (Wasserfall fällt frei)
     let tc = smoothstep(80, 27, dcan);
     tc = clamp(tc + Math.sin(tc * Math.PI * 6) * 0.035, 0, 1) * head;
     const bed = lerp(1.8, -3.5, smoothstep(20, 9, dcan));
     h = lerp(h, Math.min(h, bed), tc);
+    // Bach-Rinne von der Quelle (70 m hinter der Kante) bis zum Wasserfall
+    const CE = P.canyon[P.canyon.length - 1];
+    const CP = P.canyon[P.canyon.length - 2];
+    const cl = Math.hypot(CE[0] - CP[0], CE[1] - CP[1]);
+    const cdx = (CE[0] - CP[0]) / cl;
+    const cdz = (CE[1] - CP[1]) / cl;
+    const along = (x - CE[0]) * cdx + (z - CE[1]) * cdz;
+    const across = Math.abs((x - CE[0]) * -cdz + (z - CE[1]) * cdx);
+    if (along > -5 && along < 85 && across < 20) {
+      const k = smoothstep(18, 6, across + n.noise(x * 0.04, z * 0.04) * 2) * smoothstep(85, 70, along);
+      h = lerp(h, Math.min(h, 187.5 + along * 0.05), k);
+    }
 
     // 6) Küste im Süden + Inselrand
     const coastLine = 1450 + n.fbm(x * 0.0009 + 3, 0.5, 4) * 380;

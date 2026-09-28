@@ -1,20 +1,24 @@
 // Abenteuer im freien Flug: Leben, Punkte & Kombos, Aufträge & Rang, Wegweiser.
-// Game.js meldet Ereignisse (Feuer, Treffer, Schafe …), hier wird daraus Spiel:
-//  - Leben: Treffer und harte Aufpralle kosten Leben. Schafe fressen und der Hort
-//    im Vulkan heilen. Bei 0 stürzt der Drache ab und erwacht im Hort.
+// Game.js meldet Ereignisse (Feuer, Treffer, Schlacht, Schafe …), hier wird daraus Spiel:
+//  - Leben: Treffer und harte Aufpralle kosten Leben. Schafe fressen, der Hort
+//    im Vulkan und ein Sieg heilen. Bei 0 stürzt der Drache ab und erwacht im Hort.
 //  - Punkte: jede Tat gibt Punkte, schnelle Folgen geben eine Kombo (×2 … ×5).
+//    Eigene Soldaten verbrennen gibt Minuspunkte.
 //  - Aufträge: 3 offene Ziele; geschafft → Erfahrung → höherer Drachen-Rang.
-//  - Wegweiser: Pfeil zum Ort des ersten Auftrags (Hort, Schlucht, Schafe …).
+//  - Wegweiser: Pfeil zum Ort des ersten Auftrags (Hort, Schlacht, Schlucht …).
 import * as THREE from 'three';
 import { clamp } from '../core/utils.js';
 import { Score } from './Score.js';
 import { Missions } from './Missions.js';
 import { PLACES, CANYON_LEN, polylineInfo } from '../world/Terrain.js';
 import { canyonPoint } from '../world/Canyon.js';
+import { ALLY, ENEMY } from './Soldiers.js';
 
 const REGEN_DELAY = 6; // so lange nach einem Treffer keine Heilung (s)
 const REGEN = 0.015; // Heilung pro Sekunde (ausserhalb des Horts)
 const HOARD_HEAL = 0.4;
+const DODGE_SAFE = 0.6; // so lange nach einer Ausweichrolle kein Schaden (s)
+const FLUSH = 0.6; // viele Soldaten auf einmal → Punkte gesammelt anzeigen (s)
 
 const IGNITE_POINTS = { hut: [60, 'Dach in Brand'], windmill: [150, 'Mühle in Flammen'], tower: [150, 'Turm brennt'], stall: [30, 'Marktstand brennt'], tree: [5, 'Baum'], ballista: [120, 'Armbrust brennt'] };
 
@@ -40,11 +44,14 @@ export class Adventure {
     this.saveTimer = 5;
     this.respawnTimer = 0;
     this.targetCache = null;
+    this.invuln = 0;
+    // gesammelte Kampf-Punkte (sonst gäbe es 30 Anzeigen auf einmal)
+    this.buf = { enemy: 0, ally: 0, sweep: 0, t: 0 };
 
     const hud = game.hud;
     this.score.onAdd = (pts, label, combo) => {
       hud.scorePop(pts, label, combo);
-      this.missions.addXp(pts);
+      if (pts > 0) this.missions.addXp(pts);
       if (this.score.points >= 5000) this.missions.report('score');
     };
     this.score.onCombo = (c) => {
@@ -75,6 +82,8 @@ export class Adventure {
     this.run.active = false;
     this.hasPrev = false;
     this.respawnTimer = 0;
+    this.invuln = 0;
+    this.buf.enemy = this.buf.ally = this.buf.sweep = 0;
     this.refreshPanel();
   }
 
@@ -83,11 +92,13 @@ export class Adventure {
     return g.state === 'play' && g.mode === 'free' && !g.tutorial?.active;
   }
 
+  /** Schaden nehmen. Rückgabe: true, wenn der Treffer zählt (nicht während einer Ausweichrolle). */
   damage(amount) {
-    if (!this.active || this.respawnTimer > 0) return;
+    if (!this.active || this.respawnTimer > 0 || this.invuln > 0) return false;
     this.health = Math.max(0, this.health - amount);
     this.hitTimer = 0;
     if (this.health <= 0) this._crash();
+    return true;
   }
 
   heal(amount) {
@@ -118,8 +129,6 @@ export class Adventure {
     this.heal(0.25);
     g.physics.stamina = Math.min(1, g.physics.stamina + 0.35);
     this.score.add(60, 'Schaf gefangen! +Leben');
-    this.missions.report('sheep3');
-    this.missions.report('sheep10');
   }
 
   onNearMiss() {
@@ -134,6 +143,87 @@ export class Adventure {
     if (!this.active) return;
     this.score.add(200, 'Schallmauer!');
     this.missions.report('sonic');
+  }
+
+  // ------------------------------------------------------------ Schlacht und Drachenreiter
+  /** Ein Soldat ist gefallen. Nur was du selbst getan hast, zählt (Feuer oder Wucht). */
+  onSoldierDeath(s, cause) {
+    if (!this.active) return;
+    if (cause !== 'feuer' && cause !== 'wucht') return;
+    if (s.team === ENEMY) {
+      this.buf.enemy++;
+      this.missions.report('soldiers40');
+    } else if (s.team === ALLY) this.buf.ally++;
+  }
+
+  onCommander(cause) {
+    if (!this.active || (cause !== 'feuer' && cause !== 'wucht')) return;
+    this.score.add(300, 'Anführer besiegt!');
+  }
+
+  /** Soldaten umgeworfen (Landung, Tiefflug, Flügelschlag) */
+  onSweep(n) {
+    if (!this.active || n <= 0) return;
+    this.buf.sweep += n;
+    this.missions.report('sweep', n);
+  }
+
+  onSiegeDestroyed() {
+    if (this.active) this.missions.report('siege');
+  }
+
+  onHorn() {
+    if (this.active) this.missions.report('horn');
+  }
+
+  onBiteHit(dragon, n = 0) {
+    if (!this.active) return;
+    if (dragon) this.score.add(150, 'Biss! Drachenreiter getroffen');
+    else this.score.add(15 * n, n > 1 ? `Biss (${n})` : 'Biss');
+    this.missions.report('bite');
+  }
+
+  onDodge() {
+    this.invuln = DODGE_SAFE;
+    if (this.active) this.missions.report('dodge');
+  }
+
+  onBattleWon(info) {
+    if (!this.active) return;
+    this.score.add(1500, info?.commander ? 'Schlacht gewonnen – Anführer gefallen!' : 'Schlacht gewonnen!');
+    this.heal(1);
+    this.missions.report('battle');
+  }
+
+  onEnemyDragonDefeated() {
+    if (!this.active) return;
+    this.score.add(2000, 'Drachenreiter besiegt!');
+    this.heal(0.5);
+    this.missions.report('enemyDragon');
+  }
+
+  /** Gesammelte Kampf-Punkte als eine Anzeige ausgeben */
+  _flush(dt) {
+    const b = this.buf;
+    b.t -= dt;
+    if (b.t > 0) return;
+    b.t = FLUSH;
+    if (b.enemy > 0) {
+      this.score.add(4 * b.enemy, b.enemy > 1 ? `${b.enemy} Feinde besiegt` : 'Feind besiegt');
+      b.enemy = 0;
+    }
+    if (b.sweep > 0) {
+      this.score.add(5 * b.sweep, b.sweep > 1 ? `${b.sweep} Soldaten umgeworfen` : 'Umgeworfen', { chain: b.sweep >= 3 });
+      b.sweep = 0;
+    }
+    if (b.ally > 0) {
+      this.score.penalty(10 * b.ally, b.ally > 1 ? `${b.ally} eigene Soldaten verbrannt!` : 'Eigener Soldat verbrannt!');
+      if (!this.allyHint) {
+        this.allyHint = true;
+        this.game.hud.toast('⚠ Das waren deine Leute!', 'Die Dorfwache trägt Blau. Brenne nur die roten Reihen der Eisenkrone.', 5);
+      }
+      b.ally = 0;
+    }
   }
 
   onRaceFinish(res) {
@@ -187,6 +277,27 @@ export class Adventure {
           if (p) return { pos: _v.set(p.x, W.terrain.heightAt(p.x, p.z) + 12, p.z), label: 'Schafe' };
           break;
         }
+        case 'battle': {
+          const B = PLACES.battle;
+          return { pos: _v.set(B.x, B.h + 45, B.z), label: 'Schlacht' };
+        }
+        case 'siege': {
+          let best = null;
+          let bd = Infinity;
+          for (const t of g.battle.siege) {
+            if (t.destroyed) continue;
+            const d = t.top.distanceTo(pos);
+            if (d < bd) {
+              bd = d;
+              best = t;
+            }
+          }
+          if (best) return { pos: _v.copy(best.top).setY(best.top.y + 8), label: 'Belagerung' };
+          break;
+        }
+        case 'enemyDragon':
+          if (g.enemy.active) return { pos: _v.copy(g.enemy.position), label: 'Drachenreiter' };
+          return { pos: _v.set(PLACES.battle.x, PLACES.battle.h + 45, PLACES.battle.z), label: 'Schlacht' };
         case 'village':
           return { pos: _v.set(PLACES.village.x, PLACES.village.h + 40, PLACES.village.z), label: 'Dorf' };
         case 'towers': {
@@ -228,6 +339,8 @@ export class Adventure {
     const p = g.physics;
     const W = g.world;
     const pos = p.position;
+    this.invuln = Math.max(0, this.invuln - dt);
+    this._flush(dt);
 
     // Absturz → kurz warten → im Hort aufwachen
     if (this.respawnTimer > 0) {

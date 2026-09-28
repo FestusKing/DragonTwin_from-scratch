@@ -66,6 +66,13 @@ export class Score {
     return pts;
   }
 
+  /** Minuspunkte (z. B. eigene Soldaten verbrannt). Die Kombo bricht ab. */
+  penalty(pts, label) {
+    this.points = Math.max(0, this.points - pts);
+    this.breakCombo();
+    this.onAdd?.(-pts, label, 1);
+  }
+
   update(dt) {
     if (this.comboTimer > 0) {
       this.comboTimer -= dt;

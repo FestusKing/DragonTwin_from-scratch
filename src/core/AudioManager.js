@@ -58,6 +58,7 @@ export class AudioManager {
     this._setupFire();
     this._setupBurnCrackle();
     this._setupCrickets();
+    this._setupWaterfall();
 
     this.music = new Music(this);
     this.applyVolumes();
@@ -194,6 +195,14 @@ export class AudioManager {
     this._loop(this.brownBuffer).connect(this._filter('lowpass', 180, 0.5)).connect(rumble).connect(this.burnGain);
   }
 
+  _setupWaterfall() {
+    // Wasserfall: tiefes Donnern + helles Rauschen
+    this.fallGain = this._gain();
+    this._loop(this.brownBuffer).connect(this._filter('lowpass', 520, 0.6)).connect(this._gain(1.1)).connect(this.fallGain);
+    this._loop(this.noiseBuffer).connect(this._filter('bandpass', 1400, 0.5)).connect(this._gain(0.35)).connect(this.fallGain);
+    this.fallGain.connect(this.ambBus);
+  }
+
   _setupCrickets() {
     // Grillen: hoher Ton, der schnell "an/aus" moduliert wird
     this.cricketGain = this._gain();
@@ -249,6 +258,7 @@ export class AudioManager {
     this.fireGain.gain.setTargetAtTime(s.fire * 0.55 * paused, t, 0.05);
 
     this.burnGain.gain.setTargetAtTime(clamp(s.burnNearby, 0, 1) * 0.6 * paused, t, 0.3);
+    this.fallGain?.gain.setTargetAtTime((s.waterfall || 0) * 0.75 * paused, t, 0.3);
     this.burnFilter.frequency.setTargetAtTime(lerp(600, 4000, clamp(1 - s.burnDist / 400, 0, 1)), t, 0.3);
 
     const nearGround = clamp(1 - s.agl / 180, 0, 1);
@@ -438,6 +448,109 @@ export class AudioManager {
     this._tone(this.sfxBus, { freq: 95, freqEnd: 45, dur: 0.35, gain: 0.45, attack: 0.003 });
   }
 
+  /** Drachenhorn: tiefer, voller Hornruf (Quinte), öffnet sich langsam */
+  playHorn() {
+    if (!this.ready) return;
+    const ctx = this.ctx;
+    const t = ctx.currentTime;
+    const dur = 2.8;
+    const lp = this._filter('lowpass', 300, 1.2);
+    lp.frequency.setValueAtTime(260, t);
+    lp.frequency.linearRampToValueAtTime(1500, t + 0.5);
+    lp.frequency.linearRampToValueAtTime(900, t + dur);
+    const env = this._gain(0);
+    env.gain.linearRampToValueAtTime(0.32, t + 0.3);
+    env.gain.setValueAtTime(0.32, t + dur - 0.7);
+    env.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    const vib = ctx.createOscillator();
+    vib.frequency.value = 5.2;
+    const vibAmt = this._gain(1.6);
+    vib.connect(vibAmt);
+    const oscs = [98, 147, 196].map((f, i) => {
+      const o = ctx.createOscillator();
+      o.type = 'sawtooth';
+      o.frequency.setValueAtTime(f * 0.94, t);
+      o.frequency.linearRampToValueAtTime(f, t + 0.25);
+      vibAmt.connect(o.frequency);
+      o.connect(this._gain([0.5, 0.35, 0.18][i])).connect(lp);
+      return o;
+    });
+    lp.connect(env);
+    env.connect(this.sfxBus);
+    env.connect(this.reverbSend);
+    for (const o of [...oscs, vib]) {
+      o.start(t);
+      o.stop(t + dur + 0.1);
+    }
+  }
+
+  /** Kriegshorn des Feindes: zwei rauhe, leicht schiefe Stösse */
+  playWarHorn(vol = 1) {
+    if (!this.ready || vol <= 0.01) return;
+    const ctx = this.ctx;
+    for (const [when, len] of [[0, 0.9], [1.1, 1.6]]) {
+      const t = ctx.currentTime + when;
+      const bp = this._filter('bandpass', 700, 1.1);
+      const env = this._gain(0);
+      env.gain.setValueAtTime(0, t);
+      env.gain.linearRampToValueAtTime(0.22 * vol, t + 0.12);
+      env.gain.setValueAtTime(0.22 * vol, t + len - 0.2);
+      env.gain.exponentialRampToValueAtTime(0.0001, t + len);
+      for (const f of [131, 139]) {
+        const o = ctx.createOscillator();
+        o.type = 'sawtooth';
+        o.frequency.setValueAtTime(f * 0.9, t);
+        o.frequency.linearRampToValueAtTime(f, t + 0.15);
+        o.connect(bp);
+        o.start(t);
+        o.stop(t + len + 0.05);
+      }
+      bp.connect(env);
+      env.connect(this.sfxBus);
+      env.connect(this.reverbSend);
+    }
+  }
+
+  /** Waffen klirren (Nahkampf) */
+  playClash(vol = 1) {
+    if (!this.ready || vol <= 0.02) return;
+    const f = 1700 + Math.random() * 900;
+    for (const k of [1, 1.47, 2.03]) this._tone(this.sfxBus, { freq: f * k, dur: 0.18 + Math.random() * 0.1, gain: 0.05 * vol / k, attack: 0.002, type: 'triangle' });
+    this._noiseBurst(this.sfxBus, { dur: 0.05, type: 'highpass', freq: 3000, q: 0.7, gain: 0.08 * vol, attack: 0.002 });
+  }
+
+  /** Schlachtlärm aus der Ferne: Rufe, Stampfen */
+  playBattleNoise(vol = 1) {
+    if (!this.ready || vol <= 0.02) return;
+    this._noiseBurst(this.ambBus, { dur: 0.5 + Math.random() * 0.5, type: 'bandpass', freq: 380 + Math.random() * 500, freqEnd: 300, q: 2.2, gain: 0.07 * vol, attack: 0.08 });
+    if (Math.random() < 0.4) this._tone(this.ambBus, { freq: 60 + Math.random() * 30, dur: 0.25, gain: 0.08 * vol, attack: 0.01 });
+  }
+
+  /** Bogensehne "Zwing" */
+  playBow(vol = 1) {
+    if (!this.ready || vol <= 0.02) return;
+    this._noiseBurst(this.sfxBus, { dur: 0.12, type: 'bandpass', freq: 2200, freqEnd: 900, q: 3, gain: 0.08 * vol, attack: 0.003 });
+  }
+
+  /** Pfeil trifft den Drachen: kurzes "Tock" */
+  playArrowHit() {
+    if (!this.ready) return;
+    this._tone(this.sfxBus, { freq: 420, freqEnd: 180, dur: 0.08, gain: 0.12, attack: 0.002, type: 'triangle' });
+  }
+
+  /** Biss: Zähne schnappen zu */
+  playBite() {
+    if (!this.ready) return;
+    this._noiseBurst(this.sfxBus, { dur: 0.1, type: 'bandpass', freq: 1400, freqEnd: 350, q: 1.5, gain: 0.45, attack: 0.002 });
+    this._tone(this.sfxBus, { freq: 95, freqEnd: 50, dur: 0.22, gain: 0.5, attack: 0.003 });
+  }
+
+  /** Feuerball fliegt los */
+  playFireball(vol = 1) {
+    if (!this.ready || vol <= 0.02) return;
+    this._noiseBurst(this.sfxBus, { dur: 0.6, type: 'bandpass', freq: 300, freqEnd: 1200, q: 0.8, gain: 0.3 * vol, attack: 0.05 });
+  }
+
   /** Zuschnappen (Schaf gepackt): kurzes, dumpfes "Hamm" */
   playChomp() {
     if (!this.ready) return;
@@ -520,21 +633,22 @@ export class AudioManager {
   }
 
   /** Drachen-Gebrüll: verzerrte tiefe Schwingung mit wanderndem Filter */
-  playRoar() {
-    if (!this.ready) return;
+  /** Brüllen. pitch > 1 = heller (feindlicher Drache), vol = Lautstärke (Entfernung) */
+  playRoar(pitch = 1, vol = 1) {
+    if (!this.ready || vol <= 0.01) return;
     const ctx = this.ctx;
     const t = ctx.currentTime;
     const dur = 2.0;
     const o1 = ctx.createOscillator();
     o1.type = 'sawtooth';
-    o1.frequency.setValueAtTime(75, t);
-    o1.frequency.linearRampToValueAtTime(105, t + 0.4);
-    o1.frequency.linearRampToValueAtTime(62, t + dur);
+    o1.frequency.setValueAtTime(75 * pitch, t);
+    o1.frequency.linearRampToValueAtTime(105 * pitch, t + 0.4);
+    o1.frequency.linearRampToValueAtTime(62 * pitch, t + dur);
     const o2 = ctx.createOscillator();
     o2.type = 'square';
-    o2.frequency.setValueAtTime(37, t);
-    o2.frequency.linearRampToValueAtTime(50, t + 0.4);
-    o2.frequency.linearRampToValueAtTime(30, t + dur);
+    o2.frequency.setValueAtTime(37 * pitch, t);
+    o2.frequency.linearRampToValueAtTime(50 * pitch, t + 0.4);
+    o2.frequency.linearRampToValueAtTime(30 * pitch, t + dur);
     const n = ctx.createBufferSource();
     n.buffer = this.noiseBuffer;
     const nGain = this._gain(0.5);
@@ -553,8 +667,8 @@ export class AudioManager {
     bp.frequency.linearRampToValueAtTime(380, t + dur);
     const lp = this._filter('lowpass', 2400, 0.7);
     const env = this._gain(0);
-    env.gain.linearRampToValueAtTime(0.55, t + 0.18);
-    env.gain.setValueAtTime(0.55, t + 1.1);
+    env.gain.linearRampToValueAtTime(0.55 * vol, t + 0.18);
+    env.gain.setValueAtTime(0.55 * vol, t + 1.1);
     env.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     const pre = this._gain(0.4);
     o1.connect(pre);

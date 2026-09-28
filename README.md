@@ -49,7 +49,11 @@ Für eine fertige Version zum Hochladen gibt es `npm run build`. Das Ergebnis li
 | Feuer speien | **F** | X |
 | Bremsen / Schweben | **V** | LT |
 | Kamera (Reiter-Sicht) | **C** | Y |
-| Brüllen | **Q** | RB |
+| Brüllen (wirft Soldaten um, erschreckt Feinde) | **Q** | RB |
+| Biss / Sturzangriff | **X** | Steuerkreuz ↓ |
+| Drachenhorn (eigene Truppen stürmen los) | **G** | Steuerkreuz ↑ |
+| Gegner anvisieren (Ziel-Kamera) | **T** | Steuerkreuz → |
+| Ausweichrolle | 2× schnell **A** oder **D** | – |
 | Rennen neu starten | **R** | LB |
 | HUD ein/aus (Fotomodus) | **P** | – |
 | Steuerung anzeigen | **H** | Back |
@@ -104,6 +108,9 @@ Für eine fertige Version zum Hochladen gibt es `npm run build`. Das Ergebnis li
     Im Krater liegt dein **Hort** (Goldhaufen, Edelsteine, drei Dracheneier).
   - **Drachenschlucht** im Westen: tiefe, kurvige Schlucht mit roten Gesteinsschichten, Fluss,
     **Wasserfall** am oberen Ende und einer **Hängebrücke** (man kann drunter durchfliegen).
+    Der Wasserfall ist echt: ein Bach fliesst zur Kante, dort fallen tausende **Wasser-Partikel**
+    ca. 185 m in die Tiefe, unten schäumt es, Gischt steigt auf, und er **rauscht** (lauter, je näher du bist).
+  - **Ostebene** im Südosten: grosses flaches Schlachtfeld mit dem **Heerlager der Eisenkrone** (Zelte).
   - **Schafherden** auf 6 Weiden: Sie fliehen in Panik vor dem Drachen.
 - Dorf mit Burg, Kirche, Windmühle, ca. 28 Fachwerkhütten, Feldern und einem Fischerdorf.
 - **Foto-Texturen** für Gras, Fels, Sand, Schnee, Wege, Holz, Stroh, Stein, Putz und Schiefer.
@@ -121,17 +128,43 @@ Für eine fertige Version zum Hochladen gibt es `npm run build`. Das Ergebnis li
   - Zerstören: mit Feuer anzünden.
   - Im Ringrennen und im Tutorial schiessen sie nicht. Abschaltbar in *Einstellungen → Spiel*.
 
+### Schlacht (wie in DragonTwin)
+Die Idee stammt aus **DragonTwin** (Early Access): Man lenkt eine Schlacht vom Rücken seines Drachen aus.
+Alles hier ist selbst gebaut (eigener Code, eigene Modelle, eigene Töne) – nur die Spielidee ist ähnlich.
+
+- **Zwei Heere:** die **Dorfwache** (blau, deine Leute) und das Heer der **Eisenkrone** (rot).
+  Jeder Soldat läuft, kämpft, flieht, brennt oder fliegt durch die Luft (einfache „Ragdoll“).
+  Es gibt Fusssoldaten, Bogenschützen und je einen Anführer mit Banner.
+- **Start:** Fliege auf die Ostebene – dann marschiert der Feind los.
+- **3 Wellen:** Die Eisenkrone schickt Verstärkung aus dem Lager. Der **Anführer** kommt mit der letzten Welle.
+- **Sieg:** Anführer besiegen oder die letzte Welle vertreiben → Punkte, volles Leben, nächste Schlacht wird schwerer.
+  **Niederlage:** Fallen fast alle deine Leute, fliehen sie. Nach einer Weile stellen sich neue Heere auf.
+- **Deine Waffen:**
+  - **Feuer** – Soldaten brennen, Feuer springt auf Nachbarn über. **Aber:** Es trifft auch deine Leute (Minuspunkte)!
+  - **Tiefflug** durch die Reihen, **harte Landung**, **Brüllen** und **Biss (X)** – Soldaten fliegen weg.
+  - **Drachenhorn (G):** Deine Truppen stürmen los und kämpfen eine Weile härter. Danach braucht das Horn Pause.
+- **Der Feind wehrt sich:** Bogenschützen schiessen auf dich, dazu 3 **Belagerungs-Armbrüste** hinter dem Heer
+  (anzünden!).
+- **Feindlicher Drachenreiter „Skarn der Sturmreiter“** (kommt mit der 2. Welle):
+  - Verfolgt dich in der Luft. Er **kündigt Angriffe an**: Sein Maul glüht und er knurrt.
+  - Angriffe: **Feuerstrahl** aus der Nähe, **Feuerbälle** aus der Ferne, **Tiefangriff** auf deine Truppen.
+  - **Ausweichrolle** (2× schnell A oder D): kurz unverwundbar.
+  - **Anvisieren (T):** Kamera und Kopf deines Drachen folgen ihm. Dann Feuer oder Biss.
+  - Ab der Hälfte seiner Lebenskraft wird er **wütend** (schneller, mehr Feuerbälle). Bei 0 stürzt er brennend ab.
+- **Anzeigen:** Schlacht-Tafel rechts oben (Soldaten beider Seiten, Welle, Belagerung, Horn bereit),
+  Lebensbalken des Drachenreiters oben, roter Zielkreis.
+
 ### Abenteuer (im Freiflug)
-- **Aufträge:** Oben links stehen immer 3 Aufträge (z. B. „Fange 3 Schafe“, „Fliege durch die ganze
-  Schlucht“, „Fliege unter der Hängebrücke durch“, „Durchbrich die Schallmauer“ – 15 insgesamt).
+- **Aufträge:** Oben links stehen immer 3 Aufträge (z. B. „Blase das Drachenhorn“, „Gewinne eine Schlacht“,
+  „Besiege den Drachenreiter“, „Fliege durch die ganze Schlucht“ – 21 insgesamt).
   Ein **blauer Pfeil** zeigt den Weg zum Ziel.
 - **Drachen-Rang:** Punkte und Aufträge geben Erfahrung (XP). 5 Ränge: Jungdrache → Feuerspeier →
   Himmelsjäger → Schrecken des Tals → Drachenkönig. Jeder neue Rang schaltet eine **Drachenfarbe** frei
   (Glut, Frost, Schatten, König) und Rang 4 die Feuerfarbe **Weissglut**.
 - **Punkte und Kombos:** Jede Tat gibt Punkte („+60 Dach in Brand“). Schnell hintereinander = Kombo bis ×5.
   Auch Tiefflug, Schluchtflug, Felsbogen, Schallmauer und knapp ausgewichene Bolzen zählen.
-- **Leben:** Bolzen und harte Aufpralle kosten Leben. Heilen: langsam von selbst, schnell durch
-  **Schafe fangen** (ganz tief über eine Herde fliegen) oder im **Hort** landen.
+- **Leben:** Pfeile, Bolzen, Feuerbälle und harte Aufpralle kosten Leben. Heilen: langsam von selbst,
+  schnell im **Hort**, nach einem **Sieg**, oder etwas beim **Schafe fangen** (ganz tief über eine Herde fliegen).
   Bei 0 Leben stürzt der Drache ab und erwacht im Hort.
 
 ### Spielmodi
@@ -222,7 +255,10 @@ src/
   gameplay/
     RingRace.js         Ringrennen
     Ballistae.js        Armbrüste (Wachtürme und Burg) und Brandbolzen
-    Adventure.js        Freiflug-Abenteuer: Leben, Absturz/Hort, Wegweiser, Schlucht/Brücke/Felsbogen
+    Adventure.js        Freiflug-Abenteuer: Leben, Absturz/Hort, Wegweiser, Punkte für Kampf und Flug
+    Battle.js           Schlacht auf der Ostebene: Heere, Wellen, Drachenhorn, Sieg/Niederlage
+    Soldiers.js         Hunderte Soldaten (Instancing, Arme/Beine im Shader), Pfeile, "Ragdolls"
+    EnemyDragon.js      Feindlicher Drachenreiter: Verfolgen, Feuerstrahl, Feuerbälle, Tiefangriff
     Score.js            Punkte und Kombos
     Missions.js         Aufträge und Drachen-Rang (gespeichert)
     Courses.js          Die drei Strecken
@@ -306,7 +342,9 @@ Die „Stretch Goals“ aus der Vorgabe gehören **nicht** zum Test Flight. Sie 
 - Weltkarte mit mehreren Regionen (es gibt jetzt aber Vulkan, Schlucht und Weiden auf der Insel)
 - Grosse Quests mit Geschichte (es gibt aber kleine Aufträge mit Rang)
 - Zerstörbare Gebäude (Hütten brennen ab, stürzen aber nicht ein)
-- Armeen und feindliche Drachen
+- Grosse Armeen mit tausenden Soldaten und echter Physik-Ragdoll wie in DragonTwin
+  (hier: einige hundert Soldaten, einfache Flugbahn statt echter Ragdoll-Physik)
+- Befehle an einzelne Trupps (hier gibt es nur das Drachenhorn für alle)
 - Eine begehbare Höhle (der Hort liegt offen im Vulkankrater)
 - Strategie-Modus
 - Mehrspieler

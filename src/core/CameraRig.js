@@ -11,6 +11,7 @@ const _r = new THREE.Vector3();
 const _d = new THREE.Vector3();
 const _t = new THREE.Vector3();
 const _look = new THREE.Vector3();
+const _lk = new THREE.Vector3();
 const _q = new THREE.Quaternion();
 const _q2 = new THREE.Quaternion();
 const _e = new THREE.Euler();
@@ -114,6 +115,16 @@ export class CameraRig {
     if (t.hover || t.grounded) _d.y *= 0.3;
     _d.y = clamp(_d.y, -0.75, 0.75);
     _d.normalize();
+    // Ziel-Kamera: hinter den Drachen auf die Linie zum Gegner → beide im Bild
+    let lockDist = 0;
+    if (t.lock) {
+      _lk.subVectors(t.lock, t.pos);
+      lockDist = _lk.length();
+      _lk.divideScalar(lockDist || 1);
+      _d.lerp(_lk, 0.7);
+      _d.y = clamp(_d.y, -0.6, 0.6);
+      _d.normalize();
+    }
     // Maus/Stick-Versatz
     _q.setFromAxisAngle(WUP, this.yawOff);
     _d.applyQuaternion(_q);
@@ -145,6 +156,7 @@ export class CameraRig {
     this.up.lerp(_t, 1 - Math.exp(-4 * dt)).normalize();
     cam.up.copy(this.up);
     _look.copy(t.pos).addScaledVector(_f, 9).addScaledVector(WUP, 2.5);
+    if (t.lock) _look.lerp(t.lock, clamp(90 / Math.max(lockDist, 1), 0.12, 0.4));
     this.lookPos.lerp(_look, 1 - Math.exp(-12 * dt));
     cam.lookAt(this.lookPos);
     const targetFov = 62 + speedK * 22 + (t.boost ? 6 : 0) + (t.dive || 0) * 8;

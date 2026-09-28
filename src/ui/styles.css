@@ -958,6 +958,176 @@ input[type='range'] {
     transform: translate(-50%, -90px) scale(1);
   }
 }
+/* ---------------- Schlacht, Boss, Zielkreis ---------------- */
+#hud.battle-on #toasts {
+  top: 212px;
+}
+#hud-battle {
+  position: absolute;
+  top: 62px;
+  right: 16px;
+  width: 220px;
+  padding: 9px 12px 10px;
+  font-size: 0.8rem;
+}
+.bt-title {
+  color: var(--gold);
+  font-weight: 800;
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 5px;
+}
+#bt-state {
+  float: right;
+  color: var(--ink);
+  letter-spacing: 0.02em;
+}
+.bt-row {
+  display: flex;
+  justify-content: space-between;
+  font-variant-numeric: tabular-nums;
+}
+.bt-name.ally {
+  color: #8fb6ff;
+}
+.bt-name.enemy {
+  color: #ff8a7a;
+}
+.bt-bar {
+  height: 6px;
+  margin: 2px 0 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+.bt-fill {
+  height: 100%;
+  transform-origin: left;
+  transition: transform 0.3s;
+}
+.bt-fill.ally {
+  background: linear-gradient(90deg, #2d5aa8, #6f9cff);
+}
+.bt-fill.enemy {
+  background: linear-gradient(90deg, #8a1616, #ff5040);
+}
+.bt-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--ink-dim);
+}
+.bt-foot b {
+  color: var(--ink);
+}
+.bt-horn {
+  position: relative;
+  padding: 1px 6px 1px 2px;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.bt-horn.ready {
+  color: #ffd35a;
+  box-shadow: 0 0 10px rgba(255, 200, 60, 0.6);
+}
+#bt-horn-fill {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  width: 100%;
+  background: #ffd35a;
+  transform-origin: left;
+}
+#hud-boss {
+  position: absolute;
+  top: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(440px, 60vw);
+  text-align: center;
+}
+.boss-name {
+  font: 700 1rem var(--font-title);
+  color: #cfe0ff;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
+  margin-bottom: 3px;
+}
+#hud-boss.angry .boss-name {
+  color: #ff9a7a;
+}
+.boss-bar {
+  position: relative;
+  height: 9px;
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  overflow: hidden;
+}
+#boss-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #6a1010, #e0402a);
+  transform-origin: left;
+  transition: transform 0.25s;
+}
+#hud-boss.hurt #boss-fill {
+  background: #fff;
+}
+.boss-tick {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: rgba(255, 255, 255, 0.6);
+}
+#lock-reticle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.lr-ring {
+  position: absolute;
+  left: -26px;
+  top: -26px;
+  width: 52px;
+  height: 52px;
+  border: 2px solid #ff4a3a;
+  border-radius: 50%;
+  box-shadow: 0 0 12px rgba(255, 60, 40, 0.7);
+  animation: lockSpin 2.4s linear infinite;
+  border-top-color: transparent;
+  border-bottom-color: transparent;
+}
+#lock-reticle.soft .lr-ring {
+  border-color: rgba(255, 180, 120, 0.55);
+  border-top-color: transparent;
+  border-bottom-color: transparent;
+  box-shadow: none;
+}
+.lr-dist {
+  position: absolute;
+  top: 30px;
+  left: -50px;
+  width: 100px;
+  text-align: center;
+  font-weight: 800;
+  font-size: 0.75rem;
+  color: #ffb3a8;
+}
+@keyframes lockSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.score-pop.bad {
+  color: #ff6a5a;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
+}
 #quest-indicator {
   position: absolute;
   left: 0;
@@ -1234,6 +1404,10 @@ input[type='range'] {
   #hud-quests {
     font-size: 0.75rem;
     width: 46vw;
+  }
+  #hud-battle {
+    width: 44vw;
+    font-size: 0.72rem;
   }
   .setting {
     grid-template-columns: 1fr;

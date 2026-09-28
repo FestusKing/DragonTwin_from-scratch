@@ -18,6 +18,8 @@ import { RingRace } from '../gameplay/RingRace.js';
 import { Tutorial } from '../gameplay/Tutorial.js';
 import { Ballistae } from '../gameplay/Ballistae.js';
 import { Adventure } from '../gameplay/Adventure.js';
+import { Battle } from '../gameplay/Battle.js';
+import { EnemyDragon, ENEMY_NAME } from '../gameplay/EnemyDragon.js';
 import { PostProcessing } from '../fx/PostProcessing.js';
 import { SpeedFx } from '../fx/SpeedFx.js';
 import { PARTICLE_SCALE } from '../fx/Particles.js';
@@ -53,6 +55,7 @@ const _mouth = new THREE.Vector3();
 const _tipR = new THREE.Vector3();
 const _dir = new THREE.Vector3();
 const _up = new THREE.Vector3(0, 1, 0);
+const _aim = new THREE.Vector3();
 const _tipL = new THREE.Vector3();
 
 export class Game {
@@ -112,6 +115,19 @@ export class Game {
     };
     this.wasBoosting = false;
     this.ballistae = new Ballistae(this.scene, this.world);
+    this.battle = new Battle(this.scene, this.world, this.ballistae);
+    this.enemy = new EnemyDragon(this.scene, this.world, preset.world.particles);
+    this.lockOn = false;
+    this.biteT = 0;
+    this.biteCd = 0;
+    this.biteHit = false;
+    this.lastRollTap = { rollLeft: -9, rollRight: -9 };
+    this.dodgeCd = 0;
+    // Feuer des Spielers trifft Soldaten und den feindlichen Drachen
+    this._onFlame = (p, r, k) => {
+      this.battle.onFlame(p, r, k, 'player');
+      this.enemy.takeFlame(p, r, k);
+    };
     this.race = new RingRace(this.scene, this.world, this.audio);
     this.tutorial = new Tutorial(this.input, this.audio, {
       ...this.hud.tutorialUI(),
@@ -190,6 +206,7 @@ export class Game {
       this.rig.addShake(s * 0.9);
       this.damage = Math.min(1, this.damage + s * 0.6);
       this.adv.damage(s * 0.25);
+      this.battle.onImpact(p.position, s);
     };
     p.events.splash = (s) => this._splash(s);
     p.events.land = (water, into = 3) => {
@@ -202,10 +219,13 @@ export class Game {
         this.audio.playImpact(0.25 + s * 0.5);
       }
       this.rig.addShake(0.25 + s * 0.6);
+      const flung = this.battle.onImpact(_v, s);
+      if (flung) this.adv.onSweep(flung);
       this._hintOnce('land', 'Gelandet', `Mit ${this._key('flap')} hebst du wieder ab, mit ${this._key('pitchDown')} läufst du.`);
     };
     p.events.takeoff = () => {
       _v.copy(p.position).setY(p.position.y - 2.4);
+      this.battle.onImpact(_v, 0.5);
       if (!p.onWater) {
         w.particles.dust(_v, 1.0);
         this.speedFx.shock(_v, _up, { r0: 2, r1: 18, dur: 0.6, opacity: 0.22, color: 0x8a7a62 });
@@ -255,7 +275,8 @@ export class Game {
     };
     bl.onAim = () => this._hintOnce('aim', '⚠ Armbrust!', 'Eine Armbrust zielt auf dich. Weiche in Kurven aus oder brenne sie nieder!');
     bl.onNearMiss = () => this.adv.onNearMiss();
-    bl.onDestroyed = (n, total) => {
+    bl.onDestroyed = (n, total, tw) => {
+      if (tw?.field) this.adv.onSiegeDestroyed();
       this.hud.toast(`🏹 Armbrust zerstört! ${n}/${total}`, n === total ? 'Alle Armbrüste sind still.' : '', 3.5);
       this.audio.playSuccess();
       this.adv.onTowerDestroyed(n, total);
@@ -263,9 +284,10 @@ export class Game {
 
     // Schafe
     w.herds.onCatch = (sheep, pos) => this.adv.onSheep(pos);
-    w.herds.onPanic = () => {
-      if (this.state === 'play') this._hintOnce('sheep', '🐑 Schafe!', 'Fliege ganz tief über die Herde, um ein Schaf zu packen – das gibt Leben und Ausdauer.');
-    };
+    w.herds.onPanic = null;
+
+    // Schlacht und feindlicher Drachenreiter
+    this._wireBattle();
 
     // Rennen
     const r = this.race;
@@ -287,6 +309,162 @@ export class Game {
         }
       }, 2200);
     };
+  }
+
+  /** Schlacht (Battle.js) und feindlicher Drachenreiter (EnemyDragon.js) → Töne, Anzeigen, Punkte */
+  _wireBattle() {
+    const b = this.battle;
+    const e = this.enemy;
+    const hud = this.hud;
+    const vol = (pos) => clamp(1 - pos.distanceTo(this.camera.position) / 900, 0, 1);
+    b.on.start = () => {
+      hud.center('SCHLACHT!', 'Das Heer der Eisenkrone greift an!', 2.6);
+      hud.toast('⚔ Schlacht auf der Ostebene', `Blase das Drachenhorn (${this._key('horn')}), damit deine Truppen angreifen. Vorsicht: Dein Feuer trifft auch die eigenen Leute!`, 7);
+      this.audio.playWarHorn(1);
+      this.audio.setMusicIntensity(1);
+    };
+    b.on.wave = (n, total) => {
+      this.audio.playWarHorn(0.8);
+      hud.toast(`⚔ Verstärkung! Welle ${n}/${total}`, n === total ? 'Der Anführer der Eisenkrone führt die letzte Welle an. Besiege ihn!' : 'Neue Truppen der Eisenkrone kommen aus dem Heerlager im Osten.', 5);
+    };
+    b.on.death = (sold, cause) => this.adv.onSoldierDeath(sold, cause);
+    b.on.commander = (cause) => this.adv.onCommander(cause);
+    b.on.arrowHit = () => {
+      this.adv.damage(0.006);
+      this.audio.playArrowHit();
+      this.rig.addShake(0.05);
+    };
+    b.on.clash = (pos) => this.audio.playClash(vol(pos) * 0.8);
+    b.on.shoot = (pos) => {
+      if (Math.random() < 0.25) this.audio.playBow(vol(pos) * 0.6);
+    };
+    b.on.noise = (k) => this.audio.playBattleNoise(k);
+    b.on.enemyDragon = () => {
+      const C = b.C;
+      e.spawn(_v.set(C.x + 700, C.y + 220, C.z - 250), this.physics.position);
+      hud.center('DRACHENREITER!', `${ENEMY_NAME} greift an`, 2.6);
+      hud.toast('🐉 Ein feindlicher Drachenreiter!', `Er kündigt Angriffe an: Glüht sein Maul, weich aus (2× ${this._key('rollLeft')} oder ${this._key('rollRight')}). Mit ${this._key('lock')} visierst du ihn an, mit ${this._key('bite')} beisst du zu.`, 8);
+    };
+    b.on.victory = (info) => {
+      hud.center('SIEG!', info.commander ? 'Der feindliche Anführer ist gefallen' : 'Das Heer der Eisenkrone flieht', 3.5);
+      this.audio.playFinish(true);
+      this.audio.setMusicIntensity(0);
+      this.adv.onBattleWon(info);
+      e.leave();
+    };
+    b.on.defeat = () => {
+      hud.center('NIEDERLAGE', 'Deine Truppen fliehen … die nächste Schlacht kommt', 3.5);
+      this.audio.playError();
+      this.audio.setMusicIntensity(0);
+      e.leave();
+    };
+    // feindlicher Drache
+    e.on.roar = (pos, angry) => {
+      this.audio.playRoar(1.3, vol(pos) * 1.4 + 0.25);
+      if (angry) hud.toast(`😡 ${ENEMY_NAME} ist wütend!`, 'Er ist jetzt schneller und schiesst mehr Feuerbälle.', 4);
+    };
+    e.on.growl = (pos) => this.audio.playRoar(1.6, vol(pos) * 0.5);
+    e.on.fireball = (pos) => this.audio.playFireball(vol(pos));
+    e.on.hitPlayer = (amount) => {
+      if (this.adv.damage(amount)) {
+        this.damage = Math.min(1, this.damage + amount * 3);
+        this.rig.addShake(amount * 2);
+      }
+    };
+    e.on.explode = (pos) => {
+      const k = vol(pos);
+      this.audio.playImpact(0.4 + k * 0.8);
+      this.rig.addShake(k * 0.6);
+      this.speedFx.shock(pos, _up, { r0: 2, r1: 26, dur: 0.6, opacity: 0.3 });
+    };
+    e.on.bump = (dir) => {
+      this.physics.velocity.addScaledVector(dir, -9);
+      this.adv.damage(0.05);
+      this.rig.addShake(0.6);
+      this.audio.playImpact(0.7);
+    };
+    e.on.strafe = () => hud.toast('⚠ Der Drachenreiter greift deine Truppen an!', 'Halte ihn auf – verfolge ihn!', 3.5);
+    e.on.phase2 = () => {};
+    e.on.defeated = () => {
+      hud.center('BESIEGT!', `${ENEMY_NAME} stürzt ab`, 3);
+      this.adv.onEnemyDragonDefeated();
+      this.lockOn = false;
+    };
+    e.on.crash = (pos) => {
+      const k = vol(pos);
+      this.audio.playBoom();
+      this.rig.addShake(0.4 + k);
+      this.world.particles.dust(pos, 2);
+      this.speedFx.shock(pos, _up, { r0: 4, r1: 60, dur: 1, opacity: 0.35, color: 0x8a7a62 });
+    };
+  }
+
+  /** Wohin der Kopf zielt: angepeilter Gegner, oder ein Gegner vor dem Drachen (Zielhilfe) */
+  _aimDir() {
+    const e = this.enemy;
+    if (!e.active || this.state !== 'play') return null;
+    const p = this.physics.position;
+    _aim.subVectors(e.position, p);
+    const d = _aim.length();
+    _aim.divideScalar(d || 1);
+    if (this.lockOn) return _aim;
+    if (d < 260 && _aim.dot(this.physics.forward(_v)) > 0.88) return _aim;
+    return null;
+  }
+
+  /** Drachenhorn (G): eigene Truppen sammeln */
+  _horn() {
+    this.audio.playHorn();
+    this.speedFx.shock(this.physics.position, _up, { r0: 4, r1: 90, dur: 1.4, opacity: 0.35, color: 0xffd35a });
+    const r = this.battle.horn(this.physics.position);
+    if (r === 'rally') {
+      this.hud.center('', '⚔ Deine Truppen stürmen vor!', 2);
+      this.adv.onHorn();
+    } else if (r === 'cooldown') this.hud.toast('Das Horn braucht noch Luft …', '', 1.5);
+    else if (r === 'far' || r === 'none') this.hud.toast('Das Horn hallt über das Land …', 'Deine Truppen stehen auf der Ostebene (Südosten).', 3);
+  }
+
+  /** Biss (X): kurzer Vorstoss, schnappt zu – Soldaten vor dem Maul und der feindliche Drache */
+  _bite() {
+    if (this.biteCd > 0) return;
+    const p = this.physics;
+    this.biteCd = 1.1;
+    this.biteT = 0.45;
+    this.biteHit = false;
+    if (!p.grounded) p.velocity.addScaledVector(p.forward(_v), 14);
+    this.audio.playRoar(1.9, 0.35);
+  }
+
+  _biteUpdate(dt) {
+    this.biteCd = Math.max(0, this.biteCd - dt);
+    if (this.biteT <= 0) return 0;
+    this.biteT -= dt;
+    // zuschnappen nach ca. 0.2 s
+    if (!this.biteHit && this.biteT < 0.25) {
+      this.biteHit = true;
+      this.audio.playBite();
+      this.dragon.getMouth(_mouth, _dir);
+      const n = this.battle.onBite(_mouth, _dir);
+      const hitDragon = this.enemy.takeBite(_mouth, _dir);
+      if (hitDragon) {
+        this.rig.addShake(0.6);
+        this.adv.onBiteHit(true);
+      } else if (n > 0) this.adv.onBiteHit(false, n);
+    }
+    return this.biteT > 0.25 ? 1 : 0.3;
+  }
+
+  /** Ausweichrolle: 2× schnell A oder D */
+  _dodge(dir) {
+    const p = this.physics;
+    if (this.dodgeCd > 0 || p.grounded || p.stamina < 0.12) return;
+    this.dodgeCd = 0.9;
+    p.stamina -= 0.12;
+    p.velocity.addScaledVector(p.right(_v), dir * 24);
+    this.dragon.rollT = 0;
+    this.dragon.rollDir = dir;
+    this.adv.onDodge();
+    this.audio.playWhoosh();
   }
 
   _key(action) {
@@ -393,6 +571,9 @@ export class Game {
 
   startRace(courseId, ghost) {
     this.audio.init();
+    if (this.battle.state !== 'waiting') this.battle.reset();
+    this.enemy.despawn();
+    this.lockOn = false;
     this._focusGame();
     this.tutorial.stop();
     this.menu.hideAll();
@@ -432,12 +613,18 @@ export class Game {
 
   restart() {
     this.world.reset();
+    this.battle.reset();
+    this.enemy.despawn();
+    this.lockOn = false;
     if (this.mode === 'race') this.retryRace();
     else this.startFreeFlight();
   }
 
   toMenu() {
     this.race.clear();
+    this.battle.reset();
+    this.enemy.despawn();
+    this.lockOn = false;
     this.tutorial.stop();
     this.world.reset();
     this.hud.show(false);
@@ -520,6 +707,7 @@ export class Game {
       grounded: p.grounded,
       boost: p.boosting,
       dive: p.fold,
+      lock: this.lockOn && this.enemy.active ? this.enemy.position : null,
     };
   }
 
@@ -548,7 +736,7 @@ export class Game {
     // Feuer (auch als Vorschau im Anpassen-Menü)
     if (!paused) {
       const wantsFire = (playing && this.flightInput.fire) || (this.state === 'customize' && this.previewFireTimer > 0);
-      fireI = this.fire.update(dt, wantsFire, this.dragon, this.physics.velocity, playing ? this.world.burn : null, this.world.terrain);
+      fireI = this.fire.update(dt, wantsFire, this.dragon, this.physics.velocity, playing ? this.world.burn : null, this.world.terrain, playing ? this._onFlame : null);
     }
 
     // Drachen-Modell an die Physik hängen und animieren
@@ -556,6 +744,8 @@ export class Game {
     d.root.position.copy(this.physics.position);
     d.root.quaternion.copy(this.physics.quaternion);
     const a = this.physics.animState(this.anim);
+    a.bite = this._biteUpdate(paused ? 0 : dt);
+    a.look = this._aimDir();
     a.fire = fireI;
     this.roarAnim = Math.max(0, this.roarAnim - dt);
     a.roar = this.roarAnim > 0 ? 1 : 0;
@@ -563,6 +753,23 @@ export class Game {
     this._nostrilSmoke(dt, fireI, paused);
     if (!paused) this._speedEffects(dt, a, playing);
     if (!paused) {
+      // Schlacht und feindlicher Drachenreiter
+      const pp = this.physics;
+      const free = this.state === 'play' && this.mode === 'free' && !this.tutorial.active;
+      this.battle.update(dt, { dragonPos: pp.position, dragonVel: pp.velocity, free, camPos: this.camera.position });
+      this.enemy.update(dt, { playerPos: pp.position, playerVel: pp.velocity, playerActive: free, battle: this.battle });
+      if (free) {
+        let flung = pp.grounded ? 0 : this.battle.lowPass(pp.position, pp.velocity, pp.agl ?? 99);
+        // am Boden: wer unter die Füsse kommt, wird zertrampelt
+        this.stompT = (this.stompT || 0) - dt;
+        if (pp.grounded && Math.abs(pp.walkSpeed) > 1 && this.stompT <= 0 && this.battle.state !== 'idle') {
+          this.stompT = 0.35;
+          _v.copy(pp.position).setY(pp.position.y - 2.4);
+          flung += this.battle.soldiers.blast(_v, 4.5, 5, 2, null, true);
+        }
+        if (flung) this.adv.onSweep(flung);
+      }
+      if (!this.enemy.active && this.lockOn) this.lockOn = false;
       this.ballistae.update(dt, {
         dragonPos: this.physics.position,
         dragonVel: this.physics.velocity,
@@ -616,6 +823,7 @@ export class Game {
       burnNearby: w.burn.stats.nearby,
       burnDist: w.burn.stats.nearest,
       inCloud: w.inCloud,
+      waterfall: w.canyon.loudness(this.camera.position),
       paused,
       inMenu: !playing,
     });
@@ -711,6 +919,27 @@ export class Game {
         this.speedFx.shock(_v.setY(_v.y + 0.3), _up, { r0: 4, r1: 40, dur: 1.1, opacity: 0.25, color: 0x8a7a62 });
       }
       this.world.goats.respondToRoar(p.position);
+      this.battle.onRoar(p.position);
+    }
+    // Kampf: Drachenhorn, Biss, Anvisieren, Ausweichrolle (2× schnell A oder D)
+    if (this.state === 'play') {
+      if (input.pressed('horn')) this._horn();
+      if (input.pressed('bite')) this._bite();
+      if (input.pressed('lock')) {
+        if (this.enemy.active && this.enemy.position.distanceTo(p.position) < 1800) {
+          this.lockOn = !this.lockOn;
+          this.hud.toast(this.lockOn ? '🎯 Ziel erfasst' : 'Ziel gelöst', this.lockOn ? 'Die Kamera behält den Drachenreiter im Blick, dein Feuer zielt auf ihn.' : '', 2);
+        } else this.hud.toast('Kein Gegner in der Nähe', '', 1.5);
+      }
+    }
+    this.dodgeCd = Math.max(0, this.dodgeCd - dt);
+    for (const [act, dir] of [['rollLeft', -1], ['rollRight', 1]]) {
+      if (input.pressed(act)) {
+        if (this.time - this.lastRollTap[act] < 0.3) {
+          this._dodge(dir);
+          this.lastRollTap[act] = -9;
+        } else this.lastRollTap[act] = this.time;
+      }
     }
     if (this.state === 'race' && input.pressed('restart')) {
       this.retryRace();
@@ -878,6 +1107,15 @@ export class Game {
       this.hud.updateRace(this.race.time, this.race.next, this.race.course.rings.length, this.race.record?.time);
       this.hud.ringIndicator(this.race.state !== 'finished' ? this.race.nextRing : null, this.camera, p.position);
     }
+    // Schlacht, Drachenreiter, Zielkreis (nur im freien Flug)
+    const free = this.adv.active;
+    const b = this.battle;
+    const near = b.state !== 'idle' && p.position.distanceTo(b.C) < 900;
+    this.hud.updateBattle(free && (near || b.state === 'fight') ? b.status() : null, this._key('horn'));
+    const e = this.enemy;
+    this.hud.updateBoss(free && e.visible && e.state !== 'wreck' && e.state !== 'leave' ? { name: ENEMY_NAME, k: e.hp / 100, angry: e.phase2, hurt: e.hurtFlash > 0 } : null);
+    const aim = free && e.active ? this._aimDir() : null;
+    this.hud.lockReticle(aim ? e.position : null, this.camera, p.position, this.lockOn);
     // Blitz → kurzes Aufhellen
     if (this.world.sky.flash > 0.5) this.hud.doFlash(0.15);
   }

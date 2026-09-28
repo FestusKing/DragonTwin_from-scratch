@@ -47,6 +47,8 @@ const _e = new THREE.Euler();
 const _q = new THREE.Quaternion();
 const _qd = new THREE.Quaternion();
 const _qr = new THREE.Quaternion();
+const _qi = new THREE.Quaternion();
+const _lv = new THREE.Vector3();
 const _v = new THREE.Vector3();
 
 export class Dragon {
@@ -66,7 +68,9 @@ export class Dragon {
     if (!ghost) this._createRider();
 
     // geglättete Animationswerte
-    this.s = { fold: 0, amp: 0, legs: 0, ground: 0, stretch: 1, jaw: 0, neckYaw: 0, neckPitch: 0, tailYaw: 0, tailPitch: 0, hover: 0, bank: 0, rx: 0, ry: 0, speed: 0 };
+    this.s = { fold: 0, amp: 0, legs: 0, ground: 0, stretch: 1, jaw: 0, neckYaw: 0, neckPitch: 0, tailYaw: 0, tailPitch: 0, hover: 0, bank: 0, rx: 0, ry: 0, speed: 0, lookYaw: 0, lookPitch: 0, bite: 0 };
+    this.rollT = 1; // Ausweichrolle: 0 → 1 (fertig)
+    this.rollDir = 1;
     this._prevQ = new THREE.Quaternion(); // Drehung im letzten Bild (für die Drehraten)
     this.firstPerson = false; // Reiter-Sicht: Hals bleibt flach, damit er nicht die Sicht versperrt
     this.update(0, { flapPhase: 0, flapAmp: 0, fold: 0 });
@@ -329,7 +333,8 @@ export class Dragon {
   /**
    * a = Animations-Zustand aus der Physik:
    *  flapPhase 0..1, flapAmp 0..1, fold 0..1, bank, roll (Eingabe), speed, agl (Höhe über Boden),
-   *  hover 0..1, grounded 0..1, walk, fire 0..1, roar 0..1
+   *  hover 0..1, grounded 0..1, walk, fire 0..1, roar 0..1,
+   *  look (Richtung in der Welt, z. B. zum Gegner – der Kopf zielt dorthin), bite 0..1 (Biss)
    * Die Drehraten (Kurve, Nicken) rechnet der Drache selbst aus root.quaternion aus.
    */
   update(dt, a) {
@@ -346,7 +351,23 @@ export class Dragon {
     s.ground = damp(s.ground, a.grounded || 0, 3, dt);
     // Hals: im Flug gestreckt, am Boden in S-Form; in der Reiter-Sicht immer gestreckt
     s.stretch = damp(s.stretch, this.firstPerson ? 1 : 1 - s.legs, 4, dt);
-    s.jaw = damp(s.jaw, Math.max(a.fire || 0, a.roar || 0), 10, dt);
+    // Biss: Maul weit auf, dann zuschnappen
+    const bite = a.bite || 0;
+    s.bite = damp(s.bite, bite, 18, dt);
+    const biteOpen = bite > 0.45 ? 1 : 0;
+    s.jaw = damp(s.jaw, Math.max(a.fire || 0, a.roar || 0, biteOpen * 1.4), bite > 0 ? 24 : 10, dt);
+    // Zielen: Kopf und Hals drehen sich zum Ziel (in Körper-Achsen umrechnen)
+    let ly = 0;
+    let lp = 0;
+    if (a.look) {
+      _qi.copy(this.root.quaternion).invert();
+      _lv.copy(a.look).applyQuaternion(_qi);
+      ly = clamp(Math.atan2(-_lv.x, -_lv.z), -1.0, 1.0);
+      lp = clamp(Math.atan2(_lv.y, Math.hypot(_lv.x, _lv.z)) + 0.25, -0.6, 0.8);
+      if (Math.abs(Math.atan2(-_lv.x, -_lv.z)) > 1.9) ly = lp = 0; // Ziel hinter dem Drachen: geradeaus
+    }
+    s.lookYaw = damp(s.lookYaw, ly, 5, dt);
+    s.lookPitch = damp(s.lookPitch, lp, 5, dt);
     const air = 1 - s.ground; // 1 = in der Luft
     s.bank = damp(s.bank, (a.bank || 0) * air * (1 - s.hover), 4, dt);
 
@@ -414,6 +435,12 @@ export class Dragon {
     // --- Körper: steigt beim Abschlag, sinkt beim Aufschlag (nur optisch) ---
     const heave = -amp * Math.cos(ph - 0.35); // −1 Flügel oben → Körper unten, +1 Flügel unten → Körper oben
     this.model.position.y = heave * 0.22 * air;
+    // Ausweichrolle: eine schnelle ganze Drehung um die Längsachse
+    if (this.rollT < 1) {
+      this.rollT = Math.min(1, this.rollT + dt / 0.6);
+      const e = this.rollT * this.rollT * (3 - 2 * this.rollT);
+      this.model.rotation.z = -this.rollDir * e * Math.PI * 2;
+    } else this.model.rotation.z = 0;
     this._pose('chest', (-amp * Math.sin(ph) * 0.04 + heave * 0.015) * air, 0, 0);
     this._pose('hips', -heave * 0.025 * air, 0, 0);
 
@@ -428,11 +455,11 @@ export class Dragon {
       const x =
         NECK_FLIGHT[i] * stretch - neckBob * (i < 2 ? 1 : -0.6) + s.neckPitch * 0.2 + lookUp * 0.2 +
         s.hover * (i === 0 ? 0.12 : -0.04) + Math.sin(t * 0.9 + i) * 0.012;
-      const y = s.neckYaw * 0.2 + Math.sin(t * 0.6 + i * 0.5) * 0.016;
+      const y = s.neckYaw * 0.2 + s.lookYaw * 0.1 + Math.sin(t * 0.6 + i * 0.5) * 0.016;
       const z = i >= 2 ? level * 0.22 : 0;
-      this._pose(NECK[i], x, y, z);
+      this._pose(NECK[i], x + s.lookPitch * 0.07 - s.bite * 0.06, y, z);
     }
-    this._pose('head', HEAD_FLIGHT * stretch + neckBob * 0.4 - s.jaw * 0.15, s.neckYaw * 0.1, level * 0.34);
+    this._pose('head', HEAD_FLIGHT * stretch + neckBob * 0.4 - s.jaw * 0.15 + s.lookPitch * 0.55, s.neckYaw * 0.1 + s.lookYaw * 0.5, level * 0.34);
     this._pose('jaw', -s.jaw * 0.5 - Math.max(0, Math.sin(t * 0.4)) * 0.015, 0, 0);
     if (this.mouthGlow) this.mouthGlow.visible = (a.fire || 0) > 0.05;
 

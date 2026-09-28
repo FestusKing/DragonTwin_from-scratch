@@ -47,8 +47,9 @@ export class FireBreath {
    * @param dragon  Dragon (für die Maul-Position)
    * @param vel     Geschwindigkeit des Drachen
    * @param burn    BurnSystem (zum Anzünden)
+   * @param onFlame (Punkt, Radius, Stärke) für jeden Punkt der Flamme → trifft Soldaten, Drachen …
    */
-  update(dt, wants, dragon, vel, burn, terrain) {
+  update(dt, wants, dragon, vel, burn, terrain, onFlame = null) {
     this.time += dt;
     if (this.overheated && this.heat < 0.35) this.overheated = false;
     const active = wants && !this.overheated;
@@ -134,6 +135,7 @@ export class FireBreath {
         // Boden getroffen: Brandfleck + Feuer breitet sich am Boden aus
         terrain.paintScorch(_p.x, _p.z, 3 + s * 0.12, dt * 1.2 * I);
         burn?.applyHeat(_p, 4 + s * 0.15, dt * 2.5 * I, this.onIgnite);
+        onFlame?.(_p, 4 + s * 0.15, dt * 2.5 * I);
         this._groundSplash(_p, gh, dt, I);
         if (Math.random() < 0.3 * I) {
           this.particles.smoke.spawn(_p.x, gh + 1, _p.z, (Math.random() - 0.5) * 3, 3, (Math.random() - 0.5) * 3, 2.5, 3, 11);
@@ -141,6 +143,7 @@ export class FireBreath {
         break;
       }
       burn?.applyHeat(_p, 2.5 + s * 0.22, dt * 2.2 * I, this.onIgnite);
+      onFlame?.(_p, 2.5 + s * 0.22, dt * 2.2 * I);
     }
 
     // etwas Rauch am Ende der Flamme

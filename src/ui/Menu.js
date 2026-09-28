@@ -23,6 +23,9 @@ const PAD_LABELS = {
   hover: 'LT',
   camera: 'Y',
   roar: 'RB',
+  horn: 'Steuerkreuz ↑',
+  bite: 'Steuerkreuz ↓',
+  lock: 'Steuerkreuz →',
   restart: 'LB',
   pause: 'Start',
   help: 'Back',
@@ -406,8 +409,13 @@ export class Menu {
       html += `<div class="help-row"><span>${label}</span><span class="keys">${keys}${pad}</span></div>`;
     };
     for (const a of ACTIONS) {
+      if (a.id === 'fire') html += '<div class="help-sec">Kampf</div>';
       if (a.id === 'camera') html += '<div class="help-sec">Sonstiges</div>';
       row(a.label, a.id);
+      if (a.id === 'lock') {
+        const k = (id) => `<span class="k">${keyLabel(b[id][0])}</span>`;
+        html += `<div class="help-row"><span>Ausweichrolle</span><span class="keys">2× ${k('rollLeft')} / 2× ${k('rollRight')}</span></div>`;
+      }
     }
     html += `<div class="help-sec">Tipps</div>
       <div class="help-row" style="grid-column:1/-1"><span>Tempo = Auftrieb. Zu langsam? Nase runter oder Flügel schlagen. Im Sturzflug wirst du richtig schnell.</span></div>
@@ -416,9 +424,15 @@ export class Menu {
       <div class="help-row" style="grid-column:1/-1"><span>Maus gedrückt halten = umsehen, Mausrad = Zoom. ${keyLabel(b.roar[0])} = Brüllen (Ziegen antworten …)</span></div>
       <div class="help-sec">Abenteuer (freier Flug)</div>
       <div class="help-row" style="grid-column:1/-1"><span>🎯 Oben links stehen deine <b>Aufträge</b>. Der blaue Pfeil zeigt dir den Weg. Aufträge und Punkte geben Erfahrung → höherer <b>Drachen-Rang</b> → neue Farben.</span></div>
-      <div class="help-row" style="grid-column:1/-1"><span>⭐ Jede Tat gibt Punkte. Mehrere Taten schnell hintereinander = <b>Kombo</b> (bis ×5). Tiefflug, Schluchtflug und knapp ausgewichene Bolzen zählen auch.</span></div>
-      <div class="help-row" style="grid-column:1/-1"><span>❤ <b>Leben:</b> Bolzen und harte Aufpralle kosten Leben. Fliege ganz tief über eine Schafherde, um ein Schaf zu packen (+Leben). Im <b>Hort</b> im Vulkan (Nordosten) erholst du dich ganz. Bei 0 Leben erwachst du dort.</span></div>
-      <div class="help-row" style="grid-column:1/-1"><span>🗺 Neue Orte: Vulkan mit Hort (Nordosten), Drachenschlucht mit Wasserfall und Hängebrücke (Westen), Schafweiden überall.</span></div>`;
+      <div class="help-row" style="grid-column:1/-1"><span>⭐ Jede Tat gibt Punkte. Mehrere Taten schnell hintereinander = <b>Kombo</b> (bis ×5). Tiefflug, Schluchtflug und knapp ausgewichene Bolzen zählen auch. Eigene Soldaten verbrennen gibt Minuspunkte.</span></div>
+      <div class="help-row" style="grid-column:1/-1"><span>❤ <b>Leben:</b> Pfeile, Bolzen, Feuerbälle und harte Aufpralle kosten Leben. Im <b>Hort</b> im Vulkan (Nordosten) erholst du dich ganz, ein Sieg heilt dich auch. Bei 0 Leben erwachst du im Hort. Ein Schaf im Tiefflug packen gibt auch etwas Leben.</span></div>
+      <div class="help-sec">Schlacht (Ostebene, Südosten)</div>
+      <div class="help-row" style="grid-column:1/-1"><span>⚔ Das Heer der <b>Eisenkrone</b> (rot) greift die <b>Dorfwache</b> (blau, deine Leute) an. Es kommt in 3 Wellen, der Anführer mit der letzten. Sieg: Anführer besiegen oder die letzte Welle vertreiben.</span></div>
+      <div class="help-row" style="grid-column:1/-1"><span>📯 <b>Drachenhorn</b> (${keyLabel(b.horn[0])}): deine Truppen stürmen los und kämpfen eine Weile härter. Danach braucht das Horn eine Pause.</span></div>
+      <div class="help-row" style="grid-column:1/-1"><span>🔥 Feuer, Tiefflug durch die Reihen, harte Landung, Brüllen und Biss (${keyLabel(b.bite[0])}) werfen Soldaten um. <b>Vorsicht:</b> Dein Feuer verbrennt auch die eigenen Leute (Minuspunkte)!</span></div>
+      <div class="help-row" style="grid-column:1/-1"><span>🏹 Bogenschützen und 3 <b>Belagerungs-Armbrüste</b> schiessen auf dich. Brenne die Armbrüste hinter dem feindlichen Heer nieder.</span></div>
+      <div class="help-row" style="grid-column:1/-1"><span>🐉 Mit der 2. Welle kommt der feindliche <b>Drachenreiter</b>. Glüht sein Maul, weich aus (2× schnell ${keyLabel(b.rollLeft[0])} oder ${keyLabel(b.rollRight[0])}). ${keyLabel(b.lock[0])} = anvisieren (Kamera und Kopf folgen ihm), dann Feuer oder Biss. Er greift auch deine Truppen an!</span></div>
+      <div class="help-row" style="grid-column:1/-1"><span>🗺 Weitere Orte: Vulkan mit Hort (Nordosten), Drachenschlucht mit Wasserfall und Hängebrücke (Westen).</span></div>`;
     body.innerHTML = html;
   }
 

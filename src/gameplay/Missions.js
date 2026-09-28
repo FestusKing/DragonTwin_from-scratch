@@ -1,5 +1,5 @@
 // Aufträge und Drachen-Rang.
-// - Aufträge: kleine Ziele (Schafe fangen, Schlucht durchfliegen, Hort finden …).
+// - Aufträge: kleine Ziele (Schlacht gewinnen, Schlucht durchfliegen, Hort finden …).
 //   Es sind immer 3 gleichzeitig offen; ist einer geschafft, kommt der nächste.
 // - Rang: steigt mit der Erfahrung (XP = alle jemals verdienten Punkte + Auftrags-Bonus).
 //   Neue Ränge schalten neue Drachenfarben frei (Customization.js: rank).
@@ -19,19 +19,26 @@ export const RANKS = [
 
 /**
  * type 'event': ein Ereignis genügt; type 'count': so oft (goal).
- * target: Ort für den Wegweiser ('hoard', 'canyon', 'bridge', 'arch', 'pasture', 'castle', 'towers').
+ * target: Ort für den Wegweiser ('hoard', 'battle', 'siege', 'enemyDragon', 'canyon', 'bridge',
+ * 'arch', 'pasture', 'village', 'towers').
  */
 export const MISSIONS = [
   { id: 'hoard', text: 'Finde deinen Hort im Vulkan (Nordosten) und lande dort', type: 'event', xp: 400, target: 'hoard' },
-  { id: 'sheep3', text: 'Fange 3 Schafe (tief über eine Herde fliegen)', type: 'count', goal: 3, xp: 300, target: 'pasture' },
+  { id: 'horn', text: 'Fliege zur Schlacht (Südosten) und blase das Drachenhorn', type: 'event', xp: 300, target: 'battle' },
+  { id: 'soldiers40', text: 'Besiege 40 Soldaten der Eisenkrone (rot) mit Feuer oder Wucht', type: 'count', goal: 40, xp: 500, target: 'battle' },
+  { id: 'dodge', text: 'Mache eine Ausweichrolle (2× schnell nach links oder rechts)', type: 'event', xp: 200 },
+  { id: 'siege', text: 'Zerstöre 3 Belagerungs-Armbrüste hinter dem feindlichen Heer', type: 'count', goal: 3, xp: 600, target: 'siege' },
+  { id: 'battle', text: 'Gewinne eine Schlacht (Anführer besiegen oder Heer vertreiben)', type: 'event', xp: 1200, target: 'battle' },
+  { id: 'bite', text: 'Beisse zu: Soldaten oder den Drachenreiter', type: 'event', xp: 300, target: 'battle' },
   { id: 'huts5', text: 'Setze 5 Dächer in Brand', type: 'count', goal: 5, xp: 300, target: 'village' },
   { id: 'canyon', text: 'Fliege durch die ganze Drachenschlucht (Westen)', type: 'event', xp: 600, target: 'canyon' },
+  { id: 'sweep', text: 'Wirf 15 Soldaten um (harte Landung oder Tiefflug über die Reihen)', type: 'count', goal: 15, xp: 400, target: 'battle' },
+  { id: 'enemyDragon', text: 'Besiege den feindlichen Drachenreiter', type: 'event', xp: 1500, target: 'enemyDragon' },
   { id: 'bridge', text: 'Fliege unter der Hängebrücke in der Schlucht durch', type: 'event', xp: 400, target: 'bridge' },
   { id: 'lowfly', text: 'Tiefflug: 10 Sekunden ganz nah über Boden oder Wasser', type: 'count', goal: 10, xp: 300 },
   { id: 'arch', text: 'Fliege durch den Felsbogen im Meer (Süden)', type: 'event', xp: 400, target: 'arch' },
   { id: 'towers', text: 'Zerstöre alle Armbrüste (Wachtürme und Burg) mit Feuer', type: 'event', xp: 1000, target: 'towers' },
   { id: 'sonic', text: 'Durchbrich die Schallmauer (Sturzflug + Boost)', type: 'event', xp: 500 },
-  { id: 'sheep10', text: 'Fange 10 Schafe', type: 'count', goal: 10, xp: 600, target: 'pasture' },
   { id: 'burn40', text: 'Setze 40 Dinge in Brand (Bäume zählen auch)', type: 'count', goal: 40, xp: 600 },
   { id: 'goats6', text: 'Finde 6 versteckte Ziegen', type: 'count', goal: 6, xp: 700 },
   { id: 'combo5', text: 'Schaffe eine ×5-Kombo', type: 'event', xp: 700 },

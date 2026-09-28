@@ -55,6 +55,22 @@
           <div class="score-row"><span id="score-pts">0</span><span id="score-combo"></span></div>
           <div class="combo-bar"><div id="combo-fill"></div></div>
         </div>
+        <div id="hud-boss" class="hidden">
+          <div class="boss-name" id="boss-name">Drachenreiter</div>
+          <div class="boss-bar"><div id="boss-fill"></div><i class="boss-tick"></i></div>
+        </div>
+        <div id="hud-battle" class="panel hidden">
+          <div class="bt-title">⚔ Schlacht <span id="bt-state"></span></div>
+          <div class="bt-row"><span class="bt-name ally">Dorfwache (du)</span><b id="bt-ally-n">0</b></div>
+          <div class="bt-bar"><div id="bt-ally" class="bt-fill ally"></div></div>
+          <div class="bt-row"><span class="bt-name enemy">Eisenkrone</span><b id="bt-enemy-n">0</b></div>
+          <div class="bt-bar"><div id="bt-enemy" class="bt-fill enemy"></div></div>
+          <div class="bt-foot">
+            <span>Belagerung <b id="bt-siege">3</b></span>
+            <span class="bt-horn" id="bt-horn"><b class="k" id="bt-horn-key">G</b> Horn <i id="bt-horn-fill"></i></span>
+          </div>
+        </div>
+        <div id="lock-reticle" class="hidden"><div class="lr-ring"></div><div class="lr-dist" id="lock-dist"></div></div>
         <div id="score-pops" aria-hidden="true"></div>
         <div id="quest-indicator" class="hidden">
           <div class="qi-arrow"></div>

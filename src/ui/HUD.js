@@ -48,6 +48,14 @@ export class HUD {
     this.qLabel = $('quest-label');
     this.adventure = null;
     this.popCount = 0;
+    // Schlacht, Boss, Zielkreis
+    this.battleEl = $('hud-battle');
+    this.bossEl = $('hud-boss');
+    this.bossFill = $('boss-fill');
+    this.lockEl = $('lock-reticle');
+    this.lockDist = $('lock-dist');
+    this.battleShown = false;
+    this.bossShown = false;
     this._buildCompass();
     this.flashValue = 0;
     this.centerTimer = 0;
@@ -187,7 +195,9 @@ export class HUD {
         dy = -dy;
         if (Math.abs(dx) < 1 && Math.abs(dy) < 1) dy = 1;
       }
-      const s = Math.min((w / 2 - margin) / Math.abs(dx || 1e-6), (h / 2 - margin) / Math.abs(dy || 1e-6));
+      // unten Platz lassen für die Balken (Leben, Ausdauer, Hitze)
+      const vh = dy > 0 ? h / 2 - 130 : h / 2 - margin;
+      const s = Math.min((w / 2 - margin) / Math.abs(dx || 1e-6), vh / Math.abs(dy || 1e-6));
       x = w / 2 + dx * s;
       y = h / 2 + dy * s;
       angle = Math.atan2(dy, dx) + Math.PI / 2;
@@ -204,7 +214,12 @@ export class HUD {
     if (this.adventure === v) return;
     this.adventure = v;
     for (const el of [this.quests, this.scoreEl, this.healthWrap]) el.classList.toggle('hidden', !v);
-    if (!v) this.qInd.classList.add('hidden');
+    if (!v) {
+      this.qInd.classList.add('hidden');
+      this.updateBattle(null);
+      this.updateBoss(null);
+      this.lockReticle(null);
+    }
   }
 
   updateAdventure(s) {
@@ -219,8 +234,8 @@ export class HUD {
   /** "+60 Dach in Brand" steigt kurz auf und verschwindet */
   scorePop(pts, label, combo) {
     const d = document.createElement('div');
-    d.className = 'score-pop' + (pts >= 200 ? ' big' : '') + (label === 'Tiefflug' || label === 'Schluchtflug' || label === 'Baum' ? ' small' : '');
-    d.textContent = `+${pts} ${label}`;
+    d.className = 'score-pop' + (pts < 0 ? ' bad' : pts >= 200 ? ' big' : '') + (label === 'Tiefflug' || label === 'Schluchtflug' || label === 'Baum' ? ' small' : '');
+    d.textContent = `${pts < 0 ? '' : '+'}${pts} ${label}`;
     d.style.setProperty('--x', `${((this.popCount++ % 5) - 2) * 26}px`);
     this.pops.appendChild(d);
     setTimeout(() => d.remove(), 1600);
@@ -238,6 +253,61 @@ export class HUD {
     d.textContent = `KOMBO ×${c}!`;
     this.pops.appendChild(d);
     setTimeout(() => d.remove(), 1600);
+  }
+
+  // ---------------- Schlacht ----------------
+  /** st = Battle.status() oder null (ausblenden), hornKey = Taste fürs Horn */
+  updateBattle(st, hornKey) {
+    const show = !!st;
+    if (show !== this.battleShown) {
+      this.battleShown = show;
+      this.battleEl.classList.toggle('hidden', !show);
+      this.el.classList.toggle('battle-on', show); // Meldungen rutschen unter die Schlacht-Anzeige
+    }
+    if (!show) return;
+    const STATE = { waiting: 'bereit', won: 'Sieg!', lost: 'verloren' };
+    this._text($('bt-state'), st.state === 'fight' ? `Welle ${st.wave}/${st.waves}` : STATE[st.state] || '');
+    this._text($('bt-ally-n'), String(st.allies));
+    this._text($('bt-enemy-n'), String(st.enemies));
+    $('bt-ally').style.transform = `scaleX(${(st.allies / Math.max(1, st.alliesTotal)).toFixed(3)})`;
+    $('bt-enemy').style.transform = `scaleX(${(st.enemies / Math.max(1, st.enemiesTotal)).toFixed(3)})`;
+    this._text($('bt-siege'), String(st.siege));
+    this._text($('bt-horn-key'), hornKey);
+    $('bt-horn').classList.toggle('ready', st.horn >= 1 && st.state === 'fight');
+    $('bt-horn-fill').style.transform = `scaleX(${st.horn.toFixed(3)})`;
+  }
+
+  /** Lebensbalken des feindlichen Drachenreiters (null = ausblenden) */
+  updateBoss(b) {
+    const show = !!b;
+    if (show !== this.bossShown) {
+      this.bossShown = show;
+      this.bossEl.classList.toggle('hidden', !show);
+    }
+    if (!show) return;
+    this._text($('boss-name'), b.name);
+    this.bossFill.style.transform = `scaleX(${b.k.toFixed(3)})`;
+    this.bossEl.classList.toggle('angry', b.angry);
+    this.bossEl.classList.toggle('hurt', b.hurt);
+  }
+
+  /** Zielkreis auf dem Gegner. hard = angepeilt (T), sonst nur Zielhilfe */
+  lockReticle(pos, camera, playerPos, hard) {
+    if (!pos) {
+      this.lockEl.classList.add('hidden');
+      return;
+    }
+    _v.copy(pos).project(camera);
+    if (_v.z > 1 || Math.abs(_v.x) > 1.1 || Math.abs(_v.y) > 1.1) {
+      this.lockEl.classList.add('hidden');
+      return;
+    }
+    this.lockEl.classList.remove('hidden');
+    this.lockEl.classList.toggle('soft', !hard);
+    const x = (_v.x * 0.5 + 0.5) * window.innerWidth;
+    const y = (-_v.y * 0.5 + 0.5) * window.innerHeight;
+    this.lockEl.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
+    this._text(this.lockDist, `${Math.round(playerPos.distanceTo(pos))} m`);
   }
 
   /** q = { rank, rankNo, xp, k, list: [{ text, progress }], done } */
@@ -297,7 +367,9 @@ export class HUD {
         dy = -dy;
         if (Math.abs(dx) < 1 && Math.abs(dy) < 1) dy = 1;
       }
-      const s = Math.min((w / 2 - margin) / Math.abs(dx || 1e-6), (h / 2 - margin) / Math.abs(dy || 1e-6));
+      // unten Platz lassen für die Balken (Leben, Ausdauer, Hitze)
+      const vh = dy > 0 ? h / 2 - 130 : h / 2 - margin;
+      const s = Math.min((w / 2 - margin) / Math.abs(dx || 1e-6), vh / Math.abs(dy || 1e-6));
       x = w / 2 + dx * s;
       y = h / 2 + dy * s;
       angle = Math.atan2(dy, dx) + Math.PI / 2;
