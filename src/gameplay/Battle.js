@@ -107,6 +107,8 @@ export class Battle {
       const flag = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.7), new THREE.MeshStandardMaterial({ color: 0xa22020, side: THREE.DoubleSide }));
       flag.position.set(x + 0.55, y + 5.6, z);
       scene.add(flag);
+      // als Bauwerk: fällt zusammen, wenn es brennt oder der Drache darauf landet (Destruction.js)
+      const st = { kind: 'tent', x, z, r: 4.2, base: y, ground: y, top: y + 5, h: 5, mesh: tent, flag };
       const e = this.world.burn.addEntity({
         kind: 'hut',
         x,
@@ -119,17 +121,20 @@ export class Battle {
         fuel: 12,
         onProgress: (k) => {
           mat.color.copy(base).lerp(new THREE.Color(0x151210), Math.min(1, k * 1.5));
-          tent.scale.setScalar(1 - Math.max(0, k - 0.5) * 0.9);
           flag.visible = k < 0.3;
+          st.onFire?.(k);
         },
         onBurnt: () => (tent.visible = false),
         onReset: () => {
           mat.color.copy(base);
-          tent.scale.setScalar(1);
           tent.visible = true;
           flag.visible = true;
+          st.onReset?.();
         },
       });
+      st.burn = e;
+      e.structure = st;
+      this.world.destruction.add(st);
       this.tents.push(e);
     }
   }
@@ -160,7 +165,7 @@ export class Battle {
     this.stateT = 0;
     this.banners[ALLY].visible = true;
     this.banners[ENEMY].visible = false;
-    // Belagerungs-Armbrüste und Zelte wieder aufbauen
+    // Belagerungs-Armbrüste und Zelte wieder aufbauen (abgebrannt oder zertrümmert)
     for (const tw of this.siege) {
       tw.enabled = false;
       const e = tw.burn;
@@ -170,9 +175,10 @@ export class Battle {
         e.t = 0;
         e.onReset?.();
       }
+      if (tw.structure && tw.structure.state !== 'intact') tw.structure.onReset?.();
     }
     for (const e of this.tents) {
-      if (e.state !== 0) {
+      if (e.state !== 0 || e.structure?.state !== 'intact') {
         e.state = 0;
         e.heat = 0;
         e.t = 0;

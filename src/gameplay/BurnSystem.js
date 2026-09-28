@@ -40,7 +40,15 @@ export class BurnSystem {
         onReset: null,
       });
     }
-    for (const f of settlement.flammables) this._add({ ...f });
+    for (const f of settlement.flammables) {
+      const e = { ...f };
+      this._add(e);
+      // Gebäude kennt seinen Brand (für den Einsturz), und wie er am Anfang aussah
+      if (f.structure) {
+        f.structure.burn = e;
+        f.structure.burn0 = { x: e.x, y: e.y, z: e.z, h: e.h, w: e.w, d: e.d, rot: e.rot };
+      }
+    }
 
     // Licht-Pool für die nächsten Feuer
     this.lights = [];

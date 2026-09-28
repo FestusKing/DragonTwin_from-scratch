@@ -22,6 +22,9 @@ const FLUSH = 0.6; // viele Soldaten auf einmal → Punkte gesammelt anzeigen (s
 
 const IGNITE_POINTS = { hut: [60, 'Dach in Brand'], windmill: [150, 'Mühle in Flammen'], tower: [150, 'Turm brennt'], stall: [30, 'Marktstand brennt'], tree: [5, 'Baum'], ballista: [120, 'Armbrust brennt'] };
 
+// Karren (Belagerungs-Armbrust) gibt schon über Ballistae.js Punkte → hier 0
+const COLLAPSE_POINTS = { hut: [120, 'Haus eingestürzt!'], tower: [250, 'Turm umgestürzt!'], windmill: [200, 'Mühle zerstört!'], stall: [40, 'Stand zertrümmert'], tent: [40, 'Zelt zerstört'], cart: [0, ''] };
+
 const _v = new THREE.Vector3();
 const _info = { d: 0, s: 0 };
 const _cp = { x: 0, z: 0, dx: 0, dz: 1 };
@@ -111,6 +114,14 @@ export class Adventure {
     this.score.add(pts, label, { chain: e.kind !== 'tree' });
     this.missions.report('burn40');
     if (e.kind === 'hut') this.missions.report('huts5');
+  }
+
+  /** Ein Gebäude stürzt ein (Destruction.js) */
+  onCollapse(st, cause, src) {
+    if (!this.active || src === 'enemy') return;
+    const [pts, label] = COLLAPSE_POINTS[st.kind] || [80, 'Eingestürzt!'];
+    if (pts > 0) this.score.add(pts, label);
+    this.missions.report('collapse5');
   }
 
   onTowerDestroyed(n, total) {

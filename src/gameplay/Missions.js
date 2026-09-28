@@ -31,6 +31,7 @@ export const MISSIONS = [
   { id: 'battle', text: 'Gewinne eine Schlacht (Anführer besiegen oder Heer vertreiben)', type: 'event', xp: 1200, target: 'battle' },
   { id: 'bite', text: 'Beisse zu: Soldaten oder den Drachenreiter', type: 'event', xp: 300, target: 'battle' },
   { id: 'huts5', text: 'Setze 5 Dächer in Brand', type: 'count', goal: 5, xp: 300, target: 'village' },
+  { id: 'collapse5', text: 'Bringe 5 Gebäude zum Einsturz (Feuer oder Wucht)', type: 'count', goal: 5, xp: 500, target: 'village' },
   { id: 'canyon', text: 'Fliege durch die ganze Drachenschlucht (Westen)', type: 'event', xp: 600, target: 'canyon' },
   { id: 'sweep', text: 'Wirf 15 Soldaten um (harte Landung oder Tiefflug über die Reihen)', type: 'count', goal: 15, xp: 400, target: 'battle' },
   { id: 'enemyDragon', text: 'Besiege den feindlichen Drachenreiter', type: 'event', xp: 1500, target: 'enemyDragon' },

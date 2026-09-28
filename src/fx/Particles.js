@@ -254,6 +254,19 @@ export class Particles {
       drag: 1.2,
       renderOrder: 23,
     });
+    // heller Staub (Landung, einstürzende Gebäude) – Rauch wäre zu dunkel
+    this.dustPuffs = new ParticleSystem(scene, {
+      max: Math.floor(1400 * quality),
+      texture: puffTexture(13),
+      colors: [0xd8c7a8, 0xb9a585, 0x9a8a70],
+      additive: false,
+      alpha: 0.42,
+      gravity: 0.5,
+      drag: 1.3,
+      turbulence: 3,
+      windFactor: 0.8,
+      renderOrder: 21,
+    });
     this.spray = new ParticleSystem(scene, {
       max: Math.floor(1800 * quality),
       texture: puffTexture(11),
@@ -269,12 +282,13 @@ export class Particles {
 
   update(dt, wind, sky, fogDensity) {
     const light = _light.copy(sky.ambient).multiplyScalar(0.5).add(_tmp.copy(sky.lightColor).multiplyScalar(sky.light.intensity * 0.08));
-    for (const s of [this.smoke, this.spray]) s.setEnvironment(light, sky.fogColor, fogDensity);
+    for (const s of [this.smoke, this.spray, this.dustPuffs]) s.setEnvironment(light, sky.fogColor, fogDensity);
     for (const s of [this.fire, this.sparks]) s.setEnvironment(light, sky.fogColor, fogDensity * 0.6);
     this.fire.update(dt, wind);
     this.smoke.update(dt, wind);
     this.sparks.update(dt, wind);
     this.spray.update(dt, wind);
+    this.dustPuffs.update(dt, wind);
   }
 
   /** Funkenring, wenn man durch einen Ring fliegt */
@@ -336,7 +350,7 @@ export class Particles {
     for (let i = 0; i < n; i++) {
       const a = Math.random() * Math.PI * 2;
       const s = 4 + Math.random() * 10 * strength;
-      this.smoke.spawn(p.x, p.y + 0.5, p.z, Math.cos(a) * s, 1 + Math.random() * 3, Math.sin(a) * s, 1.5 + Math.random() * 1.5, 2, 9, 1.6, 1.4, 1.1);
+      this.dustPuffs.spawn(p.x, p.y + 0.5, p.z, Math.cos(a) * s, 1 + Math.random() * 3, Math.sin(a) * s, 1.8 + Math.random() * 1.8, 2, 10);
     }
   }
 }

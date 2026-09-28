@@ -229,6 +229,7 @@ export class EnemyDragon {
     this.terrain.paintScorch(p.x, p.z, 7, 0.5);
     this.on.explode?.(p);
     ctx.battle?.soldiers.blast(p, 12, 11, 7, null, true, 'enemy');
+    this.world.destruction?.blast(p, 12, 0.7, 'enemy'); // Häuser in der Nähe werden beschädigt
   }
 
   // ------------------------------------------------------------ jedes Bild

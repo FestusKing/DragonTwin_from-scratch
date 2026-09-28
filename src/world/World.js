@@ -21,6 +21,8 @@ import { Particles } from '../fx/Particles.js';
 import { Rain, SpeedLines } from '../fx/Rain.js';
 import { Lightning } from '../fx/Lightning.js';
 import { BurnSystem } from '../gameplay/BurnSystem.js';
+import { Debris } from '../fx/Debris.js';
+import { Destruction } from './Destruction.js';
 import { loadPhotoTextures } from '../fx/PhotoTextures.js';
 import { ATMOSPHERE } from '../fx/Atmosphere.js';
 
@@ -85,6 +87,9 @@ export class World {
     this.speedLines = new SpeedLines(scene);
     this.lightning = new Lightning(scene);
     this.burn = new BurnSystem(scene, this.particles, this.terrain, this.vegetation, this.settlement, q.particles);
+    // Zerstörbare Gebäude: Trümmer und Einsturz
+    this.debris = new Debris(scene, this.terrain);
+    this.destruction = new Destruction(this.terrain, this.particles, this.debris, this.settlement.structures);
 
     progress(0.86, 'Ziegen verstecken, Schafe austreiben …');
     await tick();
@@ -148,9 +153,11 @@ export class World {
   /** Neustart: Brände löschen, Wetter bleibt */
   reset() {
     this.burn.reset();
+    this.destruction.reset();
     this.herds.reset();
     this.particles.fire.clear();
     this.particles.smoke.clear();
+    this.particles.dustPuffs.clear();
     this.particles.sparks.clear();
   }
 
@@ -192,6 +199,8 @@ export class World {
     this.birds.update(worldDt, ctx.dragonPos, this.sky.day * (1 - w.rain));
     if (!ctx.paused) {
       this.burn.update(worldDt, ctx.camera.position, w.rain, w.wind, ctx.fireColor);
+      this.destruction.update(worldDt);
+      this.debris.update(worldDt);
       this._chimneys(worldDt, ctx.camera.position);
       const fx = { camPos: ctx.camera.position, particles: this.particles, day: this.sky.day, wind: w.windVec };
       this.volcano.update(worldDt, fx);

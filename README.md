@@ -98,6 +98,22 @@ Für eine fertige Version zum Hochladen gibt es `npm run build`. Das Ergebnis li
 - Feuer **breitet sich aus**. Regen löscht es.
 - Brandflecken bleiben auf dem Boden.
 
+### Zerstörbare Gebäude
+- **Hütten stürzen ein:** Das Dach sackt ein, die Wände brechen zusammen, Wandstücke, Balken und
+  Dachstücke fliegen weg, heller Staub steigt auf. Übrig bleiben niedrige Mauerreste, ein Schutthaufen
+  und verkohlte Balken. Der Kamin aus Stein bleibt nach einem Brand oft stehen.
+- **Wachtürme kippen um** (samt Armbrust) und schlagen mit einem Beben auf.
+- **Windmühle:** Die Flügel brechen ab und fallen, die Kappe stürzt ein, der Turm bleibt als Ruine.
+- **Marktstände** knicken zusammen, **Zelte** im Heerlager fallen flach, **Belagerungs-Armbrüste** zerbrechen.
+- **Auslöser:**
+  - **Feuer:** Brennt ein Gebäude lange genug, stürzt es ein.
+  - **Wucht:** mit Tempo hineinkrachen, daneben landen, zubeissen (X), dagegen drücken (laufen),
+    Feuerbälle des Drachenreiters. Ein Gebäude hält einiges aus: Es ächzt, Stücke platzen ab – dann bricht es.
+- **Trümmer:** Die Stücke fliegen, prallen ab, rutschen und bleiben flach liegen (einfache Physik
+  ohne Zusatz-Bibliothek). Nach gut einer Minute versinken sie. Burg und Kirche aus Stein halten stand.
+- Einsturz gibt **Punkte** (Haus 120, Turm 250 …) und es gibt den Auftrag „Bringe 5 Gebäude zum Einsturz“.
+- **Neustart** (Pause-Menü) baut alles wieder auf.
+
 ### Welt
 - 5 × 5 km Insel mit:
   - Bergen (der grosse heisst „Drachenhorn“)
@@ -241,6 +257,7 @@ src/
     Landmarks.js        Felsbogen, Wrack, Steinkreis, ferne Berge
     Volcano.js          Vulkan: Lava-See, Glühen, Rauchsäule, der Hort mit Gold und Eiern
     Canyon.js           Drachenschlucht: Wasserfall, Gischt, Hängebrücke
+    Destruction.js      Zerstörbare Gebäude: wie Hütten, Türme, Mühle, Stände, Zelte einstürzen
     Herds.js            Schafherden (grasen, fliehen, können gefangen werden)
     Goats.js            Die versteckten Ziegen
     Birds.js            Vogelschwärme
@@ -266,7 +283,8 @@ src/
     Tutorial.js         Tutorial-Schritte
     BurnSystem.js       Was brennt wie lange, Ausbreitung
   fx/
-    Particles.js        Partikel (Feuer, Rauch, Funken, Gischt)
+    Particles.js        Partikel (Feuer, Rauch, Staub, Funken, Gischt)
+    Debris.js           Trümmer: fliegen, prallen ab, bleiben liegen (Instancing, einfache Physik)
     SpeedFx.js          Kondensstreifen, Dampfkegel, Schallmauer, Druckwellen
     PostProcessing.js   Bloom, Farbkorrektur, Vignette
     Atmosphere.js       Höhen-Dunst und Sonne im Dunst (für alle Materialien)
@@ -333,21 +351,32 @@ Die Zahlen oben in der Datei (z. B. `K_AIR`, `CL_ALPHA`, `MAX_G`) kannst du änd
 
 ---
 
-## ✂️ Was (noch) nicht drin ist
+## 🗺️ Pläne (die „Stretch Goals“)
 
-Die „Stretch Goals“ aus der Vorgabe gehören **nicht** zum Test Flight. Sie sind jeweils ein eigenes Grossprojekt:
+Die „Stretch Goals“ aus der Vorgabe gehören nicht zum ursprünglichen Test Flight. Jeder Punkt ist
+ein eigenes Projekt. Sie werden **einzeln nacheinander** gebaut und nach jedem Schritt getestet.
 
-- Drachen-Editor (Körperform, Hörner …)
-- Rüstung für den Reiter
-- Weltkarte mit mehreren Regionen (es gibt jetzt aber Vulkan, Schlucht und Weiden auf der Insel)
-- Grosse Quests mit Geschichte (es gibt aber kleine Aufträge mit Rang)
-- Zerstörbare Gebäude (Hütten brennen ab, stürzen aber nicht ein)
-- Grosse Armeen mit tausenden Soldaten und echter Physik-Ragdoll wie in DragonTwin
-  (hier: einige hundert Soldaten, einfache Flugbahn statt echter Ragdoll-Physik)
-- Befehle an einzelne Trupps (hier gibt es nur das Drachenhorn für alle)
-- Eine begehbare Höhle (der Hort liegt offen im Vulkankrater)
-- Strategie-Modus
-- Mehrspieler
+**Der Weg:** beim Browser-Spiel (Three.js) bleiben, dazu **Blender** für grosse Modelle (zum Beispiel
+die Höhle) und später ein **eigener Editor im Spiel**. So kann alles als Code gebaut, im Browser
+getestet und hochgeladen werden. (Eine grosse Engine wie Unreal würde einen kompletten Neubau bedeuten.)
+
+| # | Plan | Stand | So wird es gebaut | Braucht |
+| --- | --- | --- | --- | --- |
+| 1 | Zerstörbare Gebäude | ✅ fertig (einfache Physik) | Trümmer-System, Einsturz je Gebäudeart | echte Physik (Stapeln, Rollen) nur mit der Bibliothek „Rapier“ → erst nach deinem OK |
+| 2 | Rüstung für den Reiter (und den Drachen) | ⏳ als Nächstes | Helm, Schulterplatten, Umhang am Reiter; Sattel- und Kopfpanzer am Drachen; im Anpassen-Menü wählbar | – |
+| 3 | Drachen-Editor | ⏳ geplant | Hals, Flügel und Schwanz länger/kürzer (Knochen skalieren), Hörner-Sets zum Wählen | neue Hörner-Varianten im Blender-Skript |
+| 4 | Begehbare Höhle (Hort) | ⏳ geplant | Höhle als 3D-Modell aus Blender im Vulkan, Kollision mit Boden und Decke, Kamera stösst nicht durch Wände | Blender (erlaubt) |
+| 5 | Quests mit Geschichte | ⏳ geplant | Kapitel mit Zielen, Dialog-Texten und Belohnungen | keine Stimmen, nur Text |
+| 6 | Weltkarte mit Regionen | ⏳ geplant | mehrere Karten mit Ladebildschirm + Übersichtskarte | – |
+| 7 | Strategie-Modus | ⏳ geplant | Regionen erobern (Schlachten gewinnen), Hort ausbauen, Truppen verbessern | Punkt 6 zuerst |
+| 8 | Armeen und feindliche Drachen | ✅ fertig | Schlacht auf der Ostebene (3 Wellen), Drachenreiter-Boss | – |
+| 9 | Mehrspieler | ⏳ zuletzt | Verbindung der Spieler über einen Server | einen Server im Internet (Kosten, Betrieb) |
+
+**Noch vereinfacht (Ideen für später):**
+
+- Armeen: einige hundert Soldaten mit einfacher Flugbahn statt tausender Soldaten mit echter
+  Ragdoll-Physik wie in DragonTwin. Befehle gibt es nur mit dem Drachenhorn (für alle), nicht für einzelne Trupps.
+- Burg und Kirche aus Stein können (noch) nicht einstürzen.
 
 **Vereinfacht wurde:**
 

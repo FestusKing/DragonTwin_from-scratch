@@ -75,10 +75,12 @@ export class Ballistae {
     const tops = world.settlement.poi.watchtowers || [];
     for (const top of tops) {
       const burn = world.burn.entities.find((e) => e.kind === 'tower' && Math.hypot(e.x - top.x, e.z - top.z) < 1.5);
+      // der Wachturm als Bauwerk: kippt er um (Destruction.js), fällt die Armbrust mit
+      const structure = world.settlement.structures.find((s) => s.kind === 'tower' && Math.hypot(s.x - top.x, s.z - top.z) < 1.5);
       const b = makeBallista();
       b.root.position.set(top.x, top.y - 0.05, top.z);
       scene.add(b.root);
-      this.towers.push({ top, burn, ...b, timer: AIM_TIME, destroyed: false, yawA: 0, pitchA: 0, seen: false, range: RANGE, spread: SPREAD });
+      this.towers.push({ top, burn, structure, ...b, timer: AIM_TIME, destroyed: false, yawA: 0, pitchA: 0, seen: false, range: RANGE, spread: SPREAD });
     }
     // Burg: auf dem Bergfried und in der Mitte der Nord-, West- und Ostmauer
     const P = world.settlement.poi;
@@ -158,7 +160,9 @@ export class Ballistae {
     this.scene.add(b.root);
     const top = new THREE.Vector3(x, y + 1.0, z);
     const burn = this.world.burn.addEntity({ kind: 'ballista', x, y: y + 1.5, z, r: 3.5, h: 3, w: 3.6, d: 4, fuel: 10 });
-    const tw = { top, burn, ...b, timer: AIM_TIME, destroyed: false, yawA: -Math.PI / 2, pitchA: 0, seen: false, range: 300, spread: SPREAD * 1.3, field: true, enabled: false };
+    // als Bauwerk: zerbricht bei Wucht (Landung, Biss, Aufprall) – siehe Destruction.js
+    const structure = this.world.destruction?.add({ kind: 'cart', x, z, r: 2, base: y, ground: y, top: y + 3.5, group: b.root, burn });
+    const tw = { top, burn, structure, ...b, timer: AIM_TIME, destroyed: false, yawA: -Math.PI / 2, pitchA: 0, seen: false, range: 300, spread: SPREAD * 1.3, field: true, enabled: false };
     this.towers.push(tw);
     return tw;
   }
@@ -207,13 +211,14 @@ export class Ballistae {
     // --- Türme ---
     for (const tw of this.towers) {
       const e = tw.burn;
-      const burnt = e && (e.state === 2 || (e.state === 1 && e.t / e.fuel > 0.45));
+      const fallen = tw.structure && tw.structure.state !== 'intact';
+      const burnt = fallen || (e && (e.state === 2 || (e.state === 1 && e.t / e.fuel > 0.45)));
       tw.root.visible = !burnt;
-      if (e && e.state !== 0 && !tw.destroyed) {
+      if (((e && e.state !== 0) || fallen) && !tw.destroyed) {
         tw.destroyed = true;
         this.destroyedCount++;
         this.onDestroyed?.(this.destroyedCount, this.total, tw);
-      } else if (e && e.state === 0 && tw.destroyed) {
+      } else if ((!e || e.state === 0) && !fallen && tw.destroyed) {
         tw.destroyed = false; // Neustart: Turm wieder aufgebaut
         this.destroyedCount = Math.max(0, this.destroyedCount - 1);
       }

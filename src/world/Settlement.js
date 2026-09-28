@@ -1,6 +1,7 @@
 // Mittelalterliches Dorf: Burg, Kirche, Windmühle, Fachwerkhütten, Marktstände,
 // Wachtürme, ein kleines Fischerdorf am See und ein Leuchtturm an der Küste.
-// Holzgebäude sind "brennbar" (siehe BurnSystem).
+// Holzgebäude sind "brennbar" (siehe BurnSystem) und können einstürzen: Jedes Gebäude
+// wird als "Bauwerk" (structure) gemeldet – wie es einstürzt, steht in Destruction.js.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { mulberry32, smoothstep, clamp } from '../core/utils.js';
@@ -63,6 +64,7 @@ export class Settlement {
     this.group.name = 'Settlement';
     scene.add(this.group);
     this.flammables = [];
+    this.structures = []; // Gebäude, die einstürzen können (siehe Destruction.js)
     this.exclusions = [];
     this.chimneys = [];
     this.animated = []; // Windmühlen-Flügel, Leuchtturm-Strahl …
@@ -320,11 +322,14 @@ transformed.z += sin(uTime * 5.0 + position.y * 0.9 + position.x) * 0.35 * fl;`
     this.animated.push((dt, wind) => {
       if (mill.alive) sails.rotation.z += dt * (0.3 + wind * 0.9);
     });
-    this.colliders.addBox(x, base + 9, z, 4.8, 9, 4.8);
+    const col = this.colliders.addBox(x, base + 9, z, 4.8, 9, 4.8);
     this.poi.windmill = new THREE.Vector3(x, base, z);
     this.exclusions.push({ x, z, r: 16 });
+    const st = { kind: 'windmill', x, z, r: 5, base, ground: base + 0.5, top: base + 22, group: g, sails, cap, mill, sailPos0: sails.position.clone(), collider: col, colY: col.y, colHy: col.hy };
+    this.structures.push(st);
     // brennbar: Kappe und Flügel
     this.flammables.push({
+      structure: st,
       kind: 'windmill',
       x,
       y: base + 14,
@@ -341,6 +346,7 @@ transformed.z += sin(uTime * 5.0 + position.y * 0.9 + position.x) * 0.35 * fl;`
         clothMat.opacity = 1;
         if (t > 0.35) mill.alive = false;
         for (const arm of sails.children) if (arm.children[1]) arm.children[1].visible = t < 0.5;
+        st.onFire?.(t);
       },
       onReset: () => {
         capMat.color.copy(capBase);
@@ -348,6 +354,7 @@ transformed.z += sin(uTime * 5.0 + position.y * 0.9 + position.x) * 0.35 * fl;`
         clothMat.color.setHex(0xe6dcc0);
         mill.alive = true;
         for (const arm of sails.children) if (arm.children[1]) arm.children[1].visible = true;
+        st.onReset?.();
       },
     });
   }
@@ -417,11 +424,35 @@ transformed.z += sin(uTime * 5.0 + position.y * 0.9 + position.x) * 0.35 * fl;`
       if (o.isMesh && o !== winMesh) o.castShadow = o.receiveShadow = true;
     });
     this.group.add(g);
-    this.colliders.addBox(x, y0 + (baseH + roofH) / 2, z, w / 2 + 0.6, (baseH + roofH) / 2, d / 2 + 0.6, rot);
+    const col = this.colliders.addBox(x, y0 + (baseH + roofH) / 2, z, w / 2 + 0.6, (baseH + roofH) / 2, d / 2 + 0.6, rot);
     this.exclusions.push({ x, z, r: Math.max(w, d) * 0.9 + 3 });
 
     const hasChimney = !!chimney;
+    const st = {
+      kind: 'hut',
+      x,
+      z,
+      r: Math.max(w, d) * 0.5,
+      base: y0,
+      ground: this.ground(x, z),
+      top: y1 + wallH + roofH,
+      group: g,
+      parts: { wall: wallMesh, roof: roofMesh, door, win: winMesh, chimney },
+      w,
+      d,
+      rot,
+      y1,
+      wallH,
+      roofH,
+      tile,
+      chimneyRef: hasChimney ? chimneyRef : null,
+      collider: col,
+      colY: col.y,
+      colHy: col.hy,
+    };
+    this.structures.push(st);
     this.flammables.push({
+      structure: st,
       kind: 'hut',
       x,
       y: y1 + wallH * 0.6,
@@ -436,10 +467,13 @@ transformed.z += sin(uTime * 5.0 + position.y * 0.9 + position.x) * 0.35 * fl;`
         charColor(wallMat, wallBase, smoothstep(0.05, 0.85, t));
         charColor(roofMat, roofBase, smoothstep(0, 0.5, t));
         winMesh.visible = false;
-        const col = smoothstep(0.55, 0.9, t);
-        roofMesh.scale.set(1, 1 - col * 0.8, 1);
-        roofMesh.position.y = y1 + wallH - col * 1.5;
+        if (st.state === 'intact') {
+          const k = smoothstep(0.55, 0.9, t);
+          roofMesh.scale.set(1, 1 - k * 0.8, 1);
+          roofMesh.position.y = y1 + wallH - k * 1.5;
+        }
         if (hasChimney) chimneyRef.alive = false;
+        st.onFire?.(t);
       },
       onReset: () => {
         wallMat.color.copy(wallBase);
@@ -448,6 +482,7 @@ transformed.z += sin(uTime * 5.0 + position.y * 0.9 + position.x) * 0.35 * fl;`
         roofMesh.scale.set(1, 1, 1);
         roofMesh.position.y = y1 + wallH;
         if (hasChimney) chimneyRef.alive = true;
+        st.onReset?.();
       },
     });
     return { x, z, w, d, rot };
@@ -513,7 +548,10 @@ transformed.z += sin(uTime * 5.0 + position.y * 0.9 + position.x) * 0.35 * fl;`
       g.traverse((o) => o.isMesh && (o.castShadow = true));
       this.group.add(g);
       const orig = colors[i];
+      const st = { kind: 'stall', x, z, r: 2.2, base: y, ground: y, top: y + 3, group: g, roofMesh: roof };
+      this.structures.push(st);
       this.flammables.push({
+        structure: st,
         kind: 'stall',
         x,
         y: y + 2,
@@ -525,11 +563,13 @@ transformed.z += sin(uTime * 5.0 + position.y * 0.9 + position.x) * 0.35 * fl;`
         fuel: 8,
         onProgress: (t) => {
           clothMat.color.setHex(orig).lerp(CHAR, smoothstep(0, 0.5, t));
-          roof.visible = t < 0.6;
+          roof.visible = t < 0.6 && st.state === 'intact';
+          st.onFire?.(t);
         },
         onReset: () => {
           clothMat.color.setHex(orig);
           roof.visible = true;
+          st.onReset?.();
         },
       });
     }
@@ -563,9 +603,12 @@ transformed.z += sin(uTime * 5.0 + position.y * 0.9 + position.x) * 0.35 * fl;`
     g.add(wm, rm);
     g.traverse((o) => o.isMesh && (o.castShadow = o.receiveShadow = true));
     this.group.add(g);
-    this.colliders.addBox(x, y + 8, z, 3.4, 8, 3.4);
+    const col = this.colliders.addBox(x, y + 8, z, 3.4, 8, 3.4);
     this.exclusions.push({ x, z, r: 8 });
+    const st = { kind: 'tower', x, z, r: 3.4, base: y, ground: y + 0.3, top: y + 17, group: g, collider: col, colY: col.y, colHy: col.hy };
+    this.structures.push(st);
     this.flammables.push({
+      structure: st,
       kind: 'tower',
       x,
       y: y + 9,
@@ -579,11 +622,13 @@ transformed.z += sin(uTime * 5.0 + position.y * 0.9 + position.x) * 0.35 * fl;`
         charColor(woodMat, woodBase, smoothstep(0, 0.8, t));
         charColor(roofMat, roofBase, smoothstep(0, 0.5, t));
         rm.visible = t < 0.75;
+        st.onFire?.(t);
       },
       onReset: () => {
         woodMat.color.copy(woodBase);
         roofMat.color.copy(roofBase);
         rm.visible = true;
+        st.onReset?.();
       },
     });
     return new THREE.Vector3(x, y + 10.3, z);

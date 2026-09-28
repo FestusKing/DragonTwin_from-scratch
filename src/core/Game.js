@@ -207,6 +207,7 @@ export class Game {
       this.damage = Math.min(1, this.damage + s * 0.6);
       this.adv.damage(s * 0.25);
       this.battle.onImpact(p.position, s);
+      w.destruction.impact(p.position, s, p.forward(_v2).setY(0).normalize()); // Hütten krachen ein
     };
     p.events.splash = (s) => this._splash(s);
     p.events.land = (water, into = 3) => {
@@ -221,6 +222,7 @@ export class Game {
       this.rig.addShake(0.25 + s * 0.6);
       const flung = this.battle.onImpact(_v, s);
       if (flung) this.adv.onSweep(flung);
+      w.destruction.blast(_v, 6 + 6 * s, s * 0.8, 'player');
       this._hintOnce('land', 'Gelandet', `Mit ${this._key('flap')} hebst du wieder ab, mit ${this._key('pitchDown')} läufst du.`);
     };
     p.events.takeoff = () => {
@@ -288,6 +290,7 @@ export class Game {
 
     // Schlacht und feindlicher Drachenreiter
     this._wireBattle();
+    this._wireDestruction();
 
     // Rennen
     const r = this.race;
@@ -399,6 +402,28 @@ export class Game {
     };
   }
 
+  /** Zerstörbare Gebäude (Destruction.js) → Töne, Beben, Punkte, Hinweis */
+  _wireDestruction() {
+    const D = this.world.destruction;
+    const cam = this.camera.position;
+    const vol = (x, z) => clamp(1 - Math.hypot(x - cam.x, z - cam.z) / 700, 0, 1);
+    D.onCollapse = (st, cause, src) => {
+      this.audio.playCollapse(vol(st.x, st.z) * 1.1, st.kind === 'tower');
+      const d = Math.hypot(st.x - this.physics.position.x, st.z - this.physics.position.z);
+      if (d < 90) this.rig.addShake((1 - d / 90) * 0.5);
+      this.adv.onCollapse(st, cause, src);
+      if (st.kind === 'hut' && this.state === 'play') {
+        this._hintOnce('collapse', '🏚 Eingestürzt!', 'Gebäude stürzen ein, wenn sie lange brennen – oder wenn du mit voller Wucht hineinkrachst, daneben landest, zubeisst oder dagegen drückst.');
+      }
+    };
+    D.onDamage = (st) => this.audio.playCreak(vol(st.x, st.z));
+    D.onThud = (p, s) => {
+      this.audio.playImpact(clamp((0.2 + s * 0.6) * vol(p.x, p.z), 0, 1.3));
+      const d = p.distanceTo(this.physics.position);
+      if (d < 120) this.rig.addShake((1 - d / 120) * 0.6 * s);
+    };
+  }
+
   /** Wohin der Kopf zielt: angepeilter Gegner, oder ein Gegner vor dem Drachen (Zielhilfe) */
   _aimDir() {
     const e = this.enemy;
@@ -445,6 +470,7 @@ export class Game {
       this.audio.playBite();
       this.dragon.getMouth(_mouth, _dir);
       const n = this.battle.onBite(_mouth, _dir);
+      this.world.destruction.blast(_mouth, 5, 0.55, 'player', _dir);
       const hitDragon = this.enemy.takeBite(_mouth, _dir);
       if (hitDragon) {
         this.rig.addShake(0.6);
@@ -762,10 +788,12 @@ export class Game {
         let flung = pp.grounded ? 0 : this.battle.lowPass(pp.position, pp.velocity, pp.agl ?? 99);
         // am Boden: wer unter die Füsse kommt, wird zertrampelt
         this.stompT = (this.stompT || 0) - dt;
-        if (pp.grounded && Math.abs(pp.walkSpeed) > 1 && this.stompT <= 0 && this.battle.state !== 'idle') {
+        if (pp.grounded && Math.abs(pp.walkSpeed) > 1 && this.stompT <= 0) {
           this.stompT = 0.35;
           _v.copy(pp.position).setY(pp.position.y - 2.4);
-          flung += this.battle.soldiers.blast(_v, 4.5, 5, 2, null, true);
+          if (this.battle.state !== 'idle') flung += this.battle.soldiers.blast(_v, 4.5, 5, 2, null, true);
+          // Marktstände zertrampeln, gegen Hütten drücken
+          this.world.destruction.blast(_v, 6, 0.4, 'player', pp.forward(_v2).setY(0).normalize());
         }
         if (flung) this.adv.onSweep(flung);
       }

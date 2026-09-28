@@ -420,7 +420,7 @@ export class Menu {
     html += `<div class="help-sec">Tipps</div>
       <div class="help-row" style="grid-column:1/-1"><span>Tempo = Auftrieb. Zu langsam? Nase runter oder Flügel schlagen. Im Sturzflug wirst du richtig schnell.</span></div>
       <div class="help-row" style="grid-column:1/-1"><span>Gelandet? Mit ${keyLabel(b.pitchDown[0])} läuft der Drache, mit ${keyLabel(b.flap[0])} hebst du wieder ab.</span></div>
-      <div class="help-row" style="grid-column:1/-1"><span>Hütten, Bäume und Heuballen fangen Feuer. Regen löscht Brände.</span></div>
+      <div class="help-row" style="grid-column:1/-1"><span>Hütten, Bäume und Heuballen fangen Feuer. Regen löscht Brände. Brennt ein Gebäude lange – oder krachst du mit Wucht hinein, landest daneben oder beisst zu (${keyLabel(b.bite[0])}) –, stürzt es ein. Neustart baut alles wieder auf.</span></div>
       <div class="help-row" style="grid-column:1/-1"><span>Maus gedrückt halten = umsehen, Mausrad = Zoom. ${keyLabel(b.roar[0])} = Brüllen (Ziegen antworten …)</span></div>
       <div class="help-sec">Abenteuer (freier Flug)</div>
       <div class="help-row" style="grid-column:1/-1"><span>🎯 Oben links stehen deine <b>Aufträge</b>. Der blaue Pfeil zeigt dir den Weg. Aufträge und Punkte geben Erfahrung → höherer <b>Drachen-Rang</b> → neue Farben.</span></div>

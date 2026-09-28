@@ -423,6 +423,32 @@ export class AudioManager {
   }
 
   /** Überschall-Knall: zwei harte Schläge kurz nacheinander + tiefes Grollen */
+  /** Gebäude stürzt ein: Holz knackt, dann Poltern und nachrieselnde Stücke. big = Turm */
+  playCollapse(vol = 1, big = false) {
+    if (!this.ready || vol <= 0.01) return;
+    const v = clamp(vol, 0, 1.2);
+    const bus = this.sfxBus;
+    for (let i = 0; i < 5; i++) {
+      setTimeout(() => this._noiseBurst(bus, { dur: 0.06 + Math.random() * 0.1, type: 'bandpass', freq: 1400 + Math.random() * 2600, q: 2.5, gain: 0.4 * v, attack: 0.002 }), i * (50 + Math.random() * 90));
+    }
+    setTimeout(() => {
+      this._noiseBurst(bus, { dur: big ? 1.6 : 1.1, freq: 1100, freqEnd: 110, gain: 0.55 * v, attack: 0.02 });
+      this._tone(bus, { freq: big ? 42 : 55, freqEnd: 26, dur: big ? 1.4 : 1, gain: 0.5 * v, attack: 0.01 });
+    }, 220);
+    for (let i = 0; i < 7; i++) {
+      setTimeout(() => this._noiseBurst(bus, { dur: 0.1 + Math.random() * 0.08, type: 'bandpass', freq: 500 + Math.random() * 1500, q: 1.5, gain: 0.2 * v, attack: 0.004 }), 450 + i * (110 + Math.random() * 130));
+    }
+  }
+
+  /** Holz ächzt (Gebäude beschädigt, steht aber noch) */
+  playCreak(vol = 1) {
+    if (!this.ready || vol <= 0.01) return;
+    const v = clamp(vol, 0, 1);
+    const f = 140 + Math.random() * 80;
+    this._tone(this.sfxBus, { freq: f, freqEnd: f * 0.7, type: 'sawtooth', dur: 0.45, gain: 0.07 * v, attack: 0.05 });
+    this._noiseBurst(this.sfxBus, { dur: 0.35, type: 'bandpass', freq: 900, q: 1.2, gain: 0.25 * v, attack: 0.01 });
+  }
+
   playBoom() {
     if (!this.ready) return;
     const crack = () => {

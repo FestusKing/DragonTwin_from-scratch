@@ -49,6 +49,7 @@ export class Colliders {
     if (!cands) return 0;
     let best = 0;
     for (const c of cands) {
+      if (c.off) continue; // z. B. umgekippter Turm
       let nx, ny, nz, depth;
       if (c.type === 'sphere') {
         const dx = pos.x - c.x;
