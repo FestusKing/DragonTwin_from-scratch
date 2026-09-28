@@ -55,7 +55,7 @@ npm run desktop:exe    # Programm-Ordner mit DragonTwin.exe bauen
   Darin: **`DragonTwin.exe`** – Doppelklick startet das Spiel.
   Immer den **ganzen Ordner** behalten oder weitergeben (gut 250 MB), nicht nur die .exe.
 - **F11** = Vollbild. Das X oben schliesst das Spiel sofort (keine Nachfrage wie im Browser).
-- **Strg + W** schliesst das Fenster nicht (im Spiel ist das „Nase runter + Boost“).
+- **Strg + W** schliesst das Fenster nicht (im Spiel ist das „Nase hoch + Boost“).
 - **Windows-Warnung beim ersten Start:** „Der Computer wurde durch Windows geschützt“.
   Grund: Das Programm ist nicht digital signiert (eine Signatur kostet Geld).
   Lösung: **„Weitere Informationen“ → „Trotzdem ausführen“**.
@@ -69,13 +69,14 @@ npm run desktop:exe    # Programm-Ordner mit DragonTwin.exe bauen
 
 | Aktion | Tastatur | Gamepad |
 | --- | --- | --- |
-| Nase hoch / runter | **S** / **W** (oder ↓ / ↑) | Linker Stick |
+| Nase hoch / runter | **W** / **S** (oder ↑ / ↓) | Linker Stick (vor = hoch) |
 | Rollen / Kurve | **A** / **D** (oder ← / →) | Linker Stick |
 | Flügelschlag | **Leertaste** | A |
 | Sturzflug (Flügel anlegen) | **Shift** | B |
 | Boost (kostet Ausdauer) | **E** oder **Strg** | RT |
 | Feuer speien | **F** | X |
 | Bremsen / Schweben | **V** | LT |
+| Landen (Landeanflug bis zum Boden) | **L** | Steuerkreuz ← |
 | Kamera (Reiter-Sicht) | **C** | Y |
 | Brüllen (wirft Soldaten um, erschreckt Feinde) | **Q** | RB |
 | Biss / Sturzangriff | **X** | Steuerkreuz ↓ |
@@ -90,7 +91,12 @@ npm run desktop:exe    # Programm-Ordner mit DragonTwin.exe bauen
 
 - **Maus:** Taste gedrückt halten = umsehen. Mausrad = Zoom.
 - **Tasten ändern:** *Einstellungen → Tasten*. Jede Aktion kann zwei Tasten haben.
-- **Gelandet?** Mit W läuft der Drache. Mit der Leertaste hebt er wieder ab.
+- **Landen:** **L** drücken (unter 150 m Höhe). Der Drache bremst, richtet sich auf, streckt die Beine vor
+  und setzt sanft auf. Abbrechen: **L** nochmal oder **Leertaste**.
+- **Gelandet?** Mit **W** läuft der Drache (S = rückwärts), mit **W + E** rennt er, mit **A/D** dreht er.
+  Mit der **Leertaste** hebt er wieder ab.
+- **W = Nase hoch** (seit dieser Version). Wer es wie im Flugzeug mag (S = hoch): *Einstellungen → Steuerung →
+  Flugzeug-Steuerung*. Laufen bleibt dabei gleich (W = vorwärts).
 
 > ⚠️ **Warum liegt Boost auf E und nicht nur auf Strg?**
 > Im Browser schliesst **Strg + W** den Tab. Beim Fliegen drückt man W und Boost oft gleichzeitig.
@@ -209,7 +215,8 @@ Alles hier ist selbst gebaut (eigener Code, eigene Modelle, eigene Töne) – nu
   Auch Tiefflug, Schluchtflug, Felsbogen, Schallmauer und knapp ausgewichene Bolzen zählen.
 - **Leben:** Pfeile, Bolzen, Feuerbälle und harte Aufpralle kosten Leben. Heilen: langsam von selbst,
   schnell im **Hort**, nach einem **Sieg**, oder etwas beim **Schafe fangen** (ganz tief über eine Herde fliegen).
-  Bei 0 Leben stürzt der Drache ab und erwacht im Hort.
+  Bei 0 Leben wird der Drache bewusstlos: Er trudelt zu Boden, schlägt auf, bleibt liegen, das Bild wird
+  schwarz – und er rappelt sich im Hort wieder auf (etwa 10 Sekunden, `src/gameplay/DeathSequence.js`).
 
 ### Spielmodi
 - **Freiflug:** freies Erkunden.
@@ -312,6 +319,7 @@ src/
     RingRace.js         Ringrennen
     Ballistae.js        Armbrüste (Wachtürme und Burg) und Brandbolzen
     Adventure.js        Freiflug-Abenteuer: Leben, Absturz/Hort, Wegweiser, Punkte für Kampf und Flug
+    DeathSequence.js    Absturz-Szene: trudeln, Aufprall, liegen, schwarz, im Hort aufwachen
     Battle.js           Schlacht auf der Ostebene: Heere, Wellen, Drachenhorn, Sieg/Niederlage
     Soldiers.js         Hunderte Soldaten (Instancing, Arme/Beine im Shader), Pfeile, "Ragdolls"
     EnemyDragon.js      Feindlicher Drachenreiter: Verfolgen, Feuerstrahl, Feuerbälle, Tiefangriff

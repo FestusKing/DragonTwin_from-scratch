@@ -50,6 +50,7 @@ const MAX_G = 6; // maximale Kurvenkraft in "g" (sonst wirkt es zu zackig)
 const PITCH_RATE = 1.45; // max. Drehrate Nase hoch/runter (rad/s)
 const ROLL_RATE = 2.6; // max. Rollrate (rad/s)
 const RESPONSE = 4.5; // wie schnell die Drehung auf Eingaben reagiert (Trägheit)
+const RESPONSE_ASSIST = 8; // mit Flughilfe: schnellere Reaktion (Nase folgt W/S sofort)
 const WEATHERVANE = 0.075; // Nase dreht sich in Flugrichtung (wie ein Pfeil)
 const TRIM = 0.05; // Nase leicht über der Flugbahn → etwas Auftrieb im Gleitflug (ohne Flughilfe)
 const MAX_BANK = 1.2; // max. Schräglage mit Flughilfe (≈ 70°)
@@ -61,6 +62,8 @@ const STAMINA_DRAIN = 0.28; // Ausdauer-Verbrauch pro Sekunde Boost
 const STAMINA_REGEN = 0.14; // Erholung pro Sekunde
 const BODY_RADIUS = 4.2; // Kollisions-Kugel des Drachen (m)
 const WORLD_RADIUS = 2850; // ab hier wird man sanft zurückgelenkt
+const WALK_SPEED = 8; // Gehen am Boden (m/s)
+const WALK_RUN = 17; // Rennen am Boden mit Boost (m/s)
 
 const STEP = 1 / 120;
 
@@ -148,7 +151,10 @@ export class FlightPhysics {
   }
 
   /**
-   * @param input { pitch, roll, flap, flapPressed, dive, boost, hover }
+   * @param input { pitch, move, roll, flap, flapPressed, dive, boost, hover, land }
+   *   pitch: +1 = Nase hoch, −1 = Nase runter (im Flug)
+   *   move:  +1 = vorwärts, −1 = rückwärts (am Boden und beim Schweben)
+   *   land:  Landeanflug: abbremsen, aufrichten, sanft senkrecht aufsetzen
    * @param env   { terrain, colliders, wind, assist, turbulence }
    */
   update(dt, input, env) {
@@ -215,9 +221,10 @@ export class FlightPhysics {
     _air.copy(vel).sub(env.wind);
     const speed = _air.length();
 
-    // Schweben (V gedrückt und langsam genug) → eigener Modus
-    this.braking = !!input.hover && speed >= 24;
-    const wantHover = !!input.hover && (this.hovering || speed < 24);
+    // Schweben (V gedrückt und langsam genug) → eigener Modus.
+    // Landen: sofort in den Schwebe-Modus (dort wird kräftig abgebremst).
+    this.braking = !!input.hover && !input.land && speed >= 24;
+    const wantHover = !!input.land || (!!input.hover && (this.hovering || speed < 24));
     this.hovering = wantHover;
     if (this.hovering) {
       this._hoverStep(dt, input, env);
@@ -258,7 +265,7 @@ export class FlightPhysics {
       const maxA = STALL_ANGLE - 0.03;
       let alphaDes = input.pitch >= 0 ? trim + input.pitch * (maxA - trim) : trim + input.pitch * (trim + 0.22);
       if (input.dive) alphaDes = Math.min(alphaDes, -0.02);
-      tPitch = speed > 8 ? clamp((alphaDes - alpha) * 7, -2.4, 2.4) : input.pitch * PITCH_RATE * authority;
+      tPitch = speed > 8 ? clamp((alphaDes - alpha) * 10, -3, 3) : input.pitch * PITCH_RATE * authority;
       // c) A/D geben eine ZIEL-Schräglage vor (max. ~70°). Loslassen → gerade.
       //    Beim kräftigen Hochziehen (Looping) bleibt die Hilfe aus.
       const pulling = Math.abs(input.pitch) > 0.5 && Math.abs(input.roll) < 0.1;
@@ -275,7 +282,7 @@ export class FlightPhysics {
       if (input.dive) tPitch -= 0.15;
     }
     // Trägheit: die Drehrate nähert sich dem Ziel nur langsam an
-    const k = 1 - Math.exp(-RESPONSE * dt);
+    const k = 1 - Math.exp(-(assist ? RESPONSE_ASSIST : RESPONSE) * dt);
     this.angVel.x += (tPitch - this.angVel.x) * k;
     this.angVel.y += (tYaw - this.angVel.y) * k;
     this.angVel.z += (tRoll - this.angVel.z) * k;
@@ -349,9 +356,12 @@ export class FlightPhysics {
     }
 
     // SCHUB 1: Flügelschlag (pulsierend, synchron zur Animation)
-    const autoFlap = assist && speed < 16 && !input.dive;
+    // Flughilfe: langsam → von selbst flattern; langsam hochziehen → kräftig flattern,
+    // damit der Drache auch mit wenig Tempo steigt (sonst reagiert "hoch" kaum)
+    const climbFlap = assist && !input.dive && input.pitch > 0.3 && speed < 32;
+    const autoFlap = (assist && speed < 16 && !input.dive) || climbFlap;
     const flapping = input.flap || this.boosting || autoFlap;
-    const targetAmp = input.flap || this.boosting ? 1 : autoFlap ? 0.6 : 0;
+    const targetAmp = input.flap || this.boosting ? 1 : climbFlap ? 0.9 : autoFlap ? 0.6 : 0;
     this.flapAmp = damp(this.flapAmp, targetAmp, 4, dt);
     if (flapping || this.flapAmp > 0.05) {
       const prev = this.flapPhase;
@@ -419,8 +429,13 @@ export class FlightPhysics {
     this.forward(_f);
     let heading = Math.atan2(-_f.x, -_f.z);
     heading -= input.roll * 1.3 * dt;
-    // Zielhaltung: Nase 22° hoch, keine Schräglage
-    _e.set(0.38 - input.pitch * 0.1, heading, 0, 'YXZ');
+    // Zielhaltung: Nase 22° hoch, keine Schräglage.
+    // Landen: je schneller noch, desto steiler aufrichten (Flügel bremsen wie bei einem Adler)
+    const land = !!input.land;
+    const move = land ? 0 : input.move ?? 0;
+    const hs = Math.hypot(vel.x, vel.z);
+    const flare = land ? Math.min(hs / 30, 1) * 0.5 : 0;
+    _e.set(0.38 - move * 0.1 + flare, heading, 0, 'YXZ');
     _q2.setFromEuler(_e);
     q.slerp(_q2, 1 - Math.exp(-3 * dt));
     this.angVel.multiplyScalar(Math.exp(-5 * dt));
@@ -428,8 +443,13 @@ export class FlightPhysics {
 
     // Gewünschte Geschwindigkeit: W vor, S zurück, Leertaste hoch, Shift runter
     _tmp.set(-Math.sin(heading), 0, -Math.cos(heading));
-    _tmp2.copy(_tmp).multiplyScalar(-input.pitch * (input.pitch < 0 ? 12 : 6));
+    _tmp2.copy(_tmp).multiplyScalar(move * (move > 0 ? 12 : 6));
     _tmp2.y = (input.flap ? 9 : 0) - (input.dive ? 9 : 0);
+    if (land) {
+      // hoch oben schnell sinken, kurz vor dem Boden ganz sanft
+      const agl = this.position.y - Math.max(env.terrain.heightAt(this.position.x, this.position.z), WATER_LEVEL) - STAND_HEIGHT;
+      _tmp2.y = -clamp(agl * 0.8, 2.5, 20);
+    }
     _tmp2.addScaledVector(env.wind, 0.25);
     const k = 1 - Math.exp(-1.8 * dt);
     vel.x += (_tmp2.x - vel.x) * k;
@@ -448,9 +468,12 @@ export class FlightPhysics {
     this.flapAmp = damp(this.flapAmp, 0, 5, dt);
     this.forward(_f);
     let heading = Math.atan2(-_f.x, -_f.z);
-    heading -= input.roll * 1.4 * dt;
-    const target = input.pitch < -0.1 ? 9 : input.pitch > 0.1 ? -3 : 0;
-    this.walkSpeed = damp(this.walkSpeed, target, 3, dt);
+    // W vorwärts, S rückwärts, mit Boost rennen. Beim Rennen dreht der Drache weniger eng.
+    const move = input.move ?? 0;
+    const run = !!input.boost && move > 0.1;
+    heading -= input.roll * (run ? 1.1 : 1.7) * dt;
+    const target = move > 0.1 ? move * (run ? WALK_RUN : WALK_SPEED) : move < -0.1 ? move * 3 : 0;
+    this.walkSpeed = damp(this.walkSpeed, target, 4, dt);
     const hx = -Math.sin(heading);
     const hz = -Math.cos(heading);
     pos.x += hx * this.walkSpeed * dt;
@@ -560,6 +583,7 @@ export class FlightPhysics {
     out.hover = this.hovering || this.frozen ? 1 : 0;
     out.grounded = this.grounded ? 1 : 0;
     out.walk = this.grounded ? Math.min(1, Math.abs(this.walkSpeed) / 6) : 0;
+    out.walkSpeed = this.grounded ? this.walkSpeed : 0;
     out.boost = this.boosting;
     return out;
   }

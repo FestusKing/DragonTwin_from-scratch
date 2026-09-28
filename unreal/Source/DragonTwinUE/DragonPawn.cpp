@@ -82,7 +82,7 @@ namespace DragonPawnDetail
 		return Action;
 	}
 
-	/** Taste zählt negativ (z. B. W = Nase runter = −1) */
+	/** Taste zählt negativ (z. B. S = Nase runter = −1) */
 	void Negate(UObject* Outer, FEnhancedActionKeyMapping& Mapping)
 	{
 		Mapping.Modifiers.Add(NewObject<UInputModifierNegate>(Outer));
@@ -201,20 +201,22 @@ void ADragonPawn::CreateInputActions()
 	DiveAction = MakeAction(this, TEXT("IA_Sturzflug"), EInputActionValueType::Boolean);
 	BoostAction = MakeAction(this, TEXT("IA_Boost"), EInputActionValueType::Boolean);
 	HoverAction = MakeAction(this, TEXT("IA_Schweben"), EInputActionValueType::Boolean);
+	LandAction = MakeAction(this, TEXT("IA_Landen"), EInputActionValueType::Boolean);
 
 	UInputMappingContext* C = InputContext;
-	// Nicken: S / Pfeil runter = Nase hoch (+1), W / Pfeil hoch = Nase runter (−1)
-	C->MapKey(PitchKeys, EKeys::S);
-	C->MapKey(PitchKeys, EKeys::Down);
-	Negate(this, C->MapKey(PitchKeys, EKeys::W));
-	Negate(this, C->MapKey(PitchKeys, EKeys::Up));
+	// Nicken: W / Pfeil hoch = Nase hoch (+1), S / Pfeil runter = Nase runter (−1).
+	// Am Boden und beim Schweben: W = vorwärts, S = rückwärts.
+	C->MapKey(PitchKeys, EKeys::W);
+	C->MapKey(PitchKeys, EKeys::Up);
+	Negate(this, C->MapKey(PitchKeys, EKeys::S));
+	Negate(this, C->MapKey(PitchKeys, EKeys::Down));
 	// Rollen: D / Pfeil rechts = rechts (+1), A / Pfeil links = links (−1)
 	C->MapKey(RollKeys, EKeys::D);
 	C->MapKey(RollKeys, EKeys::Right);
 	Negate(this, C->MapKey(RollKeys, EKeys::A));
 	Negate(this, C->MapKey(RollKeys, EKeys::Left));
-	// Gamepad, linker Stick: nach vorne = Nase runter (wie im Flugzeug)
-	Negate(this, C->MapKey(PitchStick, EKeys::Gamepad_LeftY));
+	// Gamepad, linker Stick: nach vorne = Nase hoch (wie W)
+	C->MapKey(PitchStick, EKeys::Gamepad_LeftY);
 	C->MapKey(RollStick, EKeys::Gamepad_LeftX);
 	// Knöpfe (Gamepad wie im Browser-Spiel: A, B, RT, LT)
 	C->MapKey(FlapAction, EKeys::SpaceBar);
@@ -227,6 +229,8 @@ void ADragonPawn::CreateInputActions()
 	C->MapKey(BoostAction, EKeys::Gamepad_RightTrigger);
 	C->MapKey(HoverAction, EKeys::V);
 	C->MapKey(HoverAction, EKeys::Gamepad_LeftTrigger);
+	C->MapKey(LandAction, EKeys::L);
+	C->MapKey(LandAction, EKeys::Gamepad_DPad_Left);
 }
 
 void ADragonPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -240,7 +244,7 @@ void ADragonPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 		return;
 	}
 	const TArray<UInputAction*> All = {PitchKeys.Get(), RollKeys.Get(), PitchStick.Get(), RollStick.Get(),
-		FlapAction.Get(), DiveAction.Get(), BoostAction.Get(), HoverAction.Get()};
+		FlapAction.Get(), DiveAction.Get(), BoostAction.Get(), HoverAction.Get(), LandAction.Get()};
 	for (UInputAction* Action : All)
 	{
 		EIC->BindActionValue(Action);
@@ -267,10 +271,10 @@ FDragonFlightInput ADragonPawn::ReadInput(double Dt)
 
 	auto Axis = [EIC](const UInputAction* Action) { return static_cast<double>(EIC->GetBoundActionValue(Action).Get<float>()); };
 	auto Down = [EIC](const UInputAction* Action) { return EIC->GetBoundActionValue(Action).Get<bool>(); };
-	// Tastatur-Achsen weich hochfahren (≈ 0.15 s) und schneller zurück – wie src/core/Input.js
+	// Tastatur-Achsen weich hochfahren (≈ 0.1 s) und schneller zurück – wie src/core/Input.js
 	auto Approach = [Dt](double Cur, double Target)
 	{
-		const double Rate = (Target == 0.0 || FMath::Sign(Target) != FMath::Sign(Cur)) ? 10.0 : 6.5;
+		const double Rate = (Target == 0.0 || FMath::Sign(Target) != FMath::Sign(Cur)) ? 14.0 : 10.0;
 		const double D = Target - Cur;
 		const double StepSize = Rate * Dt;
 		return FMath::Abs(D) <= StepSize ? Target : Cur + FMath::Sign(D) * StepSize;
@@ -278,6 +282,7 @@ FDragonFlightInput ADragonPawn::ReadInput(double Dt)
 	KeyPitch = Approach(KeyPitch, FMath::Clamp(Axis(PitchKeys), -1.0, 1.0));
 	KeyRoll = Approach(KeyRoll, FMath::Clamp(Axis(RollKeys), -1.0, 1.0));
 	In.Pitch = FMath::Clamp(KeyPitch + Axis(PitchStick), -1.0, 1.0);
+	In.Move = In.Pitch; // am Boden / beim Schweben: W = vorwärts
 	In.Roll = FMath::Clamp(KeyRoll + Axis(RollStick), -1.0, 1.0);
 	In.bFlap = Down(FlapAction);
 	In.bFlapPressed = In.bFlap && !bFlapWasDown;
@@ -285,5 +290,11 @@ FDragonFlightInput ADragonPawn::ReadInput(double Dt)
 	In.bDive = Down(DiveAction);
 	In.bBoost = Down(BoostAction);
 	In.bHover = Down(HoverAction);
+	// Landen (L): einmal drücken → Landeanflug bis zum Boden. Abbrechen: L nochmal oder Leertaste.
+	const bool bLandDown = Down(LandAction);
+	if (bLandDown && !bLandWasDown && !Flight.bGrounded) bLanding = !bLanding;
+	bLandWasDown = bLandDown;
+	if (Flight.bGrounded || In.bFlapPressed) bLanding = false;
+	In.bLand = bLanding;
 	return In;
 }

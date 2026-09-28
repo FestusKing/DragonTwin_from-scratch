@@ -101,6 +101,7 @@ const GradeShader = {
     uAberration: { value: 0 },
     uContrast: { value: 1.14 },
     uSplit: { value: 0.8 },
+    uFade: { value: 0 }, // 1 = ganz schwarz (Absturz-Szene)
     // Sonne auf dem Bildschirm (0..1), ihre Farbe, Stärke der Strahlen und Reflexe
     uSunPos: { value: new THREE.Vector2(0.5, 0.5) },
     uSunCol: { value: new THREE.Color(1, 0.9, 0.75) },
@@ -114,7 +115,7 @@ const GradeShader = {
     void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
   fragmentShader: /* glsl */ `
     uniform sampler2D tDiffuse, tRays;
-    uniform float uVignette, uSat, uBlur, uWhite, uDamage, uAberration, uContrast, uSplit;
+    uniform float uVignette, uSat, uBlur, uWhite, uDamage, uAberration, uContrast, uSplit, uFade;
     uniform vec3 uTint, uWhiteColor;
     uniform vec2 uSunPos;
     uniform vec3 uSunCol;
@@ -195,6 +196,7 @@ const GradeShader = {
       float v = smoothstep(0.85, 0.25, d);
       col *= mix(1.0, v, uVignette);
       col = mix(col, col * vec3(1.6, 0.35, 0.3), uDamage * smoothstep(0.25, 0.8, d));
+      col *= 1.0 - uFade;
       gl_FragColor = vec4(col, 1.0);
     }`,
 };
@@ -258,8 +260,9 @@ export class PostProcessing {
   }
 
   /** Effekt-Stärken setzen */
-  set({ blur = 0, white = 0, damage = 0, aberration = 0, whiteColor = null, night = 0 }) {
+  set({ blur = 0, white = 0, damage = 0, aberration = 0, whiteColor = null, night = 0, fade = 0 }) {
     const u = this.grade.uniforms;
+    u.uFade.value = fade;
     // Tag: kräftige Farben. Nachts: weniger Farbe, kühler Blauton (wie Mondlicht)
     u.uSat.value = 1.04 - night * 0.34;
     u.uTint.value.setRGB(1.02 - night * 0.2, 1.0 - night * 0.06, 0.97 + night * 0.2);

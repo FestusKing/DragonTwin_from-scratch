@@ -168,8 +168,9 @@ int main(int Argc, char** Argv)
 			if (Line.empty()) continue;
 			std::istringstream S(Line);
 			FDragonFlightInput I;
-			int Flap, FlapPressed, Dive, Boost, Hover;
-			S >> I.Pitch >> I.Roll >> Flap >> FlapPressed >> Dive >> Boost >> Hover;
+			int Flap, FlapPressed, Dive, Boost, Hover, Land;
+			S >> I.Pitch >> I.Roll >> Flap >> FlapPressed >> Dive >> Boost >> Hover >> I.Move >> Land;
+			I.bLand = Land != 0;
 			I.bFlap = Flap != 0;
 			I.bFlapPressed = FlapPressed != 0;
 			I.bDive = Dive != 0;

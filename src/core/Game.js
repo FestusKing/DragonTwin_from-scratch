@@ -18,6 +18,7 @@ import { RingRace } from '../gameplay/RingRace.js';
 import { Tutorial } from '../gameplay/Tutorial.js';
 import { Ballistae } from '../gameplay/Ballistae.js';
 import { Adventure } from '../gameplay/Adventure.js';
+import { DeathSequence } from '../gameplay/DeathSequence.js';
 import { Battle } from '../gameplay/Battle.js';
 import { EnemyDragon, ENEMY_NAME } from '../gameplay/EnemyDragon.js';
 import { PostProcessing } from '../fx/PostProcessing.js';
@@ -59,6 +60,7 @@ const _up = new THREE.Vector3(0, 1, 0);
 const _aim = new THREE.Vector3();
 const _tipL = new THREE.Vector3();
 const _sun = new THREE.Vector3();
+const LAND_MAX_AGL = 150; // so hoch darf man höchstens sein, um mit L zu landen (m)
 
 export class Game {
   constructor(renderer) {
@@ -84,7 +86,8 @@ export class Game {
     this.frameTimes = [];
     this.autoPR = null;
     this.anim = {};
-    this.flightInput = { pitch: 0, roll: 0, flap: false, flapPressed: false, dive: false, boost: false, hover: false, fire: false };
+    this.landing = false; // Landeanflug läuft (Taste L)
+    this.flightInput = { pitch: 0, move: 0, roll: 0, land: false, flap: false, flapPressed: false, dive: false, boost: false, hover: false, fire: false };
     this.shownHints = new Set();
   }
 
@@ -136,6 +139,7 @@ export class Game {
       finished: () => this.hud.toast('Tutorial abgeschlossen!', 'Viel Spass beim Fliegen 🐉', 4),
     });
     this.adv = new Adventure(this);
+    this.death = new DeathSequence(this); // Absturz-Szene, wenn das Leben aufgebraucht ist
     this.minimap = new Minimap(document.getElementById('minimap'), this.world.terrain, this.world.settlement, this.world);
     this.menu = new Menu(this);
 
@@ -225,7 +229,16 @@ export class Game {
       const flung = this.battle.onImpact(_v, s);
       if (flung) this.adv.onSweep(flung);
       w.destruction.blast(_v, 6 + 6 * s, s * 0.8, 'player');
-      this._hintOnce('land', 'Gelandet', `Mit ${this._key('flap')} hebst du wieder ab, mit ${this._key('pitchDown')} läufst du.`);
+      this.dragon.touchdown(s);
+      this._hintOnce('land', 'Gelandet', `Mit ${this._key('flap')} hebst du wieder ab, mit ${this._key('pitchUp')} läufst du.`);
+    };
+    // Schritte am Boden: dumpfer Tritt, etwas Staub, beim Rennen leichtes Beben
+    this.dragon.onStep = (k) => {
+      if (this.state !== 'play' && this.state !== 'race') return;
+      _v.copy(p.position).setY(p.position.y - 2.5);
+      if (!p.onWater) w.particles.dust(_v, 0.15 + k * 0.25);
+      this.audio.playImpact(0.06 + k * 0.1);
+      this.rig.addShake(k * 0.08);
     };
     p.events.takeoff = () => {
       _v.copy(p.position).setY(p.position.y - 2.4);
@@ -574,6 +587,8 @@ export class Game {
   }
 
   startFreeFlight({ tutorial = false } = {}) {
+    this.landing = false;
+    this.death.cancel();
     this.audio.init();
     this._focusGame();
     this.race.clear();
@@ -599,6 +614,8 @@ export class Game {
   }
 
   startRace(courseId, ghost) {
+    this.landing = false;
+    this.death.cancel();
     this.audio.init();
     if (this.battle.state !== 'waiting') this.battle.reset();
     this.enemy.despawn();
@@ -641,6 +658,8 @@ export class Game {
   }
 
   restart() {
+    this.landing = false;
+    this.death.cancel();
     this.world.reset();
     this.battle.reset();
     this.enemy.despawn();
@@ -650,6 +669,8 @@ export class Game {
   }
 
   toMenu() {
+    this.landing = false;
+    this.death.cancel();
     this.race.clear();
     this.battle.reset();
     this.enemy.despawn();
@@ -773,6 +794,10 @@ export class Game {
     d.root.position.copy(this.physics.position);
     d.root.quaternion.copy(this.physics.quaternion);
     const a = this.physics.animState(this.anim);
+    a.land = this.landing;
+    a.dead = 0;
+    a.crouch = 0;
+    this.death.decorate(a);
     a.bite = this._biteUpdate(paused ? 0 : dt);
     a.look = this._aimDir();
     a.fire = fireI;
@@ -878,6 +903,7 @@ export class Game {
       blur: playing ? (this.physics.boosting ? 0.5 + fast * 0.8 : fast * 0.5) : 0,
       aberration: playing && this.physics.boosting ? 0.6 + fast : fast * 0.5,
       white: w.inCloud * 0.5,
+      fade: this.death.fade,
       damage: this.damage,
       night: w.sky.night,
     });
@@ -946,6 +972,7 @@ export class Game {
     const p = this.physics;
     const fi = this.flightInput;
     fi.pitch = input.getPitch();
+    fi.move = input.getMove();
     fi.roll = input.getRoll();
     fi.flap = input.isDown('flap');
     fi.flapPressed = input.pressed('flap');
@@ -953,6 +980,36 @@ export class Game {
     fi.boost = input.isDown('boost');
     fi.hover = input.isDown('hover');
     fi.fire = input.isDown('fire');
+
+    // Absturz-Szene: bewusstlos → keine Steuerung, kein Feuer, keine Tasten.
+    // DeathSequence bewegt den Drachen selbst (statt der Flugphysik).
+    if (this.death.active) {
+      fi.pitch = fi.move = fi.roll = 0;
+      fi.flap = fi.flapPressed = fi.dive = fi.boost = fi.hover = fi.fire = fi.land = false;
+      this.death.update(dt);
+      return;
+    }
+
+    // Landen (L): Landeanflug bis zum Boden. Abbrechen: L nochmal, Flügelschlag oder Boost.
+    if (p.grounded) this.landing = false;
+    if (input.pressed('land')) {
+      if (p.grounded) this.hud.toast('Du stehst schon am Boden', `Abheben mit ${this._key('flap')}`, 2);
+      else if (this.landing) {
+        this.landing = false;
+        this.hud.toast('Landung abgebrochen', '', 1.5);
+      } else if ((p.agl ?? 999) > LAND_MAX_AGL) {
+        this.hud.toast('Zu hoch zum Landen', `Flieg tiefer als ${LAND_MAX_AGL} m, dann ${this._key('land')}.`, 3);
+      } else {
+        this.landing = true;
+        this.hud.toast('🛬 Landeanflug', `Abbrechen mit ${this._key('flap')}`, 2);
+      }
+    }
+    if (this.landing && (fi.flapPressed || fi.boost)) this.landing = false;
+    fi.land = this.landing;
+
+    if (!p.grounded && !this.landing && (p.agl ?? 999) < 40 && p.speed < 30) {
+      this._hintOnce('landtip', 'Landen', `Drück ${this._key('land')}: Der Drache bremst und setzt sanft auf.`);
+    }
 
     if (input.pressed('help')) {
       this.pause();

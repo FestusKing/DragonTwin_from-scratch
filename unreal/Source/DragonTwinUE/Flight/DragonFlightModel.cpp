@@ -164,9 +164,10 @@ void FDragonFlightModel::Step(double Dt, const FDragonFlightInput& Input, const 
 	const FVector Air = Velocity - Env.Wind;
 	const double AirSpeed = Air.Size();
 
-	// Schweben (V gedrückt und langsam genug) → eigener Modus
-	bBraking = Input.bHover && AirSpeed >= 24.0;
-	bHovering = Input.bHover && (bHovering || AirSpeed < 24.0);
+	// Schweben (V gedrückt und langsam genug) → eigener Modus.
+	// Landen: sofort in den Schwebe-Modus (dort wird kräftig abgebremst).
+	bBraking = Input.bHover && !Input.bLand && AirSpeed >= 24.0;
+	bHovering = Input.bLand || (Input.bHover && (bHovering || AirSpeed < 24.0));
 	if (bHovering)
 	{
 		HoverStep(Dt, Input, Env);
@@ -203,7 +204,7 @@ void FDragonFlightModel::Step(double Dt, const FDragonFlightInput& Input, const 
 		const double MaxA = STALL_ANGLE - 0.03;
 		double AlphaDes = Input.Pitch >= 0.0 ? Trim + Input.Pitch * (MaxA - Trim) : Trim + Input.Pitch * (Trim + 0.22);
 		if (Input.bDive) AlphaDes = FMath::Min(AlphaDes, -0.02);
-		TPitch = AirSpeed > 8.0 ? FMath::Clamp((AlphaDes - Alpha) * 7.0, -2.4, 2.4) : Input.Pitch * PITCH_RATE * Authority;
+		TPitch = AirSpeed > 8.0 ? FMath::Clamp((AlphaDes - Alpha) * 10.0, -3.0, 3.0) : Input.Pitch * PITCH_RATE * Authority;
 		// c) A/D geben eine ZIEL-Schräglage vor. Beim kräftigen Hochziehen (Looping) bleibt die Hilfe aus.
 		const bool bPulling = FMath::Abs(Input.Pitch) > 0.5 && FMath::Abs(Input.Roll) < 0.1;
 		if (FMath::Abs(F.Y) < 0.9 && !bPulling)
@@ -226,7 +227,7 @@ void FDragonFlightModel::Step(double Dt, const FDragonFlightInput& Input, const 
 		if (Input.bDive) TPitch -= 0.15;
 	}
 	// Trägheit: die Drehrate nähert sich dem Ziel nur langsam an
-	const double K = 1.0 - FMath::Exp(-RESPONSE * Dt);
+	const double K = 1.0 - FMath::Exp(-(Env.bAssist ? RESPONSE_ASSIST : RESPONSE) * Dt);
 	AngVel.X += (TPitch - AngVel.X) * K;
 	AngVel.Y += (TYaw - AngVel.Y) * K;
 	AngVel.Z += (TRoll - AngVel.Z) * K;
@@ -306,9 +307,11 @@ void FDragonFlightModel::Step(double Dt, const FDragonFlightInput& Input, const 
 	}
 
 	// SCHUB 1: Flügelschlag (pulsierend, synchron zur Animation)
-	const bool bAutoFlap = Env.bAssist && AirSpeed < 16.0 && !Input.bDive;
+	// Flughilfe: langsam → von selbst flattern; langsam hochziehen → kräftig flattern
+	const bool bClimbFlap = Env.bAssist && !Input.bDive && Input.Pitch > 0.3 && AirSpeed < 32.0;
+	const bool bAutoFlap = (Env.bAssist && AirSpeed < 16.0 && !Input.bDive) || bClimbFlap;
 	const bool bFlapping = Input.bFlap || bBoosting || bAutoFlap;
-	const double TargetAmp = (Input.bFlap || bBoosting) ? 1.0 : (bAutoFlap ? 0.6 : 0.0);
+	const double TargetAmp = (Input.bFlap || bBoosting) ? 1.0 : (bClimbFlap ? 0.9 : (bAutoFlap ? 0.6 : 0.0));
 	FlapAmp = Damp(FlapAmp, TargetAmp, 4.0, Dt);
 	if (bFlapping || FlapAmp > 0.05)
 	{
@@ -377,16 +380,27 @@ void FDragonFlightModel::HoverStep(double Dt, const FDragonFlightInput& Input, c
 	const FVector F = Forward();
 	double H = FMath::Atan2(-F.X, -F.Z);
 	H -= Input.Roll * 1.3 * Dt;
-	// Zielhaltung: Nase 22° hoch, keine Schräglage (JS: Euler YXZ = erst gieren, dann nicken)
-	const FQuat Target = FQuat(PS_UP, H) * FQuat(PS_RIGHT, 0.38 - Input.Pitch * 0.1);
+	// Zielhaltung: Nase 22° hoch, keine Schräglage (JS: Euler YXZ = erst gieren, dann nicken).
+	// Landen: je schneller noch, desto steiler aufrichten (Flügel bremsen wie bei einem Adler)
+	const bool bLand = Input.bLand;
+	const double Move = bLand ? 0.0 : Input.Move;
+	const double Hs = FMath::Sqrt(Velocity.X * Velocity.X + Velocity.Z * Velocity.Z);
+	const double Flare = bLand ? FMath::Min(Hs / 30.0, 1.0) * 0.5 : 0.0;
+	const FQuat Target = FQuat(PS_UP, H) * FQuat(PS_RIGHT, 0.38 - Move * 0.1 + Flare);
 	Rotation = FQuat::Slerp(Rotation, Target, 1.0 - FMath::Exp(-3.0 * Dt));
 	AngVel *= FMath::Exp(-5.0 * Dt);
 	Bank = 0.0;
 
 	// Gewünschte Geschwindigkeit: W vor, S zurück, Leertaste hoch, Shift runter
 	const FVector Dir(-FMath::Sin(H), 0.0, -FMath::Cos(H));
-	FVector Want = Dir * (-Input.Pitch * (Input.Pitch < 0.0 ? 12.0 : 6.0));
+	FVector Want = Dir * (Move * (Move > 0.0 ? 12.0 : 6.0));
 	Want.Y = (Input.bFlap ? 9.0 : 0.0) - (Input.bDive ? 9.0 : 0.0);
+	if (bLand)
+	{
+		// hoch oben schnell sinken, kurz vor dem Boden ganz sanft
+		const double Above = Position.Y - FMath::Max(Env.World->GroundHeight(Position.X, Position.Z), WATER_LEVEL) - STAND_HEIGHT;
+		Want.Y = -FMath::Clamp(Above * 0.8, 2.5, 20.0);
+	}
 	Want += Env.Wind * 0.25;
 	const double K = 1.0 - FMath::Exp(-1.8 * Dt);
 	Velocity.X += (Want.X - Velocity.X) * K;
@@ -405,9 +419,12 @@ void FDragonFlightModel::GroundStep(double Dt, const FDragonFlightInput& Input, 
 	FlapAmp = Damp(FlapAmp, 0.0, 5.0, Dt);
 	const FVector F = Forward();
 	double H = FMath::Atan2(-F.X, -F.Z);
-	H -= Input.Roll * 1.4 * Dt;
-	const double Target = Input.Pitch < -0.1 ? 9.0 : (Input.Pitch > 0.1 ? -3.0 : 0.0);
-	WalkSpeed = Damp(WalkSpeed, Target, 3.0, Dt);
+	// W vorwärts, S rückwärts, mit Boost rennen. Beim Rennen dreht der Drache weniger eng.
+	const double Move = Input.Move;
+	const bool bRun = Input.bBoost && Move > 0.1;
+	H -= Input.Roll * (bRun ? 1.1 : 1.7) * Dt;
+	const double Target = Move > 0.1 ? Move * (bRun ? WALK_RUN : WALK_SPEED) : (Move < -0.1 ? Move * 3.0 : 0.0);
+	WalkSpeed = Damp(WalkSpeed, Target, 4.0, Dt);
 	const double Hx = -FMath::Sin(H);
 	const double Hz = -FMath::Cos(H);
 	Position.X += Hx * WalkSpeed * Dt;

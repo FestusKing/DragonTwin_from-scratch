@@ -25,6 +25,14 @@
   Dort nur `ELECTRON_SKIP_BINARY_DOWNLOAD=1 npm install`. Echte Tests auf dem PC des Nutzers.
 - Für Steam: eigener Spielname nötig („DragonTwin“ gehört einem anderen Spiel).
 
+## Steuerung und Bewegung (Browser-Version)
+
+- W = Nase hoch, S = runter (seit Sept. 2026; `invertPitch` = Flugzeug-Steuerung). Die Physik bekommt
+  `pitch` (Flug) und `move` (Boden/Schweben, nie umgekehrt) getrennt, dazu `land` (Taste L).
+- Landen (L), Rennen (Boost am Boden), schnellere Reaktion: in `FlightPhysics.js` UND in der C++-Kopie
+  `unreal/Source/DragonTwinUE/Flight/` – danach `sh unreal/Tests/run_all.sh` (muss "gleich ✔" zeigen).
+- Tod: `src/gameplay/DeathSequence.js` bewegt den Drachen selbst (nicht die Flugphysik).
+
 ## Grafik-Effekte (Browser-Version)
 
 - Sonnenstrahlen + Linsen-Reflexe: `src/fx/PostProcessing.js` (`SunRaysPass`, halbe Auflösung,

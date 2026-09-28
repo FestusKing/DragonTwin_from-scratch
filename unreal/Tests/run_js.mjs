@@ -69,7 +69,7 @@ for (const sc of SCENARIOS) {
   for (let f = 0; f < frames; f++) {
     const t = f / FPS;
     const inp = sc.input(t, f);
-    inLines.push([inp.pitch, inp.roll, num(inp.flap), num(inp.flapPressed), num(inp.dive), num(inp.boost), num(inp.hover)].join(' '));
+    inLines.push([inp.pitch, inp.roll, num(inp.flap), num(inp.flapPressed), num(inp.dive), num(inp.boost), num(inp.hover), inp.move ?? 0, num(!!inp.land)].join(' '));
     P.update(1 / FPS, inp, env);
     outLines.push(stateLine(t + 1 / FPS, P, ev));
   }

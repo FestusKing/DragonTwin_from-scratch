@@ -12,8 +12,8 @@ const $ = (id) => document.getElementById(id);
 const hex = (n) => '#' + n.toString(16).padStart(6, '0');
 
 const PAD_LABELS = {
-  pitchUp: 'Linker Stick ↓',
-  pitchDown: 'Linker Stick ↑',
+  pitchUp: 'Linker Stick ↑',
+  pitchDown: 'Linker Stick ↓',
   rollLeft: 'Linker Stick ←',
   rollRight: 'Linker Stick →',
   flap: 'A',
@@ -343,7 +343,7 @@ export class Menu {
       row('Effekte', 'Wind, Feuer, Flügel …', range('sfxVolume', 0, 1, 0.01, pct));
       row('Stumm', 'Taste ' + keyLabel(g.input.bindings.mute[0]), check('muted'));
     } else if (this.settingsTab === 'controls') {
-      row('Höhenruder umkehren', 'W = Nase hoch, S = Nase runter', check('invertPitch'));
+      row('Flugzeug-Steuerung', 'Umgekehrt wie im Flugzeug: S / Stick zurück = Nase hoch. Laufen bleibt gleich.', check('invertPitch'));
       row('Maus-Kamera', 'Mit gedrückter Maustaste umsehen, Mausrad = Zoom', check('mouseCamera'));
       const kb = document.createElement('div');
       kb.style.gridColumn = '1 / -1';
@@ -420,14 +420,15 @@ export class Menu {
       }
     }
     html += `<div class="help-sec">Tipps</div>
-      <div class="help-row" style="grid-column:1/-1"><span>Tempo = Auftrieb. Zu langsam? Nase runter oder Flügel schlagen. Im Sturzflug wirst du richtig schnell.</span></div>
-      <div class="help-row" style="grid-column:1/-1"><span>Gelandet? Mit ${keyLabel(b.pitchDown[0])} läuft der Drache, mit ${keyLabel(b.flap[0])} hebst du wieder ab.</span></div>
+      <div class="help-row" style="grid-column:1/-1"><span>Tempo = Auftrieb. Zu langsam? Nase runter oder Flügel schlagen. Ziehst du langsam hoch, schlägt der Drache von selbst mit den Flügeln. Im Sturzflug wirst du richtig schnell.</span></div>
+      <div class="help-row" style="grid-column:1/-1"><span>🛬 Landen: ${keyLabel(b.land[0])} drücken (unter 150 m Höhe). Der Drache bremst, richtet sich auf und setzt sanft auf. Abbrechen mit ${keyLabel(b.flap[0])}.</span></div>
+      <div class="help-row" style="grid-column:1/-1"><span>Gelandet? Mit ${keyLabel(b.pitchUp[0])} läuft der Drache, mit ${keyLabel(b.pitchUp[0])} + ${keyLabel(b.boost[0])} rennt er, mit ${keyLabel(b.flap[0])} hebst du wieder ab.</span></div>
       <div class="help-row" style="grid-column:1/-1"><span>Hütten, Bäume und Heuballen fangen Feuer. Regen löscht Brände. Brennt ein Gebäude lange – oder krachst du mit Wucht hinein, landest daneben oder beisst zu (${keyLabel(b.bite[0])}) –, stürzt es ein. Neustart baut alles wieder auf.</span></div>
       <div class="help-row" style="grid-column:1/-1"><span>Maus gedrückt halten = umsehen, Mausrad = Zoom. ${keyLabel(b.roar[0])} = Brüllen (Ziegen antworten …)</span></div>
       <div class="help-sec">Abenteuer (freier Flug)</div>
       <div class="help-row" style="grid-column:1/-1"><span>🎯 Oben links stehen deine <b>Aufträge</b>. Der blaue Pfeil zeigt dir den Weg. Aufträge und Punkte geben Erfahrung → höherer <b>Drachen-Rang</b> → neue Farben.</span></div>
       <div class="help-row" style="grid-column:1/-1"><span>⭐ Jede Tat gibt Punkte. Mehrere Taten schnell hintereinander = <b>Kombo</b> (bis ×5). Tiefflug, Schluchtflug und knapp ausgewichene Bolzen zählen auch. Eigene Soldaten verbrennen gibt Minuspunkte.</span></div>
-      <div class="help-row" style="grid-column:1/-1"><span>❤ <b>Leben:</b> Pfeile, Bolzen, Feuerbälle und harte Aufpralle kosten Leben. Im <b>Hort</b> im Vulkan (Nordosten) erholst du dich ganz, ein Sieg heilt dich auch. Bei 0 Leben erwachst du im Hort. Ein Schaf im Tiefflug packen gibt auch etwas Leben.</span></div>
+      <div class="help-row" style="grid-column:1/-1"><span>❤ <b>Leben:</b> Pfeile, Bolzen, Feuerbälle und harte Aufpralle kosten Leben. Im <b>Hort</b> im Vulkan (Nordosten) erholst du dich ganz, ein Sieg heilt dich auch. Bei 0 Leben stürzt du ab und erwachst nach einer Weile im Hort. Ein Schaf im Tiefflug packen gibt auch etwas Leben.</span></div>
       <div class="help-sec">Schlacht (Ostebene, Südosten)</div>
       <div class="help-row" style="grid-column:1/-1"><span>⚔ Das Heer der <b>Eisenkrone</b> (rot) greift die <b>Dorfwache</b> (blau, deine Leute) an. Es kommt in 3 Wellen, der Anführer mit der letzten. Sieg: Anführer besiegen oder die letzte Welle vertreiben.</span></div>
       <div class="help-row" style="grid-column:1/-1"><span>📯 <b>Drachenhorn</b> (${keyLabel(b.horn[0])}): deine Truppen stürmen los und kämpfen eine Weile härter. Danach braucht das Horn eine Pause.</span></div>

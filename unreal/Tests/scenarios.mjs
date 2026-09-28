@@ -1,7 +1,7 @@
 // Test-Flüge: gleiche Eingaben für das Browser-Spiel (JS) und die C++-Version.
 // Jeder Flug: Startpunkt, Gelände, Wind, Hindernis und Eingaben pro Bild (60 Bilder/s).
 const on = (t, a, b) => t >= a && t < b;
-const none = () => ({ pitch: 0, roll: 0, flap: false, flapPressed: false, dive: false, boost: false, hover: false });
+const none = () => ({ pitch: 0, move: 0, roll: 0, flap: false, flapPressed: false, dive: false, boost: false, hover: false, land: false });
 
 export const FPS = 60;
 
@@ -53,7 +53,7 @@ export const SCENARIOS = [
     input: (t) => ({
       ...none(),
       hover: on(t, 1, 12),
-      pitch: on(t, 4, 6) ? -1 : 0,
+      move: on(t, 4, 6) ? 1 : 0,
       roll: on(t, 6, 8) ? 1 : 0,
       flap: on(t, 8, 9),
       dive: on(t, 9, 10),
@@ -69,11 +69,33 @@ export const SCENARIOS = [
       ...none(),
       hover: t < 9,
       dive: on(t, 3, 9),
-      pitch: on(t, 9, 14) ? -1 : 0,
+      move: on(t, 9, 14) ? 1 : 0,
       roll: on(t, 11, 13) ? 0.6 : 0,
       flapPressed: frame === 14 * FPS,
       flap: on(t, 14, 22),
     }),
+  },
+  {
+    name: 'landetaste',
+    text: 'Lande-Taste aus schnellem Flug, dann rennen (Boost), drehen, rückwärts',
+    seconds: 24,
+    terrain: 'wellig',
+    start: { pos: [0, 90, 0], heading: 0.2, speed: 45 },
+    input: (t) => ({
+      ...none(),
+      land: on(t, 1, 12),
+      move: on(t, 13, 18) ? 1 : on(t, 20, 22) ? -1 : 0,
+      boost: on(t, 15, 18),
+      roll: on(t, 16, 19) ? -0.8 : 0,
+    }),
+  },
+  {
+    name: 'langsam_steigen',
+    text: 'Langsam fliegen und hochziehen (Flughilfe flattert mit), dann Nase runter',
+    seconds: 14,
+    terrain: 'wellig',
+    start: { pos: [0, 200, 0], heading: 0, speed: 22 },
+    input: (t) => ({ ...none(), pitch: on(t, 1, 6) ? 1 : on(t, 8, 10) ? -1 : 0 }),
   },
   {
     name: 'wind',

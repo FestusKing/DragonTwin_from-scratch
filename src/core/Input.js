@@ -1,6 +1,6 @@
 // Eingabe: Tastatur, Maus und Gamepad.
 // Das Spiel fragt nie direkt "ist W gedrückt?", sondern "ist die AKTION
-// pitchDown aktiv?". So kann man die Tasten frei neu belegen.
+// pitchUp aktiv?". So kann man die Tasten frei neu belegen.
 import { clamp, storage } from './utils.js';
 import { settings } from './Settings.js';
 
@@ -8,14 +8,15 @@ const KEY = 'dragontwin.keys.v1';
 
 // Aktionen mit deutscher Beschriftung (für das Einstellungsmenü)
 export const ACTIONS = [
-  { id: 'pitchUp', label: 'Nase hoch (steigen)' },
-  { id: 'pitchDown', label: 'Nase runter (sinken)' },
+  { id: 'pitchUp', label: 'Nase hoch (steigen) / am Boden vorwärts' },
+  { id: 'pitchDown', label: 'Nase runter (sinken) / am Boden rückwärts' },
   { id: 'rollLeft', label: 'Rollen links' },
   { id: 'rollRight', label: 'Rollen rechts' },
   { id: 'flap', label: 'Flügelschlag' },
   { id: 'dive', label: 'Sturzflug (Flügel anlegen)' },
   { id: 'boost', label: 'Boost' },
   { id: 'hover', label: 'Bremsen / Schweben' },
+  { id: 'land', label: 'Landen (Landeanflug bis zum Boden)' },
   { id: 'fire', label: 'Feuer speien' },
   { id: 'roar', label: 'Brüllen' },
   { id: 'bite', label: 'Biss / Sturzangriff' },
@@ -32,8 +33,8 @@ export const ACTIONS = [
 // Standard-Belegung. Pro Aktion bis zu 2 Tasten.
 // Hinweis: Boost liegt primär auf E, weil Strg+W im Browser den Tab schliesst!
 export const DEFAULT_BINDINGS = {
-  pitchUp: ['KeyS', 'ArrowDown'],
-  pitchDown: ['KeyW', 'ArrowUp'],
+  pitchUp: ['KeyW', 'ArrowUp'],
+  pitchDown: ['KeyS', 'ArrowDown'],
   rollLeft: ['KeyA', 'ArrowLeft'],
   rollRight: ['KeyD', 'ArrowRight'],
   flap: ['Space', null],
@@ -41,6 +42,7 @@ export const DEFAULT_BINDINGS = {
   boost: ['KeyE', 'ControlLeft'],
   fire: ['KeyF', null],
   hover: ['KeyV', null],
+  land: ['KeyL', null],
   camera: ['KeyC', null],
   roar: ['KeyQ', null],
   bite: ['KeyX', null],
@@ -69,6 +71,7 @@ const PAD_ACTIONS = {
   horn: PAD.UP,
   bite: PAD.DOWN,
   lock: PAD.RIGHT,
+  land: PAD.LEFT,
 };
 
 const KEY_LABELS = {
@@ -135,6 +138,12 @@ export class Input {
 
   _loadBindings() {
     const saved = storage.get(KEY, null);
+    // Früher war S = Nase hoch und W = Nase runter. Wer das nie geändert hat,
+    // bekommt die neue Belegung (W = hoch, S = runter).
+    if (saved && `${saved.pitchUp}` === 'KeyS,ArrowDown' && `${saved.pitchDown}` === 'KeyW,ArrowUp') {
+      saved.pitchUp = DEFAULT_BINDINGS.pitchUp.slice();
+      saved.pitchDown = DEFAULT_BINDINGS.pitchDown.slice();
+    }
     const b = {};
     for (const a of ACTIONS) {
       b[a.id] = saved && Array.isArray(saved[a.id]) ? saved[a.id].slice(0, 2) : DEFAULT_BINDINGS[a.id].slice();
@@ -256,11 +265,11 @@ export class Input {
   update(dt) {
     this._pollGamepad();
 
-    // Tastatur-Achsen weich hochfahren (≈0.15 s) und schneller zurück
+    // Tastatur-Achsen weich hochfahren (≈0.1 s) und schneller zurück
     const kp = (this.isDown('pitchUp') ? 1 : 0) - (this.isDown('pitchDown') ? 1 : 0);
     const kr = (this.isDown('rollRight') ? 1 : 0) - (this.isDown('rollLeft') ? 1 : 0);
     const approach = (cur, tgt) => {
-      const rate = tgt === 0 || Math.sign(tgt) !== Math.sign(cur) ? 10 : 6.5;
+      const rate = tgt === 0 || Math.sign(tgt) !== Math.sign(cur) ? 14 : 10;
       const d = tgt - cur;
       const step = rate * dt;
       return Math.abs(d) <= step ? tgt : cur + Math.sign(d) * step;
@@ -293,12 +302,18 @@ export class Input {
     return false;
   }
 
-  /** Nase hoch = +1, Nase runter = -1 (Tastatur + linker Stick). */
+  /**
+   * Nase hoch = +1, Nase runter = -1 (Tastatur + linker Stick).
+   * W / Stick nach vorne = hoch. Einstellung "Flugzeug-Steuerung": umgekehrt.
+   */
   getPitch() {
-    // Stick nach vorne (negativ) = Nase runter, wie im Flugzeug
-    let p = this.pitch + this.padAxes[1];
-    if (settings.get('invertPitch')) p = -p;
-    return clamp(p, -1, 1);
+    const p = this.getMove();
+    return settings.get('invertPitch') ? -p : p;
+  }
+
+  /** Vorwärts = +1, rückwärts = -1 (am Boden und beim Schweben, nie umgekehrt) */
+  getMove() {
+    return clamp(this.pitch - this.padAxes[1], -1, 1);
   }
 
   /** Rollen rechts = +1 */

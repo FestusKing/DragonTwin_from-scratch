@@ -68,8 +68,11 @@ export class Dragon {
     if (!ghost) this._createRider();
 
     // geglättete Animationswerte
-    this.s = { fold: 0, amp: 0, legs: 0, ground: 0, stretch: 1, jaw: 0, neckYaw: 0, neckPitch: 0, tailYaw: 0, tailPitch: 0, hover: 0, bank: 0, rx: 0, ry: 0, speed: 0, lookYaw: 0, lookPitch: 0, bite: 0 };
+    this.s = { fold: 0, amp: 0, legs: 0, ground: 0, stretch: 1, jaw: 0, neckYaw: 0, neckPitch: 0, tailYaw: 0, tailPitch: 0, hover: 0, bank: 0, rx: 0, ry: 0, speed: 0, lookYaw: 0, lookPitch: 0, bite: 0, gait: 0, walk: 0, run: 0 };
     this.rollT = 1; // Ausweichrolle: 0 → 1 (fertig)
+    this.touchT = 99; // Zeit seit dem Aufsetzen (Lande-Animation)
+    this.touchS = 1;
+    this.onStep = null; // (Stärke) – ein Fuss setzt auf (für Staub und Ton)
     this.rollDir = 1;
     this._prevQ = new THREE.Quaternion(); // Drehung im letzten Bild (für die Drehraten)
     this.firstPerson = false; // Reiter-Sicht: Hals bleibt flach, damit er nicht die Sicht versperrt
@@ -329,11 +332,17 @@ export class Dragon {
     this._pose(`thumb_${side}`, 0, sg * f * 0.6, 0, 'ZYX');
   }
 
+  /** Lande-Animation: in den Knien abfedern, Flügel kurz ausbreiten, dann anlegen */
+  touchdown(strength = 1) {
+    this.touchT = 0;
+    this.touchS = clamp(strength, 0.4, 1.3);
+  }
+
   // ------------------------------------------------------------ Animation
   /**
    * a = Animations-Zustand aus der Physik:
    *  flapPhase 0..1, flapAmp 0..1, fold 0..1, bank, roll (Eingabe), speed, agl (Höhe über Boden),
-   *  hover 0..1, grounded 0..1, walk, fire 0..1, roar 0..1,
+   *  hover 0..1, grounded 0..1, walk, walkSpeed (m/s, am Boden), land (Landeanflug), fire 0..1, roar 0..1,
    *  look (Richtung in der Welt, z. B. zum Gegner – der Kopf zielt dorthin), bite 0..1 (Biss)
    * Die Drehraten (Kurve, Nicken) rechnet der Drache selbst aus root.quaternion aus.
    */
@@ -347,7 +356,7 @@ export class Dragon {
     s.speed = damp(s.speed, a.speed || 0, 3, dt);
     // Landeanflug: tief und langsam → Beine schon nach vorne nehmen (wie ein Adler vor dem Aufsetzen)
     const landing = a.grounded ? 0 : smoothstep(24, 6, a.agl ?? 100) * smoothstep(34, 14, a.speed ?? 50);
-    s.legs = damp(s.legs, Math.max(a.grounded || 0, (a.hover || 0) * 0.55, landing * 0.8), 3, dt);
+    s.legs = damp(s.legs, Math.max(a.grounded || 0, (a.hover || 0) * 0.55, landing * 0.8, a.land ? 1 : 0), 3, dt);
     s.ground = damp(s.ground, a.grounded || 0, 3, dt);
     // Hals: im Flug gestreckt, am Boden in S-Form; in der Reiter-Sicht immer gestreckt
     s.stretch = damp(s.stretch, this.firstPerson ? 1 : 1 - s.legs, 4, dt);
@@ -355,7 +364,8 @@ export class Dragon {
     const bite = a.bite || 0;
     s.bite = damp(s.bite, bite, 18, dt);
     const biteOpen = bite > 0.45 ? 1 : 0;
-    s.jaw = damp(s.jaw, Math.max(a.fire || 0, a.roar || 0, biteOpen * 1.4), bite > 0 ? 24 : 10, dt);
+    const dead = a.dead || 0; // bewusstlos (Absturz-Szene): alles hängt schlaff
+    s.jaw = damp(s.jaw, Math.max(a.fire || 0, a.roar || 0, biteOpen * 1.4, dead * 0.35), bite > 0 ? 24 : 10, dt);
     // Zielen: Kopf und Hals drehen sich zum Ziel (in Körper-Achsen umrechnen)
     let ly = 0;
     let lp = 0;
@@ -396,6 +406,25 @@ export class Dragon {
     s.tailPitch = damp(s.tailPitch, clamp(-s.rx * 0.45, -0.3, 0.3) + s.hover * 0.12, 2.5, dt);
     const grounded = a.grounded || 0;
 
+    // --- Gang am Boden: Schrittlänge passt zum Tempo (Füsse rutschen nicht), beim Drehen trippeln ---
+    const ws = grounded ? a.walkSpeed || 0 : 0;
+    const moveAmt = Math.abs(ws) + grounded * Math.abs(a.roll || 0) * 2.5;
+    const stride = 4.2 + Math.max(0, Math.abs(ws) - 8) * 0.35; // Meter pro Doppelschritt
+    const prevGait = s.gait;
+    s.gait = (s.gait + ((moveAmt * dt) / stride) * (ws < -0.2 ? -1 : 1) + 1) % 1;
+    s.walk = damp(s.walk, clamp(moveAmt / 7, 0, 1.3) * grounded, 6, dt);
+    s.run = damp(s.run, clamp((Math.abs(ws) - 9) / 7, 0, 1), 4, dt);
+    const wph = s.gait * Math.PI * 2;
+    const gw = s.walk;
+    // Körper: am höchsten, wenn die Beine aneinander vorbeigehen; tief, wenn ein Fuss aufsetzt
+    const bob = (Math.abs(Math.cos(wph)) - 0.64) * gw * (0.22 + 0.3 * s.run);
+    // Fuss setzt auf (zweimal pro Doppelschritt) → Staub und dumpfer Schritt
+    if (gw > 0.3 && (Math.floor(prevGait * 2) !== Math.floor(s.gait * 2))) this.onStep?.(0.4 + s.run * 0.6);
+    // Lande-Animation: in die Knie gehen und wieder hochfedern
+    this.touchT += dt;
+    const tt = this.touchT;
+    const crouch = Math.max(tt < 1.6 ? this.touchS * (tt < 0.1 ? tt / 0.1 : Math.exp(-(tt - 0.1) * 3.2)) : 0, a.crouch || 0);
+
     // --- Flügel ---
     // Phase 0 = Flügel oben. 0 … 0.5 = Abschlag (kräftig, Flügel ganz offen),
     // 0.5 … 1 = Aufschlag (Handgelenk knickt ein, Spitze wird nachgezogen).
@@ -406,7 +435,8 @@ export class Dragon {
     const downK = Math.max(0, Math.sin(ph)); // 0..1 im Abschlag
     const upK = Math.max(0, -Math.sin(ph)); // 0..1 im Aufschlag
     const upFold = amp * upK * 0.3; // beim Aufschlag Flügel anwinkeln
-    const fold = clamp(s.fold + upFold + grounded * 0.9, 0, 1);
+    // beim Aufsetzen gehen die Flügel kurz auf (Gleichgewicht), dann werden sie angelegt
+    const fold = clamp(s.fold + upFold + grounded * 0.9 - crouch * 0.55, 0, 1);
     const roll = a.roll || 0;
     // Gleitflug: Flügel leicht V-förmig (Schulter hoch), die Hand etwas tiefer, die Spitzen biegen
     // sich unter der Last nach oben – wie bei grossen Segelvögeln. Dazu kleine Korrekturen (lebendig).
@@ -419,11 +449,14 @@ export class Dragon {
       const trim = glide * (Math.sin(t * 0.83 + sg * 1.3) * 0.025 + Math.sin(t * 2.1 + sg) * 0.012);
       // Flughaut flattert bei hohem Tempo (Hinterkante)
       const flutter = fast * air * Math.sin(t * 31 + sg * 2) * 0.02;
+      // bewusstlos: Flügel halb offen, im Fall schlagen sie haltlos im Wind, am Boden liegen sie schlaff
+      const limpT1 = dead * (-0.3 + Math.sin(t * 6.1 + sg * 1.9) * 0.28 * air);
+      const limpT2 = dead * Math.sin(t * 4.7 + sg) * 0.2 * air;
       this._wing(side, {
-        fold: clamp(fold + (sg * roll > 0 ? Math.abs(roll) * 0.1 : 0), 0, 1),
+        fold: lerp(clamp(fold + (sg * roll > 0 ? Math.abs(roll) * 0.1 : 0), 0, 1), 0.3 + 0.2 * s.ground, dead),
         // oben weit ausholen, unten weniger tief (wie grosse Vögel); äussere Teile folgen verzögert (Peitsche)
-        t1: base1 + amp * (updown(Math.cos(ph), 0.85, 0.5) + 0.12) + asym + trim - s.ground * 0.1,
-        t2: amp * updown(Math.cos(ph - 0.6), 0.3, 0.16) - glide * 0.07 + trim * 0.5,
+        t1: base1 + amp * (updown(Math.cos(ph), 0.85, 0.5) + 0.12) + asym + trim - s.ground * 0.1 + crouch * 0.3 * (1 - dead) - bob * 0.5 + limpT1,
+        t2: amp * updown(Math.cos(ph - 0.6), 0.3, 0.16) - glide * 0.07 + trim * 0.5 + limpT2,
         t3: amp * (updown(Math.cos(ph - 1.3), 0.3, 0.14) - upK * 0.1) + glide * 0.13 + flutter,
         sweep: s.fold * 0.2 + fast * 0.08 + (a.boost ? 0.05 : 0),
         raise: s.ground,
@@ -434,15 +467,17 @@ export class Dragon {
 
     // --- Körper: steigt beim Abschlag, sinkt beim Aufschlag (nur optisch) ---
     const heave = -amp * Math.cos(ph - 0.35); // −1 Flügel oben → Körper unten, +1 Flügel unten → Körper oben
-    this.model.position.y = heave * 0.22 * air;
+    this.model.position.y = heave * 0.22 * air + bob - crouch * 0.7;
     // Ausweichrolle: eine schnelle ganze Drehung um die Längsachse
     if (this.rollT < 1) {
       this.rollT = Math.min(1, this.rollT + dt / 0.6);
       const e = this.rollT * this.rollT * (3 - 2 * this.rollT);
       this.model.rotation.z = -this.rollDir * e * Math.PI * 2;
     } else this.model.rotation.z = 0;
-    this._pose('chest', (-amp * Math.sin(ph) * 0.04 + heave * 0.015) * air, 0, 0);
-    this._pose('hips', -heave * 0.025 * air, 0, 0);
+    // beim Gehen verlagert der Drache das Gewicht von Bein zu Bein (Hüfte kippt und dreht)
+    const shift = Math.sin(wph) * gw;
+    this._pose('chest', (-amp * Math.sin(ph) * 0.04 + heave * 0.015) * air, -shift * 0.04, -shift * 0.03);
+    this._pose('hips', -heave * 0.025 * air, shift * 0.06, shift * 0.05);
 
     // --- Hals: im Flug gestreckt, am Boden in S-Form. Er gleicht das Wippen aus (Kopf bleibt ruhig),
     //     schaut in die Kurve und hält den Kopf in der Schräglage waagrecht (wie ein Greifvogel). ---
@@ -454,12 +489,13 @@ export class Dragon {
     for (let i = 0; i < NECK.length; i++) {
       const x =
         NECK_FLIGHT[i] * stretch - neckBob * (i < 2 ? 1 : -0.6) + s.neckPitch * 0.2 + lookUp * 0.2 +
-        s.hover * (i === 0 ? 0.12 : -0.04) + Math.sin(t * 0.9 + i) * 0.012;
+        s.hover * (i === 0 ? 0.12 : -0.04) + Math.sin(t * 0.9 + i) * 0.012 +
+        (i < 2 ? crouch * 0.12 - bob * 0.25 : 0) + Math.cos(wph * 2) * 0.025 * gw * (i === 0 ? 1 : 0) + dead * 0.13;
       const y = s.neckYaw * 0.2 + s.lookYaw * 0.1 + Math.sin(t * 0.6 + i * 0.5) * 0.016;
       const z = i >= 2 ? level * 0.22 : 0;
       this._pose(NECK[i], x + s.lookPitch * 0.07 - s.bite * 0.06, y, z);
     }
-    this._pose('head', HEAD_FLIGHT * stretch + neckBob * 0.4 - s.jaw * 0.15 + s.lookPitch * 0.55, s.neckYaw * 0.1 + s.lookYaw * 0.5, level * 0.34);
+    this._pose('head', HEAD_FLIGHT * stretch + neckBob * 0.4 - s.jaw * 0.15 + s.lookPitch * 0.55 + dead * 0.35, s.neckYaw * 0.1 + s.lookYaw * 0.5, level * 0.34);
     this._pose('jaw', -s.jaw * 0.5 - Math.max(0, Math.sin(t * 0.4)) * 0.015, 0, 0);
     if (this.mouthGlow) this.mouthGlow.visible = (a.fire || 0) > 0.05;
 
@@ -468,26 +504,28 @@ export class Dragon {
     const calm = 1 - fast * 0.6; // bei hohem Tempo liegt der Schwanz ruhig im Wind
     for (let i = 0; i < TAIL.length; i++) {
       const wave = Math.sin(t * (2.2 - speedK) - i * 0.6) * (0.04 + (1 - speedK) * 0.04) * calm;
-      const y = wave + s.tailYaw * (0.3 + i * 0.1);
+      // beim Gehen schwingt der Schwanz gegen die Hüfte, beim Rennen hebt er sich (Gegengewicht)
+      const y = wave + s.tailYaw * (0.3 + i * 0.1) - Math.sin(wph - i * 0.35) * 0.05 * gw;
       const x =
-        Math.sin(t * 1.4 - i * 0.55) * 0.02 * calm + s.tailPitch * (0.18 + i * 0.03) +
+        Math.sin(t * 1.4 - i * 0.55) * 0.02 * calm + s.tailPitch * (0.18 + i * 0.03) - s.run * 0.03 + crouch * 0.05 + dead * 0.05 +
         amp * Math.cos(ph - 0.9 - i * 0.5) * 0.035 * air;
       this._pose(TAIL[i], x, y, 0);
     }
 
     // --- Beine: im Flug nach hinten gestreckt (wie ein Greifvogel), am Boden stehend ---
     const L = s.legs;
-    const walk = a.walk || 0;
-    const wph = t * 5;
     const legsF = LEGS_FLIGHT;
     for (const side of ['R', 'L']) {
-      const step = walk * Math.sin(wph + (side === 'L' ? 0 : Math.PI)) * 0.45;
+      const off = side === 'L' ? 0 : Math.PI;
+      // Bein schwingt vor und zurück; beim Vorschwingen wird das Knie angehoben (Fuss vom Boden)
+      const step = gw * Math.sin(wph + off) * (0.4 + 0.22 * s.run);
+      const liftK = Math.max(0, Math.cos(wph + off)) * gw * (0.55 + 0.4 * s.run);
       // im Flug pendeln die Beine ganz leicht mit dem Flügelschlag
       const sway = (1 - L) * amp * Math.cos(ph - 1.2) * 0.05;
-      this._pose(`thigh_${side}`, lerp(legsF[0], 0, L) + step + sway, 0, 0);
-      this._pose(`shin_${side}`, lerp(legsF[1], 0, L) + Math.max(0, -step) * 0.5, 0, 0);
-      this._pose(`foot_${side}`, lerp(legsF[2], 0, L) - Math.max(0, -step) * 0.3 - sway, 0, 0);
-      this._pose(`toes_${side}`, lerp(legsF[3], 0, L), 0, 0);
+      this._pose(`thigh_${side}`, lerp(legsF[0], 0, L) + step + sway - crouch * 0.45 - liftK * 0.2, 0, 0);
+      this._pose(`shin_${side}`, lerp(legsF[1], 0, L) + liftK * 0.9 + crouch * 0.95, 0, 0);
+      this._pose(`foot_${side}`, lerp(legsF[2], 0, L) - liftK * 0.55 - sway - crouch * 0.5, 0, 0);
+      this._pose(`toes_${side}`, lerp(legsF[3], 0, L) + liftK * 0.3, 0, 0);
     }
     // --- Umhang des Reiters flattert ---
     if (this.cape && this.cape.visible && this.rider?.visible) {

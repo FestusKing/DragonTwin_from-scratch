@@ -94,9 +94,13 @@ private:
 	TObjectPtr<UInputAction> BoostAction;
 	UPROPERTY()
 	TObjectPtr<UInputAction> HoverAction;
+	UPROPERTY()
+	TObjectPtr<UInputAction> LandAction;
 
 	bool bInputContextAdded = false;
 	bool bFlapWasDown = false;
+	bool bLandWasDown = false;
+	bool bLanding = false; // Landeanflug läuft (Taste L)
 	double KeyPitch = 0.0; // Tastatur-Achsen werden weich hochgefahren (wie im Browser-Spiel)
 	double KeyRoll = 0.0;
 

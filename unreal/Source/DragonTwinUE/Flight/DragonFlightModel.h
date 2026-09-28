@@ -20,13 +20,15 @@
 /** Eingaben pro Bild (wie "input" in FlightPhysics.js) */
 struct FDragonFlightInput
 {
-	double Pitch = 0.0;         // +1 = Nase hoch (S), −1 = Nase runter (W)
+	double Pitch = 0.0;         // +1 = Nase hoch (W), −1 = Nase runter (S) – im Flug
+	double Move = 0.0;          // +1 = vorwärts (W), −1 = rückwärts (S) – am Boden und beim Schweben
 	double Roll = 0.0;          // +1 = nach rechts rollen (D), −1 = links (A)
 	bool bFlap = false;         // Flügelschlag gehalten (Leertaste)
 	bool bFlapPressed = false;  // Flügelschlag gerade gedrückt (zum Abheben)
 	bool bDive = false;         // Sturzflug (Shift)
 	bool bBoost = false;        // Boost (E)
 	bool bHover = false;        // Bremsen / Schweben (V)
+	bool bLand = false;         // Landeanflug: abbremsen, aufrichten, sanft aufsetzen (L)
 };
 
 /** Die Welt aus Sicht der Flugphysik. Alle Werte im Physik-Raum (Meter, Y oben). */
@@ -95,6 +97,7 @@ public:
 	static constexpr double PITCH_RATE = 1.45;    // max. Drehrate Nase hoch/runter (rad/s)
 	static constexpr double ROLL_RATE = 2.6;      // max. Rollrate (rad/s)
 	static constexpr double RESPONSE = 4.5;       // Trägheit der Drehung
+	static constexpr double RESPONSE_ASSIST = 8.0; // mit Flughilfe: schnellere Reaktion
 	static constexpr double WEATHERVANE = 0.075;  // Nase dreht sich in Flugrichtung
 	static constexpr double TRIM = 0.05;          // Nase leicht über der Flugbahn (ohne Flughilfe)
 	static constexpr double MAX_BANK = 1.2;       // max. Schräglage mit Flughilfe (≈ 70°)
@@ -106,6 +109,8 @@ public:
 	static constexpr double STAMINA_REGEN = 0.14; // Erholung pro Sekunde
 	static constexpr double BODY_RADIUS = 4.2;    // Kollisions-Kugel (m)
 	static constexpr double STAND_HEIGHT = 2.62;  // Mittelpunkt über dem Boden im Stehen (m)
+	static constexpr double WALK_SPEED = 8.0;     // Gehen am Boden (m/s)
+	static constexpr double WALK_RUN = 17.0;      // Rennen am Boden mit Boost (m/s)
 	static constexpr double WATER_LEVEL = 0.0;    // Meereshöhe (m)
 
 	static constexpr double STEP = 1.0 / 120.0;   // feste Rechenschritte

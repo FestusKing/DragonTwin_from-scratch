@@ -81,7 +81,7 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   app.whenReady().then(() => {
-    // Kein Menü: sonst schliesst Strg+W das Fenster – und W + Strg ist im Spiel "Nase runter + Boost"!
+    // Kein Menü: sonst schliesst Strg+W das Fenster – und W + Strg ist im Spiel "Nase hoch + Boost"!
     Menu.setApplicationMenu(null);
 
     protocol.handle('app', (request) => {

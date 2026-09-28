@@ -183,7 +183,8 @@ float gRotA = aTuft.w * 6.2832;
 if (length(gXZ - uCam.xz) < uRadius) {
   gY = grassGround(gXZ, gN);
   float gDist = length(vec3(gXZ.x, gY, gXZ.y) - uCam);
-  gFade = smoothstep(uRadius, uRadius * 0.55, gDist);
+  // aussen ausblenden (Sichtweite) und ganz nahe an der Kamera (sonst versperrt Gras die Sicht)
+  gFade = smoothstep(uRadius, uRadius * 0.55, gDist) * smoothstep(2.0, 6.0, gDist);
 
   // Wo wächst Gras? (gleiche Regeln wie der Boden-Shader)
   vec2 gSuv = vec2(gXZ.x / uSize + 0.5, 0.5 - gXZ.y / uSize);

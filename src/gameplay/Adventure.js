@@ -45,7 +45,6 @@ export class Adventure {
     this.hoardVisited = false;
     this.inHoardHint = 0;
     this.saveTimer = 5;
-    this.respawnTimer = 0;
     this.targetCache = null;
     this.invuln = 0;
     // gesammelte Kampf-Punkte (sonst gäbe es 30 Anzeigen auf einmal)
@@ -84,7 +83,6 @@ export class Adventure {
     this.hitTimer = 99;
     this.run.active = false;
     this.hasPrev = false;
-    this.respawnTimer = 0;
     this.invuln = 0;
     this.buf.enemy = this.buf.ally = this.buf.sweep = 0;
     this.refreshPanel();
@@ -97,7 +95,7 @@ export class Adventure {
 
   /** Schaden nehmen. Rückgabe: true, wenn der Treffer zählt (nicht während einer Ausweichrolle). */
   damage(amount) {
-    if (!this.active || this.respawnTimer > 0 || this.invuln > 0) return false;
+    if (!this.active || this.game.death.active || this.invuln > 0) return false;
     this.health = Math.max(0, this.health - amount);
     this.hitTimer = 0;
     if (this.health <= 0) this._crash();
@@ -244,26 +242,16 @@ export class Adventure {
 
   // ------------------------------------------------------------ Absturz und Hort
   _crash() {
-    const g = this.game;
-    this.respawnTimer = 2.2;
+    // Absturz-Szene: trudeln, Aufprall, liegen, schwarz, im Hort aufwachen (DeathSequence.js)
     this.score.breakCombo();
-    g.hud.center('ABGESTÜRZT', 'Du erwachst in deinem Hort im Vulkan …', 2.2);
-    g.hud.doFlash(0.5);
-    g.rig.addShake(1.2);
-    g.audio.playImpact(1.2);
+    this.game.death.start();
   }
 
-  _respawn() {
-    const g = this.game;
-    const h = g.world.volcano.hoard;
-    const p = g.physics;
-    p.reset(_v.set(h.x, h.y + 30, h.z + 12), Math.PI, 0); // Blick nach Norden auf den Lava-See
-    p.hovering = true;
-    p.stamina = 1;
+  /** DeathSequence: Der Drache liegt jetzt im Hort und steht gleich auf */
+  onRespawned() {
     this.health = 1;
     this.hitTimer = 99;
-    g.rig.snap();
-    g.hud.toast('🔥 Im Hort erwacht', 'Leben und Ausdauer sind wieder voll.', 3.5);
+    this.invuln = 5; // kurz geschützt, bis er wieder fliegt
   }
 
   /** Ort für den Wegweiser (erster offener Auftrag mit Ort) */
@@ -352,12 +340,6 @@ export class Adventure {
     const pos = p.position;
     this.invuln = Math.max(0, this.invuln - dt);
     this._flush(dt);
-
-    // Absturz → kurz warten → im Hort aufwachen
-    if (this.respawnTimer > 0) {
-      this.respawnTimer -= dt;
-      if (this.respawnTimer <= 0) this._respawn();
-    }
 
     // Heilen
     this.hitTimer += dt;

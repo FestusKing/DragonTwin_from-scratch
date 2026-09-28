@@ -70,12 +70,14 @@ Test selbst starten (braucht Node und g++, kein Unreal): `sh unreal/Tests/run_al
 
 | Aktion | Tastatur | Gamepad |
 | --- | --- | --- |
-| Nase hoch / runter | S / W (oder ↓ / ↑) | linker Stick |
+| Nase hoch / runter (am Boden: vor / zurück) | W / S (oder ↑ / ↓) | linker Stick (vor = hoch) |
 | Rollen / Kurve | A / D (oder ← / →) | linker Stick |
 | Flügelschlag, am Boden: abheben | Leertaste | A |
 | Sturzflug | Shift | B |
 | Boost | E oder Strg | RT |
 | Bremsen / Schweben | V | LT |
+| Landen (Landeanflug bis zum Boden) | L | Steuerkreuz ← |
+| Rennen am Boden | W + E | Stick + RT |
 
 Oben links steht: Tempo, Höhe, Ausdauer und was der Drache gerade macht.
 
