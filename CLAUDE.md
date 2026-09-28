@@ -53,6 +53,7 @@
   gleiche Zahlen). Nichts daraus löschen.
 - Unreal läuft nicht in der Cloud-Umgebung. Für Arbeit am Unreal-Projekt braucht es eine Sitzung auf
   dem PC des Nutzers (Claude Desktop-App oder `claude remote-control` im Projektordner).
+- **Stand und nächster Schritt für eine Sitzung auf Andrejs PC: `docs/UEBERGABE.md`** (zuerst lesen).
 - Vorbereitete Unreal-Dateien (Meilenstein 1): `unreal/` (Anleitung `unreal/README.md`).
   Die C++-Flugphysik `unreal/Source/DragonTwinUE/Flight/` rechnet im Physik-Raum des Browser-Spiels
   (m, Y oben, −Z vorne). Nach jeder Änderung an ihr oder an `FlightPhysics.js`: `sh unreal/Tests/run_all.sh`

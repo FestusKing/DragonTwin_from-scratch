@@ -39,7 +39,8 @@ Test selbst starten (braucht Node und g++, kein Unreal): `sh unreal/Tests/run_al
 2. Diese Dateien nach `DragonTwinUE/Source/DragonTwinUE/` kopieren:
    - den Ordner `Flight/`
    - `DragonPawn.h` und `DragonPawn.cpp`
-3. `DragonTwinUE.Build.cs` ersetzen (oder in der vorhandenen Datei `"EnhancedInput"` ergänzen).
+3. `DragonTwinUE.Build.cs` **nicht ersetzen** (neue Unreal-Versionen schreiben dort eigene Einstellungen hinein),
+   sondern nur prüfen, ob `"EnhancedInput"` in `PublicDependencyModuleNames` steht – sonst ergänzen.
 
 ### 2. Kompilieren
 1. Doppelklick auf `DragonTwinUE.uproject`.
