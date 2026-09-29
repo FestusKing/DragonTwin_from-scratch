@@ -19,7 +19,7 @@ NAMES=$(cd "$UT" && node -e "import('./scenarios.mjs').then((m) => console.log(m
 dotnet "$HERE/out/FlightTest.dll" "$UT/out/" $NAMES
 # 3) Vergleichen
 (cd "$UT" && node compare.mjs cs)
-# 4) s&box-Teil (DragonController.cs) gegen eine kleine Nachbildung von s&box kompilieren
+# 4) s&box-Teile (DragonController.cs, RaceComponent.cs) gegen eine kleine Nachbildung von s&box kompilieren
 #    (findet Tipp- und Typ-Fehler; ob s&box die Namen wirklich so hat, zeigt erst s&box selbst)
 dotnet build ControllerCheck/ControllerCheck.csproj -c Release -o "$HERE/out/check" --nologo -v quiet
-echo "DragonController.cs: kompiliert gegen die s&box-Nachbildung ✔"
+echo "s&box-Teile (DragonController.cs, RaceComponent.cs): kompilieren gegen die s&box-Nachbildung ✔"

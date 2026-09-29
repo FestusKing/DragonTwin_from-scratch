@@ -3,6 +3,8 @@
 // 2) Führt die C#-Flugphysik (DragonFlightModel.cs) mit denselben Test-Flügen aus wie
 //    unreal/Tests/run_js.mjs (Browser-Spiel) und flight_test.cpp (Unreal).
 //    Liest out/<name>.env und out/<name>.in, schreibt out/<name>.cs.txt (gleiche Spalten).
+// 3) Ringrennen: jede Strecke wird mit dem Autopiloten abgeflogen (ist sie fliegbar?),
+//    dazu Ring-Treffer, Bestzeit und Geist (RaceTest.cs).
 // Aufruf: FlightTest <out-Ordner> gleiten kurven …
 using System;
 using System.Globalization;
@@ -22,7 +24,7 @@ static class Program
 		if ( !SpaceTest.Run() ) return 1;
 		string dir = args[0];
 		for ( int a = 1; a < args.Length; a++ ) RunFlight( dir, args[a] );
-		return 0;
+		return RaceTest.Run() ? 0 : 1;
 	}
 
 	static string Fmt( double v ) => v.ToString( "R", CultureInfo.InvariantCulture );

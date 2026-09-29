@@ -58,6 +58,12 @@ public sealed class DragonController : Component
 	/** Die Flugphysik (Physik-Raum: Meter, Y oben, −Z vorne) */
 	public DragonFlightModel Flight { get; } = new();
 
+	/** Die Welt aus Sicht der Flugphysik (Boden per Trace) – auch für Gegner-Drachen */
+	public IDragonFlightWorld World => world;
+
+	/** Nach jedem Physik-Schritt: (Position vorher, dt). Das Ringrennen hängt sich hier an. */
+	public Action<DVec3, double> AfterFlightUpdate;
+
 	const double LandMaxAgl = 150.0; // so hoch darf man höchstens sein, um mit L zu landen (m)
 
 	SceneFlightWorld world;
@@ -103,7 +109,9 @@ public sealed class DragonController : Component
 			Turbulence = 0.0,
 		};
 		Flight.WorldRadius = WorldRadius;
+		DVec3 prevPos = Flight.Position;
 		Flight.Update( dt, ReadInput( dt ), env );
+		AfterFlightUpdate?.Invoke( prevPos, dt );
 
 		// Physik-Raum → s&box
 		WorldPosition = ToVector( DragonSpace.ToSbox( Flight.Position ) );
@@ -202,6 +210,17 @@ public sealed class DragonController : Component
 		cam.FieldOfView = CameraFieldOfView;
 	}
 
+	/** Kamera sofort hinter den Drachen setzen (z. B. nach einem Sprung an den Rennstart) */
+	public void SnapCamera() => camReady = false;
+
+	/** Kurze Meldung oben links (2,5 s) */
+	public void Say( string text )
+	{
+		message = text;
+		messageTime = 2.5;
+		Log.Info( $"Drache: {text}" );
+	}
+
 	// ---------------------------------------------------------------------------
 	void DrawFlightInfo( double dt )
 	{
@@ -219,13 +238,6 @@ public sealed class DragonController : Component
 			messageTime -= dt;
 			DebugOverlay.ScreenText( new Vector2( 20, 48 ), message, 18 );
 		}
-	}
-
-	void Say( string text )
-	{
-		message = text;
-		messageTime = 2.5;
-		Log.Info( $"Drache: {text}" );
 	}
 
 	static Vector3 ToVector( DVec3 v ) => new( (float)v.X, (float)v.Y, (float)v.Z );

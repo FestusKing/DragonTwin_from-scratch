@@ -81,19 +81,24 @@ gemacht), dann Meilenstein 1b (unten).
    `Binaries/ Intermediate/ Saved/ DerivedDataCache/ .vs/ *.sln`, **Git LFS** für `.uasset`/`.umap`.
    Keine Dateien über 100 MB.
 
-## Nebenprojekt: Flug-Demo für s&box
+## s&box-Version (für sbox.game)
 
-Andrej will den Drachen schon auf **sbox.game** hochladen. Dafür gibt es `sbox/` (Anleitung `sbox/README.md`):
-- `sbox/Code/Flight/` – Flugphysik in **C#**, 1:1 wie JS und C++. **Getestet** (12 Flüge gleich,
-  `sh sbox/Tests/run_all.sh`, braucht Node + .NET-SDK 8).
-- `sbox/Code/DragonController.cs` – s&box-Komponente (Tasten, Boden per Trace, Kamera, Anzeige).
-  **Nie mit echtem s&box kompiliert** → beim ersten Start kleine Fehler möglich (Namen in s&box prüfen).
+Andrej will das Spiel auf **sbox.game** hochladen (evtl. später Geld über den Play Fund). Ordner `sbox/`,
+Anleitung **`sbox/README.md`** (Einrichten, Tasten, Szene):
+- `sbox/Code/Flight/` – Flugphysik in **C#**, 1:1 wie JS und C++. **Getestet**.
+- `sbox/Code/Game/` – **Ringrennen** (3 Strecken, Countdown, Medaillen, Bestzeit, Geist) und
+  **3 Gegner-Drachen** mit KI-Pilot (gleiche Physik). **Getestet** (`sh sbox/Tests/run_all.sh`, braucht
+  Node + .NET-SDK 8): jede Strecke wird vom Autopiloten ohne Fehler abgeflogen.
+- `sbox/Code/DragonController.cs`, `sbox/Code/RaceComponent.cs` – s&box-Komponenten.
+  **Nie mit echtem s&box kompiliert** → beim ersten Start Fehler möglich (Namen in s&box prüfen).
+  `Code/Flight/` und `Code/Game/` dabei nicht ändern.
+- Ring-Modell: `sbox/Assets/models/ring.obj` (von `tools/make_ring_obj.py`).
 - Einrichten ohne Klick-Anleitung, soweit möglich: Dateien kopieren, `ProjectSettings/Input.config`
   ergänzen (Format vorher ansehen), Szene/GameObjects per Datei oder Editor-Werkzeug. Nur das Anlegen
   des s&box-Projekts selbst macht Andrej im Editor.
 - s&box-Projekt z. B. in `C:\Projekte\DragonSbox`. **Eigener Spielname** vor dem ersten Hochladen.
-- Unreal bleibt das Hauptprojekt. Die Flugphysik gibt es jetzt dreimal (JS, C++, C#): Änderungen
-  immer in allen drei, danach `sh unreal/Tests/run_all.sh`.
+- Die Flugphysik gibt es jetzt dreimal (JS, C++, C#): Änderungen immer in allen drei, danach
+  `sh unreal/Tests/run_all.sh`.
 
 ## Offen (später)
 

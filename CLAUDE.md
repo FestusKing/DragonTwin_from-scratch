@@ -60,13 +60,16 @@
   (m, Y oben, −Z vorne). Nach jeder Änderung an ihr oder an `FlightPhysics.js`: `sh unreal/Tests/run_all.sh`
   (vergleicht beide Versionen, braucht nur Node + g++).
 
-## s&box (Flug-Demo, Nebenprojekt)
+## s&box (Spiel für sbox.game)
 
-- Andrej will den Drachen früh auf **sbox.game** hochladen. Ordner `sbox/`, Anleitung `sbox/README.md`.
-  Hauptprojekt bleibt Unreal.
+- Andrej will das Spiel auf **sbox.game** hochladen (später evtl. Geld über den Play Fund = nach Spielzeit).
+  Ordner `sbox/`, Anleitung `sbox/README.md`.
 - `sbox/Code/Flight/` = Flugphysik in C# (double, 1:1 aus der C++-Version, ohne s&box testbar).
-  `sbox/Code/DragonController.cs` = s&box-Komponente (Tasten, Boden-Trace, Kamera). Nur gegen eine
-  Nachbildung (`sbox/Tests/ControllerCheck/SboxStub.cs`) kompiliert, nie mit echtem s&box.
+  `sbox/Code/Game/` = Spiel-Logik ohne s&box (Ringrennen, Strecken, Geist, KI-Autopilot für Gegner) – getestet.
+  `sbox/Code/DragonController.cs`, `RaceComponent.cs` = s&box-Komponenten (Tasten, Boden-Trace, Kamera,
+  Ringe, Anzeige). Nur gegen eine Nachbildung (`sbox/Tests/ControllerCheck/SboxStub.cs`) kompiliert,
+  nie mit echtem s&box. Neue s&box-Namen dort eintragen.
+- Spiel-Logik möglichst in `Code/Game/` (ohne s&box, mit Test), s&box-Komponenten dünn halten.
 - s&box-Raum: Zoll (1 m = 39,37), X vorne, Y links, Z oben. Umrechnung nur in `DragonSpace.cs`.
 - Test: `sh sbox/Tests/run_all.sh` (Node + .NET-SDK 8). In der Cloud: `apt-get install dotnet-sdk-8.0`
   (mit Andrejs Erlaubnis installiert). s&box selbst läuft nur auf Andrejs PC.

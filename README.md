@@ -344,7 +344,7 @@ src/
 public/textures/        Die Foto-Texturen (JPG) + QUELLEN.md mit Autoren
 electron/               Desktop-Version: Fenster (main.cjs), erlaubte Dateien (paths.cjs), Verpacken (paket.mjs)
 unreal/                 Vorbereitete Dateien für die Unreal-Version (Flugphysik in C++ mit Vergleichstest)
-sbox/                   Flug-Demo für s&box (Flugphysik in C# mit Vergleichstest, Anleitung sbox/README.md)
+sbox/                   s&box-Version: Fliegen + Ringrennen mit Gegnern (C#, getestet; Anleitung sbox/README.md)
 public/models/          Das Drachen-Modell (GLB) + QUELLEN.md
 tools/
   fetch_textures.py     Lädt die Foto-Texturen von Poly Haven und bereitet sie vor

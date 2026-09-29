@@ -13,7 +13,8 @@
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
   </PropertyGroup>
   <ItemGroup>
-    <!-- genau die Dateien, die auch in s&box laufen (nur der Flight-Ordner, ohne s&box-Teile) -->
+    <!-- genau die Dateien, die auch in s&box laufen (Flight/ und Game/ brauchen nichts von s&box) -->
     <Compile Include="../../Code/Flight/*.cs" />
+    <Compile Include="../../Code/Game/*.cs" />
   </ItemGroup>
 </Project>
