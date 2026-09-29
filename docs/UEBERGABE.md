@@ -81,6 +81,18 @@ gemacht), dann Meilenstein 1b (unten).
    `Binaries/ Intermediate/ Saved/ DerivedDataCache/ .vs/ *.sln`, **Git LFS** für `.uasset`/`.umap`.
    Keine Dateien über 100 MB.
 
+## Zwei Projekte parallel (Entscheid Andrej, Sept. 2026)
+
+Andrej will **beides** weitermachen, Unreal und s&box:
+- **s&box** = schnell spielbar, auf sbox.game hochladen, Spieler sammeln (Play Fund = Geld nach Spielzeit).
+  Kurze Spielmodi: Ringrennen, später Aufgaben und Gegner.
+- **Unreal** = das grosse Spiel für später (Welt, Menschen, Armeen, Grafik), evtl. Steam.
+- Gegen doppelte Arbeit: gleiche Zahlen und Regeln in beiden (Vorlage = Browser-Spiel). Was in beiden
+  gleich rechnen muss (Flugphysik), bekommt einen Vergleichstest. Nicht alles in beiden bauen:
+  zuerst dort, wo es gebraucht wird.
+- Immer nur **einen Schritt auf einmal** fertig machen (erst testen, dann das andere Projekt).
+  Andrej hat ADHS: klare, kleine Schritte, nicht zwei Baustellen gleichzeitig offen lassen.
+
 ## s&box-Version (für sbox.game)
 
 Andrej will das Spiel auf **sbox.game** hochladen (evtl. später Geld über den Play Fund). Ordner `sbox/`,

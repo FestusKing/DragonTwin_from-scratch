@@ -70,6 +70,9 @@
   Ringe, Anzeige). Nur gegen eine Nachbildung (`sbox/Tests/ControllerCheck/SboxStub.cs`) kompiliert,
   nie mit echtem s&box. Neue s&box-Namen dort eintragen.
 - Spiel-Logik möglichst in `Code/Game/` (ohne s&box, mit Test), s&box-Komponenten dünn halten.
+- **Unreal und s&box laufen beide weiter** (Entscheid Andrej): s&box = schnell auf sbox.game (Play Fund),
+  Unreal = das grosse Spiel für später. Einen Schritt fertig machen, dann das andere Projekt
+  (Details: `docs/UEBERGABE.md`).
 - s&box-Raum: Zoll (1 m = 39,37), X vorne, Y links, Z oben. Umrechnung nur in `DragonSpace.cs`.
 - Test: `sh sbox/Tests/run_all.sh` (Node + .NET-SDK 8). In der Cloud: `apt-get install dotnet-sdk-8.0`
   (mit Andrejs Erlaubnis installiert). s&box selbst läuft nur auf Andrejs PC.
